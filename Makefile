@@ -22,10 +22,13 @@ YACC = menhir
 #LEXOPTS = -ml
 #YACCOPTS = --trace
 
-CMO = lexer.cmo globals.cmo grammar.cmo dump.cmo main.cmo
+CMO = lexer.cmo globals.cmo grammar.cmo dump.cmo semantics.cmo parse.cmo main.cmo
 
 $(TARGET): $(CMO)
 	ocamlc.opt -g -o $@ $(CMO)
+
+vtop: $(CMO)
+	ocamlmktop -o vtop $(CMO)
 
 depend: grammar.ml lexer.ml
 	ocamldep *.ml *.mli > .depend
@@ -55,6 +58,9 @@ vparser.cmi: vparser.mli
 	ocamlc.opt -g -c vparser.mli
 
 test: vparser
-	./vparser < ex/test.v
+	./vparser ex/test.v
+
+debug: vtop
+	./vtop -I ex/test.v
 
 include .depend

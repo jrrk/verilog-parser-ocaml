@@ -935,7 +935,7 @@ stmt:
 	|	labeledStmt				{ $1 }
 	|	identifier COLON labeledStmt		{ [ DOUBLE (ID $1, $3 ) ] }
 
-	|	eventControl stmtBlock			{ [ TRIPLE (HASH, $1, $2 ) ] }
+	|	eventControl stmtBlock			{ $1 @ $2 }
 
 	|	varRefDotBit P_LTE delayE expr SEMICOLON
 			{ [ QUADRUPLE (P_LTE, $1, $3, $4 ) ] }
