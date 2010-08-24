@@ -17,16 +17,18 @@
 * Based on verilator parser code by Paul Wasson, Duane Galbi and Wilson Snyder
 *******************************************************************************)
 
-let main () =
-  try
-    let lexbuf = Lexing.from_channel stdin in
-    while true do
-      Grammar.start Lexer.token lexbuf
-    done
-    
-  with End_of_file ->
-    close_in_noerr stdin;
-    Hashtbl.iter Dump.moditer Globals.modules;
-    exit 0
-     
-let _ = Printexc.print main ()
+let _ = Printexc.print Parse.parse ()
+
+(* let _ = Printexc.print Parse.parse ();; *)
+
+(* let m k x = Printf.printf "%s\n" k in Hashtbl.iter m Globals.modules;; *)
+
+(* Hashtbl.find Globals.modules "test";; *)
+
+(* Hashtbl.find Globals.modules "test2";; *)
+
+(* Hashtbl.iter (fun k x -> Printf.printf "%s\n" k) Globals.modules;; *)
+
+(* Hashtbl.iter (fun k x -> Semantics.semantics x) Globals.modules;; *)
+
+(* List.iter (fun x -> Dump.dump (x, 0)) arg;; *)
