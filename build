@@ -1,0 +1,14 @@
+menhir  --only-tokens -b vparser grammar.mly
+ocamlc.opt -g -c vparser.mli
+ocamllex.opt  lexer.mll
+ocamlc.opt -g -c lexer.ml
+ocamlc.opt -g -c globals.mli
+ocamlc.opt -g -c globals.ml
+menhir  --external-tokens Vparser --base grammar grammar.mly
+ocamlc.opt -g -c grammar.mli
+ocamlc.opt -g -c grammar.ml
+ocamlc.opt -g -c dump.mli
+ocamlc.opt -g -c dump.ml
+ocamlc.opt -g -c main.mli
+ocamlc.opt -g -c main.ml
+ocamlc.opt -g -o vparser lexer.cmo globals.cmo grammar.cmo dump.cmo main.cmo
