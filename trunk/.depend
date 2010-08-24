@@ -1,0 +1,12 @@
+grammar.cmo: vparser.cmi lexer.cmo globals.cmo grammar.cmi grammar.ml
+grammar.cmx: vparser.cmx lexer.cmx globals.cmx grammar.cmi 
+lexer.cmo: vparser.cmi 
+lexer.cmx: vparser.cmx 
+vparser.cmo: vparser.cmi 
+vparser.cmx: vparser.cmi 
+grammar.cmi: vparser.cmi 
+dump.cmo: dump.cmi lexer.cmo
+dump.cmi: vparser.cmi
+main.cmo: main.cmi lexer.cmo globals.cmi dump.cmi
+globals.cmo: globals.cmi
+globals.cmi: vparser.cmi
