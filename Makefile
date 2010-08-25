@@ -22,7 +22,7 @@ YACC = menhir
 #LEXOPTS = -ml
 #YACCOPTS = --trace
 
-CMO = lexer.cmo globals.cmo grammar.cmo dump.cmo semantics.cmo parse.cmo main.cmo
+CMO = ord.cmo setup.cmo lexer.cmo globals.cmo grammar.cmo dump.cmo semantics.cmo parse.cmo main.cmo
 
 $(TARGET): $(CMO)
 	ocamlc.opt -g -o $@ $(CMO)
@@ -35,7 +35,7 @@ depend: grammar.ml lexer.ml
 
 clean:
 	rm -rf *.cmi *.cmo $(TARGET)
-	rm -rf grammar.ml grammar.mli lexer.ml lexer.mli vparser.mli vparser.ml
+	rm -rf grammar.ml grammar.mli lexer.ml lexer.mli vparser.mli vparser.ml ord.ml
 
 .SUFFIXES: .ml .mli .mll .mly .cmo .cmi
 
@@ -53,6 +53,9 @@ grammar.mli grammar.ml: grammar.mly
 
 vparser.mli: grammar.mly
 	$(YACC) $(YACCOPTS) --only-tokens -b vparser $<
+
+ord.ml: ord.sh vparser.cmi
+	sh ord.sh
 
 vparser.cmi: vparser.mli
 	ocamlc.opt -g -c vparser.mli

@@ -39,6 +39,7 @@
 %token BODY
 %token BITSEL
 %token PARTSEL
+%token IOPORT
 %token<token list * token list > RANGE
 
 // pre-proc tokens
@@ -1363,6 +1364,7 @@ specifyJunk:	dlyTerm 				{ [] } /* ignored */
 	|	QUADRUPLE				{ [] }
 	|	QUINTUPLE				{ [] }
 	|	RANGE					{ [] }
+	|	IOPORT					{ [] }
 	|	SEPTUPLE				{ [] }
 	|	SEXTUPLE				{ [] }
 	|	TRIPLE					{ [] }
