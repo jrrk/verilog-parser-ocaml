@@ -10,6 +10,8 @@ dump.cmi: vparser.cmi
 parse.cmo: parse.cmi lexer.cmo globals.cmi dump.cmi semantics.cmi
 main.cmo: main.cmi parse.cmi
 globals.cmo: globals.cmi
-globals.cmi: vparser.cmi
+globals.cmi: vparser.cmi setup.cmi
 semantics.cmo: semantics.cmi lexer.cmo
-semantics.cmi: vparser.cmi
+semantics.cmi: vparser.cmi setup.cmi
+setup.cmo: setup.cmi
+setup.cmi: vparser.cmi ord.cmi

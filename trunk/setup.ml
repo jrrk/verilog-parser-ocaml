@@ -1,6 +1,6 @@
 (******************************************************************************
 *
-*    DESCRIPTION: Verilog parser ocamlyacc grammar file
+*    DESCRIPTION: Verilog parser main program
 *
 ******************************************************************************
 *
@@ -18,7 +18,29 @@
 *******************************************************************************)
 
 open Vparser;;
+open Ord;;
 
-let modules = Hashtbl.create 256;;
-let primitives = Hashtbl.create 256;;
-let symbols = Hashtbl.create 256;;
+let compare_tok (a:token) (b:token) = ord(a) - ord(b);;
+
+module type Ordered =
+  sig
+    type t 
+    val compare : token -> token -> int
+  end
+
+module OrdTok : Ordered with type t = token =
+  struct
+    type t = token
+    let compare a b = compare_tok a b;
+  end
+
+module TokSet = Set.Make (OrdTok)
+
+let one_elm = TokSet.add EMPTY TokSet.empty;;
+
+let show_set s = TokSet.iter (fun e -> Printf.printf "%s\n" (Ord.getstr(e))) s;;
+
+let show1 (e:token) = Printf.printf "%s\n" (match e with ID id -> id | _ -> (Ord.getstr e));;
+let show2 k (x:Set.Make(OrdTok).t) = Printf.printf "%s: " k; TokSet.iter show1 x;;
+
+let show_table t = Hashtbl.iter show2 t;;
