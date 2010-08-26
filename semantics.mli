@@ -1,4 +1,3 @@
-   val range : nativeint -> nativeint -> unit
    val semantics : Globals.modtree -> unit
    val enter_a_sym : (string, Set.Make(Setup.OrdTok).t) Hashtbl.t -> string -> Vparser.token -> unit
    val iter_ :
