@@ -1,6 +1,6 @@
 (******************************************************************************
 *
-*    DESCRIPTION: Verilog parser main program
+*    DESCRIPTION: Verilog parser set manipulation program
 *
 ******************************************************************************
 *

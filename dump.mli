@@ -1,2 +1,2 @@
-val moditer: string -> Vparser.token -> (unit)
+val moditer: string -> Globals.modtree -> (unit)
 val dump: Vparser.token * int -> (unit)
