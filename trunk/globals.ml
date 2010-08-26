@@ -19,6 +19,7 @@
 
 open Vparser;;
 
+type modtree = { tree: token; symbols: (string, Set.Make(Setup.OrdTok).t) Hashtbl.t };;
 let modules = Hashtbl.create 256;;
 let primitives = Hashtbl.create 256;;
-let symbols = Hashtbl.create 256;;
+(*let symbols = Hashtbl.create 256;;*)

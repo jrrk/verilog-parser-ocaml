@@ -68,5 +68,5 @@ and myiter indent dump list =
   let f x = dump (x, indent + 2) in List.iter f list
 ;;
 
-let moditer k x = printf "Module %s : " k; dump (x, 0);;
+let moditer k (x:Globals.modtree) = printf "Module %s : " k; dump (x.Globals.tree, 0);;
 
