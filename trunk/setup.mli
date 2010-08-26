@@ -41,6 +41,6 @@ module TokSet :
   end
 
 val show_set : TokSet.t -> unit
-val show1 : Vparser.token -> unit
-val show2 : string -> TokSet.t -> unit
+val show_token : Vparser.token -> unit
+val show_sym : string -> TokSet.t -> unit
 
