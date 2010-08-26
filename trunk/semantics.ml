@@ -23,8 +23,6 @@ open Vparser
 open Globals
 open Setup
 
-let range hi lo = printf "[%d:%d] " (Nativeint.to_int hi) (Nativeint.to_int lo);;
-
 let enter_a_sym symbols id attr = 
 if Hashtbl.mem symbols id then begin
 (*  printf "Update %s: %s\n" id (Ord.getstr attr); *)
@@ -32,7 +30,7 @@ if Hashtbl.mem symbols id then begin
   Hashtbl.replace symbols id (TokSet.add attr newset); end
 else begin
 (*  printf "Enter %s: %s\n" id (Ord.getstr attr); *)
-  Hashtbl.add symbols id (TokSet.singleton (ID id))
+  Hashtbl.add symbols id (TokSet.add attr (TokSet.singleton (ID id)))
   end
 ;;
 
@@ -42,7 +40,7 @@ let iter_ semantics syms list =
   List.iter (fun x -> semantics ({Globals.tree=x; symbols=syms})) list
 ;;
 
-let unhandled arg = ignore(Ord.getstr(arg));;
+let unhandled syms arg = enter_a_sym syms "**unhandled**" arg;;
 
 let rec semantics (tree:Globals.modtree) =
    let exp = tree.Globals.tree and syms = tree.Globals.symbols in match exp with
@@ -54,20 +52,20 @@ let rec semantics (tree:Globals.modtree) =
 | QUINTUPLE(MODULE,[ID arg1],arg2,arg3,arg4) ->
     enter_a_sym syms arg1 MODULE;
     iter_ semantics syms arg2;
-    iter (fun arg -> match arg with ID id -> enter_a_sym syms id IOPORT | _ -> unhandled arg) arg3;
+    iter (fun arg -> match arg with ID id -> enter_a_sym syms id IOPORT | _ -> semantics {Globals.tree=arg; symbols=syms}) arg3;
     iter_ semantics syms arg4
 | QUINTUPLE((INPUT|OUTPUT|INOUT|REG) as dir,arg1,arg2,arg3,arg4) ->
     let width = ref [dir] in begin
     iter_ semantics syms arg1;
     iter_ semantics syms arg2;
     (match arg3 with [RANGE([INTNUM hi],[INTNUM lo]) as rangehilo] -> width := rangehilo :: !width
-      | _ ->  List.iter unhandled arg3);
+      | _ ->  List.iter (fun arg -> unhandled syms arg) arg3);
     ( match arg4 with [DOUBLE(ID id,arg5)] ->
       enter_syms syms id !width
       | [TRIPLE(ID id,arg5,arg6)] -> enter_syms syms id !width
-      | _ ->  List.iter (fun x -> match x with TRIPLE(ID id,arg5,arg6) -> enter_syms syms id !width | _ -> unhandled x) arg4); end
+      | _ ->  List.iter (fun x -> match x with TRIPLE(ID id,arg5,arg6) -> enter_syms syms id !width | _ -> unhandled syms x) arg4); end
 | RANGE(arg1,arg2) -> iter_ semantics syms arg1; iter_ semantics syms arg2
 | ID id -> enter_a_sym syms id EMPTY
-| _ -> unhandled(exp);;
+| _ -> unhandled syms exp;;
 
 let moditer k (x:Globals.modtree) = semantics x;;
