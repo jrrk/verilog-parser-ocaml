@@ -440,7 +440,7 @@ commentDecl:	COMMENT_BEGIN specifyJunkList COMMENT_END { (* Printf.fprintf Perva
 // IEEE: module_declaration:
 moduleDecl:	MODULE identifier modParE modPortsE SEMICOLON modItemListE ENDMODULE
 			{
-			Hashtbl.add Globals.modules $2
+			Hashtbl.add Globals.modprims $2
 				{ Globals.tree=QUINTUPLE ( MODULE, [ID $2], $3, $4, $6 );
 				  symbols=Hashtbl.create 256}
 			}
@@ -449,7 +449,9 @@ moduleDecl:	MODULE identifier modParE modPortsE SEMICOLON modItemListE ENDMODULE
 // IEEE: primitive_declaration:
 primDecl:	PRIMITIVE identifier modParE modPortsE SEMICOLON primItemList ENDPRIMITIVE
 			{
-			Hashtbl.add Globals.primitives $2 ( QUINTUPLE ( PRIMITIVE, [ID $2], $3, $4, $6 ) )
+			Hashtbl.add Globals.modprims $2
+				{ Globals.tree=QUINTUPLE ( PRIMITIVE, [ID $2], $3, $4, $6 );
+				  symbols=Hashtbl.create 256}
 			}
 	;
 
