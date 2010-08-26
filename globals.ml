@@ -20,6 +20,11 @@
 open Vparser;;
 
 type modtree = { tree: token; symbols: (string, Set.Make(Setup.OrdTok).t) Hashtbl.t };;
-let modules = Hashtbl.create 256;;
-let primitives = Hashtbl.create 256;;
+let modprims = Hashtbl.create 256;;
+(*let primitives = Hashtbl.create 256;;*)
 (*let symbols = Hashtbl.create 256;;*)
+
+let get_table (m:string) = Hashtbl.find modprims m;;
+let get_syms (r:modtree) = r.symbols;;
+let show_syms f x = Hashtbl.iter f x;;
+let show_table (m:string) = show_syms Setup.show2 (get_syms(get_table "test"));;
