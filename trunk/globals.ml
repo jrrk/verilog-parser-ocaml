@@ -28,4 +28,5 @@ let get_table (m:string) = Hashtbl.find modprims m;;
 let get_syms (r:modtree) = r.symbols;;
 let show_syms f x = Hashtbl.iter f x;;
 let show_table (m:string) = show_syms Setup.show_sym (get_syms(get_table m));;
-let show_unhandled (m:string) = Setup.TokSet.iter Setup.show_token (Hashtbl.find (get_syms(get_table m)) "**unhandled**");;
+let show_unhandled_f f (m:string) = Setup.TokSet.iter f (Hashtbl.find (get_syms(get_table m)) "**unhandled**");;
+let show_unhandled m = show_unhandled_f Setup.show_token m;;

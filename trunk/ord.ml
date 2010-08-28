@@ -16,184 +16,186 @@ let ord tok = match tok with
 | Vparser. TABLE ->     15   
 | Vparser. SUPPLY1 ->     16   
 | Vparser. SUPPLY0 ->     17   
-| Vparser. STATIC ->     18   
-| Vparser. SPECIFY ->     19   
-| Vparser. SIGNED ->     20   
-| Vparser. SEXTUPLE arg  ->     21   
-| Vparser. SEPTUPLE arg  ->     22   
-| Vparser. SEMICOLON ->     23   
-| Vparser. SCALARED ->     24   
-| Vparser. RPAREN ->     25   
-| Vparser. REG ->     26   
-| Vparser. RCURLY ->     27   
-| Vparser. RBRACK ->     28   
-| Vparser. RANGE arg  ->     29   
-| Vparser. QUINTUPLE arg  ->     30   
-| Vparser. QUERY ->     31   
-| Vparser. QUADRUPLE arg  ->     32   
-| Vparser. P_XOREQ ->     33   
-| Vparser. P_XNOR ->     34   
-| Vparser. P_WILDNOTEQUAL ->     35   
-| Vparser. P_WILDEQUAL ->     36   
-| Vparser. P_TIMESEQ ->     37   
-| Vparser. P_SSRIGHTEQ ->     38   
-| Vparser. P_SSRIGHT ->     39   
-| Vparser. P_SRIGHTEQ ->     40   
-| Vparser. P_SRIGHT ->     41   
-| Vparser. P_SLEFTEQ ->     42   
-| Vparser. P_SLEFT ->     43   
-| Vparser. P_POW ->     44   
-| Vparser. P_POUNDPOUND ->     45   
-| Vparser. P_PLUSEQ ->     46   
-| Vparser. P_PLUSCOLON ->     47   
-| Vparser. P_OROR ->     48   
-| Vparser. P_ORMINUSGT ->     49   
-| Vparser. P_OREQGT ->     50   
-| Vparser. P_OREQ ->     51   
-| Vparser. P_NOTEQUAL ->     52   
-| Vparser. P_NOR ->     53   
-| Vparser. P_NAND ->     54   
-| Vparser. P_MODEQ ->     55   
-| Vparser. P_MINUSEQ ->     56   
-| Vparser. P_MINUSCOLON ->     57   
-| Vparser. P_LTE ->     58   
-| Vparser. P_GTE ->     59   
-| Vparser. P_EQUAL ->     60   
-| Vparser. P_EQGT ->     61   
-| Vparser. P_DOTSTAR ->     62   
-| Vparser. P_DIVEQ ->     63   
-| Vparser. P_COLONEQ ->     64   
-| Vparser. P_COLONDIV ->     65   
-| Vparser. P_COLONCOLON ->     66   
-| Vparser. P_CASENOTEQUAL ->     67   
-| Vparser. P_CASEEQUAL ->     68   
-| Vparser. P_ATAT ->     69   
-| Vparser. P_ASTGT ->     70   
-| Vparser. P_ANDEQ ->     71   
-| Vparser. P_ANDANDAND ->     72   
-| Vparser. P_ANDAND ->     73   
-| Vparser. PROPERTY ->     74   
-| Vparser. PRIMITIVE ->     75   
-| Vparser. PREPROC arg  ->     76   
-| Vparser. POSEDGE ->     77   
-| Vparser. PLUS ->     78   
-| Vparser. PLING ->     79   
-| Vparser. PARTSEL ->     80   
-| Vparser. PARAMETER ->     81   
-| Vparser. OUTPUT ->     82   
-| Vparser. OR ->     83   
-| Vparser. NOT ->     84   
-| Vparser. NOR ->     85   
-| Vparser. NEGEDGE ->     86   
-| Vparser. NAND ->     87   
-| Vparser. MODULO ->     88   
-| Vparser. MODULE ->     89   
-| Vparser. MINUS ->     90   
-| Vparser. LPAREN ->     91   
-| Vparser. LOCALPARAM ->     92   
-| Vparser. LESS ->     93   
-| Vparser. LCURLY ->     94   
-| Vparser. LBRACK ->     95   
-| Vparser. IOPORT ->     96   
-| Vparser. INTNUM arg  ->     97   
-| Vparser. INTEGER ->     98   
-| Vparser. INPUT ->     99   
-| Vparser. INOUT ->    100   
-| Vparser. INITIAL ->    101   
-| Vparser. ILLEGAL arg  ->    102   
-| Vparser. IFF ->    103   
-| Vparser. IF ->    104   
-| Vparser. ID arg  ->    105   
-| Vparser. HEXNUM arg  ->    106   
-| Vparser. HASH ->    107   
-| Vparser. GREATER ->    108   
-| Vparser. GENVAR ->    109   
-| Vparser. GENERATE ->    110   
-| Vparser. FUNCTION ->    111   
-| Vparser. FOR ->    112   
-| Vparser. FLOATNUM arg  ->    113   
-| Vparser. FINAL ->    114   
-| Vparser. EQUALS ->    115   
-| Vparser. EOF ->    116   
-| Vparser. ENDTASK ->    117   
-| Vparser. ENDTABLE ->    118   
-| Vparser. ENDSPECIFY ->    119   
-| Vparser. ENDPRIMITIVE ->    120   
-| Vparser. ENDOFFILE ->    121   
-| Vparser. ENDMODULE ->    122   
-| Vparser. ENDGENERATE ->    123   
-| Vparser. ENDFUNCTION ->    124   
-| Vparser. ENDCLOCKING ->    125   
-| Vparser. ENDCASE ->    126   
-| Vparser. END ->    127   
-| Vparser. EMPTY ->    128   
-| Vparser. ELSE ->    129   
-| Vparser. D_WRITE ->    130   
-| Vparser. D_WARNING ->    131   
-| Vparser. D_UNSIGNED ->    132   
-| Vparser. D_TIME ->    133   
-| Vparser. D_STOP ->    134   
-| Vparser. D_STIME ->    135   
-| Vparser. D_SSCANF ->    136   
-| Vparser. D_SIGNED ->    137   
-| Vparser. D_READMEMH ->    138   
-| Vparser. D_READMEMB ->    139   
-| Vparser. D_RANDOM ->    140   
-| Vparser. D_ONEHOT0 ->    141   
-| Vparser. D_ONEHOT ->    142   
-| Vparser. D_ISUNKNOWN ->    143   
-| Vparser. D_INFO ->    144   
-| Vparser. D_FWRITE ->    145   
-| Vparser. D_FSCANF ->    146   
-| Vparser. D_FOPEN ->    147   
-| Vparser. D_FINISH ->    148   
-| Vparser. D_FGETS ->    149   
-| Vparser. D_FGETC ->    150   
-| Vparser. D_FFLUSH ->    151   
-| Vparser. D_FEOF ->    152   
-| Vparser. D_FDISPLAY ->    153   
-| Vparser. D_FCLOSE ->    154   
-| Vparser. D_FATAL ->    155   
-| Vparser. D_ERROR ->    156   
-| Vparser. D_DISPLAY ->    157   
-| Vparser. D_COUNTONES ->    158   
-| Vparser. D_CLOG2 ->    159   
-| Vparser. D_C ->    160   
-| Vparser. D_BITS ->    161   
-| Vparser. D_ATTRIBUTE ->    162   
-| Vparser. DOUBLE arg  ->    163   
-| Vparser. DOT ->    164   
-| Vparser. DOLLAR ->    165   
-| Vparser. DO ->    166   
-| Vparser. DIVIDE ->    167   
-| Vparser. DISABLE ->    168   
-| Vparser. DEFPARAM ->    169   
-| Vparser. DEFAULT ->    170   
-| Vparser. DECNUM arg  ->    171   
-| Vparser. COVER ->    172   
-| Vparser. COMMENT_END ->    173   
-| Vparser. COMMENT_BEGIN arg  ->    174   
-| Vparser. COMMA ->    175   
-| Vparser. COLON ->    176   
-| Vparser. CLOCKING ->    177   
-| Vparser. CASEZ ->    178   
-| Vparser. CASEX ->    179   
-| Vparser. CASE ->    180   
-| Vparser. CARET ->    181   
-| Vparser. BUF ->    182   
-| Vparser. BODY ->    183   
-| Vparser. BITSEL ->    184   
-| Vparser. BINNUM arg  ->    185   
-| Vparser. BEGIN ->    186   
-| Vparser. AUTOMATIC ->    187   
-| Vparser. AT ->    188   
-| Vparser. ASSIGN ->    189   
-| Vparser. ASSERT ->    190   
-| Vparser. ASCNUM arg  ->    191   
-| Vparser. ARGS ->    192   
-| Vparser. AND ->    193   
-| Vparser. AMPERSAND ->    194   
-| Vparser. ALWAYS ->    195   
+| Vparser. SUBMODULE ->     18   
+| Vparser. SUBCCT ->     19   
+| Vparser. STATIC ->     20   
+| Vparser. SPECIFY ->     21   
+| Vparser. SIGNED ->     22   
+| Vparser. SEXTUPLE arg  ->     23   
+| Vparser. SEPTUPLE arg  ->     24   
+| Vparser. SEMICOLON ->     25   
+| Vparser. SCALARED ->     26   
+| Vparser. RPAREN ->     27   
+| Vparser. REG ->     28   
+| Vparser. RCURLY ->     29   
+| Vparser. RBRACK ->     30   
+| Vparser. RANGE arg  ->     31   
+| Vparser. QUINTUPLE arg  ->     32   
+| Vparser. QUERY ->     33   
+| Vparser. QUADRUPLE arg  ->     34   
+| Vparser. P_XOREQ ->     35   
+| Vparser. P_XNOR ->     36   
+| Vparser. P_WILDNOTEQUAL ->     37   
+| Vparser. P_WILDEQUAL ->     38   
+| Vparser. P_TIMESEQ ->     39   
+| Vparser. P_SSRIGHTEQ ->     40   
+| Vparser. P_SSRIGHT ->     41   
+| Vparser. P_SRIGHTEQ ->     42   
+| Vparser. P_SRIGHT ->     43   
+| Vparser. P_SLEFTEQ ->     44   
+| Vparser. P_SLEFT ->     45   
+| Vparser. P_POW ->     46   
+| Vparser. P_POUNDPOUND ->     47   
+| Vparser. P_PLUSEQ ->     48   
+| Vparser. P_PLUSCOLON ->     49   
+| Vparser. P_OROR ->     50   
+| Vparser. P_ORMINUSGT ->     51   
+| Vparser. P_OREQGT ->     52   
+| Vparser. P_OREQ ->     53   
+| Vparser. P_NOTEQUAL ->     54   
+| Vparser. P_NOR ->     55   
+| Vparser. P_NAND ->     56   
+| Vparser. P_MODEQ ->     57   
+| Vparser. P_MINUSEQ ->     58   
+| Vparser. P_MINUSCOLON ->     59   
+| Vparser. P_LTE ->     60   
+| Vparser. P_GTE ->     61   
+| Vparser. P_EQUAL ->     62   
+| Vparser. P_EQGT ->     63   
+| Vparser. P_DOTSTAR ->     64   
+| Vparser. P_DIVEQ ->     65   
+| Vparser. P_COLONEQ ->     66   
+| Vparser. P_COLONDIV ->     67   
+| Vparser. P_COLONCOLON ->     68   
+| Vparser. P_CASENOTEQUAL ->     69   
+| Vparser. P_CASEEQUAL ->     70   
+| Vparser. P_ATAT ->     71   
+| Vparser. P_ASTGT ->     72   
+| Vparser. P_ANDEQ ->     73   
+| Vparser. P_ANDANDAND ->     74   
+| Vparser. P_ANDAND ->     75   
+| Vparser. PROPERTY ->     76   
+| Vparser. PRIMITIVE ->     77   
+| Vparser. PREPROC arg  ->     78   
+| Vparser. POSEDGE ->     79   
+| Vparser. PLUS ->     80   
+| Vparser. PLING ->     81   
+| Vparser. PARTSEL ->     82   
+| Vparser. PARAMETER ->     83   
+| Vparser. OUTPUT ->     84   
+| Vparser. OR ->     85   
+| Vparser. NOT ->     86   
+| Vparser. NOR ->     87   
+| Vparser. NEGEDGE ->     88   
+| Vparser. NAND ->     89   
+| Vparser. MODULO ->     90   
+| Vparser. MODULE ->     91   
+| Vparser. MINUS ->     92   
+| Vparser. LPAREN ->     93   
+| Vparser. LOCALPARAM ->     94   
+| Vparser. LESS ->     95   
+| Vparser. LCURLY ->     96   
+| Vparser. LBRACK ->     97   
+| Vparser. IOPORT ->     98   
+| Vparser. INTNUM arg  ->     99   
+| Vparser. INTEGER ->    100   
+| Vparser. INPUT ->    101   
+| Vparser. INOUT ->    102   
+| Vparser. INITIAL ->    103   
+| Vparser. ILLEGAL arg  ->    104   
+| Vparser. IFF ->    105   
+| Vparser. IF ->    106   
+| Vparser. ID arg  ->    107   
+| Vparser. HEXNUM arg  ->    108   
+| Vparser. HASH ->    109   
+| Vparser. GREATER ->    110   
+| Vparser. GENVAR ->    111   
+| Vparser. GENERATE ->    112   
+| Vparser. FUNCTION ->    113   
+| Vparser. FOR ->    114   
+| Vparser. FLOATNUM arg  ->    115   
+| Vparser. FINAL ->    116   
+| Vparser. EQUALS ->    117   
+| Vparser. EOF ->    118   
+| Vparser. ENDTASK ->    119   
+| Vparser. ENDTABLE ->    120   
+| Vparser. ENDSPECIFY ->    121   
+| Vparser. ENDPRIMITIVE ->    122   
+| Vparser. ENDOFFILE ->    123   
+| Vparser. ENDMODULE ->    124   
+| Vparser. ENDGENERATE ->    125   
+| Vparser. ENDFUNCTION ->    126   
+| Vparser. ENDCLOCKING ->    127   
+| Vparser. ENDCASE ->    128   
+| Vparser. END ->    129   
+| Vparser. EMPTY ->    130   
+| Vparser. ELSE ->    131   
+| Vparser. D_WRITE ->    132   
+| Vparser. D_WARNING ->    133   
+| Vparser. D_UNSIGNED ->    134   
+| Vparser. D_TIME ->    135   
+| Vparser. D_STOP ->    136   
+| Vparser. D_STIME ->    137   
+| Vparser. D_SSCANF ->    138   
+| Vparser. D_SIGNED ->    139   
+| Vparser. D_READMEMH ->    140   
+| Vparser. D_READMEMB ->    141   
+| Vparser. D_RANDOM ->    142   
+| Vparser. D_ONEHOT0 ->    143   
+| Vparser. D_ONEHOT ->    144   
+| Vparser. D_ISUNKNOWN ->    145   
+| Vparser. D_INFO ->    146   
+| Vparser. D_FWRITE ->    147   
+| Vparser. D_FSCANF ->    148   
+| Vparser. D_FOPEN ->    149   
+| Vparser. D_FINISH ->    150   
+| Vparser. D_FGETS ->    151   
+| Vparser. D_FGETC ->    152   
+| Vparser. D_FFLUSH ->    153   
+| Vparser. D_FEOF ->    154   
+| Vparser. D_FDISPLAY ->    155   
+| Vparser. D_FCLOSE ->    156   
+| Vparser. D_FATAL ->    157   
+| Vparser. D_ERROR ->    158   
+| Vparser. D_DISPLAY ->    159   
+| Vparser. D_COUNTONES ->    160   
+| Vparser. D_CLOG2 ->    161   
+| Vparser. D_C ->    162   
+| Vparser. D_BITS ->    163   
+| Vparser. D_ATTRIBUTE ->    164   
+| Vparser. DOUBLE arg  ->    165   
+| Vparser. DOT ->    166   
+| Vparser. DOLLAR ->    167   
+| Vparser. DO ->    168   
+| Vparser. DIVIDE ->    169   
+| Vparser. DISABLE ->    170   
+| Vparser. DEFPARAM ->    171   
+| Vparser. DEFAULT ->    172   
+| Vparser. DECNUM arg  ->    173   
+| Vparser. COVER ->    174   
+| Vparser. COMMENT_END ->    175   
+| Vparser. COMMENT_BEGIN arg  ->    176   
+| Vparser. COMMA ->    177   
+| Vparser. COLON ->    178   
+| Vparser. CLOCKING ->    179   
+| Vparser. CASEZ ->    180   
+| Vparser. CASEX ->    181   
+| Vparser. CASE ->    182   
+| Vparser. CARET ->    183   
+| Vparser. BUF ->    184   
+| Vparser. BODY ->    185   
+| Vparser. BITSEL ->    186   
+| Vparser. BINNUM arg  ->    187   
+| Vparser. BEGIN ->    188   
+| Vparser. AUTOMATIC ->    189   
+| Vparser. AT ->    190   
+| Vparser. ASSIGN ->    191   
+| Vparser. ASSERT ->    192   
+| Vparser. ASCNUM arg  ->    193   
+| Vparser. ARGS ->    194   
+| Vparser. AND ->    195   
+| Vparser. AMPERSAND ->    196   
+| Vparser. ALWAYS ->    197   
 let getstr tok = match tok with
   | Vparser. XOR -> " XOR"
   | Vparser. XNOR -> " XNOR"
@@ -212,6 +214,8 @@ let getstr tok = match tok with
   | Vparser. TABLE -> " TABLE"
   | Vparser. SUPPLY1 -> " SUPPLY1"
   | Vparser. SUPPLY0 -> " SUPPLY0"
+  | Vparser. SUBMODULE -> " SUBMODULE"
+  | Vparser. SUBCCT -> " SUBCCT"
   | Vparser. STATIC -> " STATIC"
   | Vparser. SPECIFY -> " SPECIFY"
   | Vparser. SIGNED -> " SIGNED"
