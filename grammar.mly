@@ -40,6 +40,8 @@
 %token BITSEL
 %token PARTSEL
 %token IOPORT
+%token SUBMODULE
+%token SUBCCT
 %token<token list * token list > RANGE
 
 // pre-proc tokens
@@ -1360,18 +1362,20 @@ specifyJunk:	dlyTerm 				{ [] } /* ignored */
 	|	BITSEL					{ [] }
 	|	BODY					{ [] }
 	|	COMMENT_BEGIN				{ [] }
-	|	DOUBLE					{ [] }
 	|	EMPTY					{ [] }
 	|	EOF					{ [] }
 	|	ILLEGAL					{ [] }
 	|	PARTSEL					{ [] }
-	|	QUADRUPLE				{ [] }
-	|	QUINTUPLE				{ [] }
 	|	RANGE					{ [] }
 	|	IOPORT					{ [] }
-	|	SEPTUPLE				{ [] }
-	|	SEXTUPLE				{ [] }
+	|	SUBCCT					{ [] }
+	|	SUBMODULE				{ [] }
+	|	DOUBLE					{ [] }
 	|	TRIPLE					{ [] }
+	|	QUADRUPLE				{ [] }
+	|	QUINTUPLE				{ [] }
+	|	SEXTUPLE				{ [] }
+	|	SEPTUPLE				{ [] }
 	|	PLING					{ [] }
 	|	AMPERSAND				{ [] }
 	|	LPAREN					{ [] }

@@ -34,7 +34,7 @@ depend: grammar.ml lexer.ml
 	ocamldep *.ml *.mli > .depend
 
 clean:
-	rm -rf *.cmi *.cmo $(TARGET)
+	rm -rf *.cmi *.cmo vtop $(TARGET)
 	rm -rf grammar.ml grammar.mli lexer.ml lexer.mli vparser.mli vparser.ml ord.ml
 
 .SUFFIXES: .ml .mli .mll .mly .cmo .cmi
