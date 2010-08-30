@@ -44,6 +44,7 @@
 %token SUBCCT
 %token<token * token > RANGE
 %token<token list> TLIST
+
 // pre-proc tokens
 (*
 %token<string> TIMESCALE

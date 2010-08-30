@@ -23,6 +23,16 @@ open Vparser
 open Globals
 open Setup
 
+type exprtree = { entry: token; symbol: Set.Make(Setup.OrdTok).t };;
+
+type exprt =
+| DYADIC of (token * exprtree * exprtree)
+| ASSIGNMENT of (exprtree * exprt)
+| UNHANDLED of token
+;;
+
+let stmts = ref [];;
+
 let enter_a_sym symbols id attr = 
 if Hashtbl.mem symbols id then begin
 (*  printf "Update %s: %s\n" id (Ord.getstr attr); *)
@@ -40,7 +50,28 @@ let iter_ semantics syms list =
   List.iter (fun x -> semantics ({Globals.tree=x; symbols=syms})) list
 ;;
 
-let unhandled syms arg = enter_a_sym syms "**unhandled**" arg;;
+let unhand_str = "**unhandled**";;
+
+let unhandled syms arg = enter_a_sym syms unhand_str arg;;
+
+let find_ident syms v = try (Hashtbl.find syms v; true); with Not_found -> printf "variable %s not found\n" v;false ;;
+
+let subexp syms exp = match exp with
+| ID id -> if (find_ident syms id) then Hashtbl.find syms id else Hashtbl.find syms unhand_str
+| _ -> unhandled syms exp; Hashtbl.find syms unhand_str;;
+
+let subexp2 syms exp = {entry=exp; symbol=(subexp syms exp)};;
+
+let expr_dyadic syms op left right = DYADIC(op, subexp2 syms left, subexp2 syms right);;
+
+let expression syms (tree:token) = match tree with
+| TRIPLE (PLUS as op, left, right) -> expr_dyadic syms op left right
+| _ -> UNHANDLED tree;;
+
+let statement syms tok var expr = (
+let x = subexp syms var in
+let r = {entry=var; symbol=x} in
+stmts := ASSIGNMENT(r, expr) :: !stmts );;
 
 let rec semantics (tree:Globals.modtree) =
    let exp = tree.Globals.tree and syms = tree.Globals.symbols in match exp with
@@ -58,10 +89,8 @@ DOUBLE
         TRIPLE
           (PLUS, ID var3, INTNUM inc)))))
 -> iter (fun v -> try ignore(Hashtbl.find syms v); with Not_found -> printf "variable %s not found\n" v) [clk;rst;var1;var2;var3];
-| TRIPLE
- (ASSIGN, EMPTY,
-  TLIST [TRIPLE (EQUALS, ID var1, TRIPLE (PLUS, ID var2, ID var3))])
--> iter (fun v -> try ignore(Hashtbl.find syms v); with Not_found -> printf "variable %s not found\n" v) [var1;var2;var3];
+| TRIPLE(ASSIGN, EMPTY, TLIST assignlist)
+-> iter (fun a -> match a with TRIPLE (EQUALS, var1, expr) -> statement syms ASSIGN var1 (expression syms expr) | _ -> unhandled syms a) assignlist
 | TRIPLE(EQUALS, TLIST arg1, TLIST arg2) -> iter_ semantics syms arg1; iter_ semantics syms arg2
 | TRIPLE(IF, TLIST arg1, TLIST arg2) -> iter_ semantics syms arg1; iter_ semantics syms arg2
 | TRIPLE(PLUS, TLIST arg1, TLIST arg2) -> iter_ semantics syms arg1; iter_ semantics syms arg2
