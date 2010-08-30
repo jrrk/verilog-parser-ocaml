@@ -22,17 +22,17 @@
 // Generic void
 %token EMPTY
 // Generic double
-%token<token * token list > DOUBLE
+%token<token * token > DOUBLE
 // Generic triple
-%token<token * token list * token list > TRIPLE
+%token<token * token * token > TRIPLE
 // Generic quadruple
-%token<token * token list * token list * token list > QUADRUPLE
+%token<token * token * token * token > QUADRUPLE
 // Generic quintuple
-%token<token * token list * token list * token list * token list > QUINTUPLE
+%token<token * token * token * token * token > QUINTUPLE
 // Generic sextuple
-%token<token * token list * token list * token list * token list * token list > SEXTUPLE
+%token<token * token * token * token * token * token > SEXTUPLE
 // Generic septuple
-%token<token * token list * token list * token list * token list * token list * token list > SEPTUPLE
+%token<token * token * token * token * token * token * token > SEPTUPLE
 
 // non-keyword tokens
 %token ARGS
@@ -42,8 +42,8 @@
 %token IOPORT
 %token SUBMODULE
 %token SUBCCT
-%token<token list * token list > RANGE
-
+%token<token * token > RANGE
+%token<token list> TLIST
 // pre-proc tokens
 (*
 %token<string> TIMESCALE
@@ -283,139 +283,139 @@
 
 %start start
 
-%type <token list> Anyrange
-%type <token list> AssertStmt
+%type <token> Anyrange
+%type <token> AssertStmt
 %type <token list> AssignList
-%type <token list> AssignOne
-%type <token list> beginNamed
-%type <token list> caseAttrE
+%type <token> AssignOne
+%type <token> beginNamed
+%type <token> caseAttrE
 %type <token list> caseCondList
 %type <token list> caseList
-%type <token list> caseListE
+%type <token> caseListE
 %type <token> case
 %type <token list> cateList
-%type <token list> cellpinItemE
+%type <token> cellpinItemE
 %type <token list> cellpinItList
 %type <token list> cellpinList
-%type <token list> commaEListE
-%type <token list> commaVRDListE
+%type <token> commaEListE
+%type <token> commaVRDListE
 %type <token list> concIdList
-%type <token list> constExpr
+%type <token> constExpr
 %type <token list> cStrList
 %type <token list> defpList
-%type <token list> defpOne
-%type <token list> delay
-%type <token list> delayE
-%type <token list> delayrange
-%type <token list> delayStrength
-%type <token list> dlyTerm
-%type <token list> endLabelE
-%type <token list> eventControl
-%type <token list> expr
+%type <token> defpOne
+%type <token> delay
+%type <token> delayE
+%type <token> delayrange
+%type <token> delayStrength
+%type <token> dlyTerm
+%type <token> endLabelE
+%type <token> eventControl
+%type <token> expr
 %type <token list> exprList
-%type <token list> exprNoStr
-%type <token list> exprStrText
-%type <token list> funcBody
-%type <token list> funcDecl
-%type <token list> funcGuts
-%type <token list> funcRef
-%type <token list> funcTypeE
-%type <token list> funcVar
+%type <token> exprNoStr
+%type <token> exprStrText
+%type <token> funcBody
+%type <token> funcDecl
+%type <token> funcGuts
+%type <token> funcRef
+%type <token> funcTypeE
+%type <token> funcVar
 %type <token list> funcVarList
-%type <token list> gateAnd
+%type <token> gateAnd
 %type <token list> gateAndList
 %type <token list> gateAndPinList
-%type <token list> gateBuf
+%type <token> gateBuf
 %type <token list> gateBufList
-%type <token list> gateDecl
+%type <token> gateDecl
 %type <token> gateIdE
-%type <token list> gateNand
+%type <token> gateNand
 %type <token list> gateNandList
-%type <token list> gateNor
+%type <token> gateNor
 %type <token list> gateNorList
-%type <token list> gateNot
+%type <token> gateNot
 %type <token list> gateNotList
-%type <token list> gateOr
+%type <token> gateOr
 %type <token list> gateOrList
 %type <token list> gateOrPinList
-%type <token list> gateXnor
+%type <token> gateXnor
 %type <token list> gateXnorList
-%type <token list> gateXor
+%type <token> gateXor
 %type <token list> gateXorList
 %type <token list> gateXorPinList
 %type <token list> genCaseList
-%type <token list> genCaseListE
-%type <token list> generateRegion
-%type <token list> genItem
-%type <token list> genItemBegin
-%type <token list> genItemBlock
+%type <token> genCaseListE
+%type <token> generateRegion
+%type <token> genItem
+%type <token> genItemBegin
+%type <token> genItemBlock
 %type <token list> genItemList
-%type <token list> genTopBlock
-%type <token list> idArrayed
-%type <token list> idDotted
-%type <token list> instDecl
+%type <token> genTopBlock
+%type <token> idArrayed
+%type <token> idDotted
+%type <token> instDecl
 %type <token list> instnameList
-%type <token list> instnameParen
-%type <token list> instparamListE
-%type <token list> instRangeE
-%type <token list> labeledStmt
-%type <token list> lifetimeE
-%type <token list> minTypMax
-%type <token list> modItem
+%type <token> instnameParen
+%type <token> instparamListE
+%type <token> instRangeE
+%type <token> labeledStmt
+%type <token> lifetimeE
+%type <token> minTypMax
+%type <token> modItem
 %type <token list> modItemList
-%type <token list> modItemListE
-%type <token list> modOrGenItem
+%type <token> modItemListE
+%type <token> modOrGenItem
 %type <token list> modParArgs
-%type <token list> modParDecl
-%type <token list> modParE
+%type <token> modParDecl
+%type <token> modParE
 %type <token list> modParList
-%type <token list> modParSecond
-%type <token list> modPortsE
+%type <token> modParSecond
+%type <token> modPortsE
 %type <unit> moduleDecl
-%type <token list> netSig
+%type <token> netSig
 %type <token list> netSigList
-%type <token list> param
+%type <token> param
 %type <token list> paramList
-%type <token list> parenE
-%type <token list> Port
-%type <token list> PortDecl
+%type <token> parenE
+%type <token> Port
+%type <token> PortDecl
 %type <token>      PortDirection
 %type <token list> PortList
-%type <token list> PortRangeE
+%type <token> PortRangeE
 %type <token list> RangeList
-%type <token list> RangeListE
-%type <token list> regrangeE
-%type <token list> regsig
+%type <token> RangeListE
+%type <token> regrangeE
+%type <token> regsig
 %type <token list> regsigList
-%type <token list> senitem
-%type <token list> senitemEdge
-%type <token list> senitemVar
+%type <token> senitem
+%type <token> senitemEdge
+%type <token> senitemVar
 %type <token list> senList
-%type <token list> sigAndAttr
-%type <token list> sigAttrListE
+%type <token> sigAndAttr
+%type <token> sigAttrListE
 %type <token> sigId
-%type <token list> signingE
-%type <token list> specifyJunk
-%type <token list> specifyJunkList
+%type <token> signingE
+%type <token> specifyJunk
+%type <token> specifyJunkList
 %type <unit>       start
-%type <token list> stateCaseForIf
-%type <token list> stmt
-%type <token list> stmtBlock
+%type <token> stateCaseForIf
+%type <token> stmt
+%type <token> stmtBlock
 %type <token list> stmtList
-%type <token list> strAsInt
-%type <token list> strAsText
-%type <token list> taskDecl
-%type <token list> taskRef
-%type <token list> v2kVarDeclE
-%type <token list> varDecl
+%type <token> strAsInt
+%type <token> strAsText
+%type <token> taskDecl
+%type <token> taskRef
+%type <token> v2kVarDeclE
+%type <token> varDecl
 %type <token list> varDeclList
 %type <token>      varGenVar
 %type <token>      varGParam
 %type <token>      varLParam
 %type <token>      varNet
-%type <token list> varRefBase
-%type <token list> varRefDotBit
-%type <token list> varRefMem
+%type <token> varRefBase
+%type <token> varRefDotBit
+%type <token> varRefMem
 %type <token>      varReg
 %type <token list> vrdList
 %type <string> identifier
@@ -443,7 +443,7 @@ commentDecl:	COMMENT_BEGIN specifyJunkList COMMENT_END { (* Printf.fprintf Perva
 moduleDecl:	MODULE identifier modParE modPortsE SEMICOLON modItemListE ENDMODULE
 			{
 			Hashtbl.add Globals.modprims $2
-				{ Globals.tree=QUINTUPLE ( MODULE, [ID $2], $3, $4, $6 );
+				{ Globals.tree=QUINTUPLE ( MODULE, ID $2, $3, $4, $6 );
 				  symbols=Hashtbl.create 256}
 			}
 	;
@@ -452,14 +452,14 @@ moduleDecl:	MODULE identifier modParE modPortsE SEMICOLON modItemListE ENDMODULE
 primDecl:	PRIMITIVE identifier modParE modPortsE SEMICOLON primItemList ENDPRIMITIVE
 			{
 			Hashtbl.add Globals.modprims $2
-				{ Globals.tree=QUINTUPLE ( PRIMITIVE, [ID $2], $3, $4, $6 );
+				{ Globals.tree=QUINTUPLE ( PRIMITIVE, ID $2, $3, $4, TLIST $6 );
 				  symbols=Hashtbl.create 256}
 			}
 	;
 
 primItemList:
-		primItem				{ $1 }
-	|	primItem primItemList			{ $1 @ $2 }
+		primItem				{ [ $1 ] }
+	|	primItem primItemList			{ $1 :: $2 }
 	;
 
 primItem:
@@ -469,19 +469,19 @@ primItem:
 	;
 
 modParE:
-		/* empty */				{ [] }
-	|	HASH LPAREN RPAREN			{ [] }
-	|	HASH LPAREN modParArgs RPAREN		{ $3; }
+		/* empty */				{ EMPTY }
+	|	HASH LPAREN RPAREN			{ EMPTY }
+	|	HASH LPAREN modParArgs RPAREN		{ TLIST $3 }
 	;
 
 modParArgs:
-		modParDecl				{ $1; }
-	|	modParDecl COMMA modParList		{ $1 @ $3; }
+		modParDecl				{ [ $1 ] }
+	|	modParDecl COMMA modParList		{ $1 :: $3 }
 	;
 
 modParList:
-		modParSecond				{ $1; }
-	|	modParList COMMA modParSecond 		{ $1 @ $3; }
+		modParSecond				{ [ $1 ] }
+	|	modParList COMMA modParSecond 		{ $1 @ [ $3 ] }
 	;
 
 // Called only after a comma in a v2k list, to allow parsing "parameter a,b, parameter x"
@@ -491,30 +491,30 @@ modParSecond:
 	;
 
 modPortsE:
-		/* empty */				{ [] }
-	|	LPAREN RPAREN				{ [] }
-	|	LPAREN PortList RPAREN			{ $2; }
-	|	LPAREN PortV2kArgs RPAREN		{ $2; }
+		/* empty */				{ EMPTY }
+	|	LPAREN RPAREN				{ EMPTY }
+	|	LPAREN PortList RPAREN			{ TLIST $2 }
+	|	LPAREN PortV2kArgs RPAREN		{ TLIST $2 }
 	;
 
 PortList:
-		Port				       	{ $1 }
-	|	Port COMMA PortList	  	   	{ $1 @ $3 }
+		Port				       	{ [ $1 ] }
+	|	Port COMMA PortList	  	   	{ $1 :: $3 }
 	;
 
 Port:
-		identifier PortRangeE		       	{ [ ID $1 ] }
-	|	DOT identifier LPAREN expr RPAREN	{ [ DOUBLE( DOT, [ID $2 ] ) ] }
+		identifier PortRangeE		       	{ ID $1 }
+	|	DOT identifier LPAREN expr RPAREN	{ DOUBLE( DOT, ID $2  ) }
 	;
 
 PortV2kArgs:
-		PortV2kDecl				{ $1 }
-	|	PortV2kDecl COMMA PortV2kList		{ $1 @ $3 }
+		PortV2kDecl				{ [ $1 ] }
+	|	PortV2kDecl COMMA PortV2kList		{ $1 :: $3 }
 	;
 
 PortV2kList:
-		PortV2kSecond				{ $1 }
-	|	PortV2kSecond COMMA PortV2kList		{ $1 @ $3 }
+		PortV2kSecond				{ [ $1 ] }
+	|	PortV2kSecond COMMA PortV2kList		{ $1 :: $3 }
 	;
 
 // Called only after a comma in a v2k list, to allow parsing "input a,b"
@@ -525,7 +525,7 @@ PortV2kSecond:
 
 PortV2kInit:
 		PortV2kSig				{ $1 }
-	|	PortV2kSig EQUALS expr			{ [ TRIPLE (EQUALS, $1, $3) ] }
+	|	PortV2kSig EQUALS expr			{ TRIPLE (EQUALS, $1, $3) }
 	;
 
 PortV2kSig:
@@ -536,42 +536,42 @@ PortV2kSig:
 // Variable Declarations
 
 varDeclList:
-		varDecl					{ $1 }
-	|	varDecl varDeclList			{ $1 @ $2 }
+		varDecl					{ [ $1 ] }
+	|	varDecl varDeclList			{ $1 :: $2 }
 	;
 
 regsigList:
-		regsig  				{ $1 }
-	|	regsigList COMMA regsig		       	{ $1 @ $3 }
+		regsig  				{ [ $1 ] }
+	|	regsigList COMMA regsig		       	{ $1 @ [ $3 ] }
 	;
 
 PortV2kDecl:
 		PortDirection v2kVarDeclE signingE regrangeE PortV2kInit
-			{ [ QUINTUPLE ( $1 , $2 , $3 , $4 , $5 ) ] }
+			{  QUINTUPLE ( $1 , $2 , $3 , $4 , $5 )  }
 	;
 
 // IEEE: Port_declaration - plus SEMICOLON
 PortDecl:
 		PortDirection v2kVarDeclE signingE regrangeE regsigList SEMICOLON
-			{ [ QUINTUPLE ( $1, $2, $3, $4, $5 ) ] }
+			{  QUINTUPLE ( $1, $2, $3, $4, TLIST $5 )  }
 	;
 
 varDecl:
 		varReg     signingE regrangeE  regsigList SEMICOLON
-			{ [ QUADRUPLE ($1, $2, $3, $4 ) ] }
+			{  QUADRUPLE ($1, $2, $3, TLIST $4 )  }
 	|	varGParam  signingE regrangeE  paramList SEMICOLON
-			{ [ QUADRUPLE ($1, $2, $3, $4 ) ] }
+			{  QUADRUPLE ($1, $2, $3, TLIST $4 )  }
 	|	varLParam  signingE regrangeE  paramList SEMICOLON
-			{ [ QUADRUPLE ($1, $2, $3, $4 ) ] }
+			{  QUADRUPLE ($1, $2, $3, TLIST $4 )  }
 	|	varNet     signingE delayrange netSigList SEMICOLON
-			{ [ QUADRUPLE ($1, $2, $3, $4 ) ] }
+			{  QUADRUPLE ($1, $2, $3, TLIST $4 )  }
 	|	varGenVar  signingE            regsigList SEMICOLON
-			{ [ TRIPLE ($1, $2, $3 ) ] }
+			{  TRIPLE ($1, $2, TLIST $3 ) }
 	;
 
 modParDecl:
 		varGParam  signingE regrangeE   param
-		 	{ [ QUADRUPLE ($1, $2, $3, $4 ) ] }
+		 	{ QUADRUPLE ($1, $2, $3, $4 ) }
 	;
 
 varNet:		SUPPLY0					{ SUPPLY0 }
@@ -601,48 +601,48 @@ PortDirection:	INPUT					{ INPUT }
 	;
 
 // IEEE: signing - plus empty
-signingE:	/*empty*/ 				{ [] }
-	|	SIGNED					{ [ SIGNED ] }
-	|	UNSIGNED				{ [ UNSIGNED ] }
+signingE:	/*empty*/ 				{ EMPTY }
+	|	SIGNED					{ SIGNED }
+	|	UNSIGNED				{ UNSIGNED }
 	;
 
-v2kVarDeclE:	/*empty*/ 				{ [] }
-	|	varNet 					{ [ $1 ] }
-	|	varReg 					{ [ $1 ] }
+v2kVarDeclE:	/*empty*/ 				{ EMPTY }
+	|	varNet 					{ $1 }
+	|	varReg 					{ $1 }
 	;
 
 //************************************************
 // Module Items
 
 modItemListE:
-		/* empty */				{ [] }
-	|	modItemList				{ $1 }
+		/* empty */				{ EMPTY }
+	|	modItemList				{ TLIST $1 }
 	;
 
 modItemList:
-		modItem					{ $1 }
-	|	modItem modItemList			{ $1 @ $2 }
+		modItem					{ [ $1 ] }
+	|	modItem modItemList			{ $1 :: $2 }
 	;
 
 modItem:
 		modOrGenItem 				{ $1 }
 	|	generateRegion				{ $1 }
-	|	SPECIFY specifyJunkList ENDSPECIFY	{ [SPECIFY] }
-	|	SPECIFY ENDSPECIFY			{ [SPECIFY] }
-	|	PREPROC					{ (* Printf.fprintf Pervasives.stderr "%s\n" $1 *) [PREPROC $1 ] }
+	|	SPECIFY specifyJunkList ENDSPECIFY	{ SPECIFY }
+	|	SPECIFY ENDSPECIFY			{ SPECIFY }
+	|	PREPROC					{ (* Printf.fprintf Pervasives.stderr "%s\n" $1 *) PREPROC $1 }
 	;
 
 // IEEE: generate_region
 generateRegion:
-		GENERATE genTopBlock ENDGENERATE	{ [ DOUBLE (GENERATE, $2) ] }
+		GENERATE genTopBlock ENDGENERATE	{ DOUBLE (GENERATE, $2) }
 	;
 
 modOrGenItem:
-		ALWAYS stmtBlock			{ [ DOUBLE (ALWAYS, $2) ] }
-	|	FINAL stmtBlock				{ [ DOUBLE (FINAL, $2 ) ] }
-	|	INITIAL stmtBlock			{ [ DOUBLE ( INITIAL, $2 ) ] }
-	|	ASSIGN delayStrength AssignList SEMICOLON	{ [ TRIPLE ( ASSIGN, $2, $3 ) ] }
-	|	DEFPARAM defpList SEMICOLON		{ [ DOUBLE (DEFPARAM, $2 ) ] }
+		ALWAYS stmtBlock			{ DOUBLE (ALWAYS, $2) }
+	|	FINAL stmtBlock				{ DOUBLE (FINAL, $2 ) }
+	|	INITIAL stmtBlock			{ DOUBLE ( INITIAL, $2 ) }
+	|	ASSIGN delayStrength AssignList SEMICOLON	{ TRIPLE ( ASSIGN, $2, TLIST $3 ) }
+	|	DEFPARAM defpList SEMICOLON		{ DOUBLE (DEFPARAM, TLIST $2 ) }
 	|	instDecl 				{ $1 }
 	|	taskDecl 				{ $1 }
 	|	funcDecl 				{ $1 }
@@ -665,68 +665,68 @@ genItemBlock:
 	;
 
 genTopBlock:
-		genItemList				{ $1 }
+		genItemList				{ TLIST $1 }
 	|	genItemBegin				{ $1 }
 	;
 
 genItemBegin:
-		BEGIN genItemList END			{ $2 }
-	|	BEGIN END				{ [] }
-	|	BEGIN COLON identifier genItemList END endLabelE	{ [ TRIPLE (ID $3, $4, $6) ] }
-	|	BEGIN COLON identifier 	           END endLabelE	{ [ TRIPLE (ID $3, [], $5) ] }
+		BEGIN genItemList END			{ TLIST $2 }
+	|	BEGIN END				{ EMPTY }
+	|	BEGIN COLON identifier genItemList END endLabelE	{ TRIPLE (ID $3, TLIST $4, $6) }
+	|	BEGIN COLON identifier 	           END endLabelE	{ TRIPLE (ID $3, EMPTY, $5) }
 	;
 
 genItemList:
-		genItem					{ $1 }
-	|	genItem genItemList			{ $1 @ $2 }
+		genItem					{ [ $1 ] }
+	|	genItem genItemList			{ $1 :: $2 }
 	;
 
 genItem:
 		modOrGenItem 				{ $1 }
-	|	CASE  LPAREN expr RPAREN genCaseListE ENDCASE	{ [ TRIPLE (CASE, $3, $5) ] }
+	|	CASE  LPAREN expr RPAREN genCaseListE ENDCASE	{ TRIPLE (CASE, $3, $5) }
 	|	IF LPAREN expr RPAREN genItemBlock	%prec prLOWER_THAN_ELSE
-			{ [ TRIPLE (IF, $3, $5) ] }
+			{ TRIPLE (IF, $3, $5) }
 	|	IF LPAREN expr RPAREN genItemBlock ELSE genItemBlock
-			{ [ QUADRUPLE (IF, $3, $5, $7) ] }
+			{ QUADRUPLE (IF, $3, $5, $7) }
 	|	FOR LPAREN varRefBase EQUALS expr SEMICOLON
 			expr SEMICOLON varRefBase EQUALS expr RPAREN genItemBlock
-			{ [ SEPTUPLE (FOR, $3, $5, $7, $9, $11, $13) ] }
+			{ SEPTUPLE (FOR, $3, $5, $7, $9, $11, $13) }
 	;
 
 genCaseListE:
-		/* empty */				{ [] }
-	|	genCaseList				{ $1 }
+		/* empty */				{ EMPTY }
+	|	genCaseList				{ TLIST $1 }
 	;
 
 genCaseList:
-		caseCondList COLON genItemBlock		{ [ TRIPLE (COLON, $1, $3 ) ] }
+		caseCondList COLON genItemBlock		{ [ TRIPLE (COLON, TLIST $1, $3) ] }
 	|	DEFAULT COLON genItemBlock		{ [ DOUBLE (DEFAULT, $3) ] }
 	|	DEFAULT genItemBlock			{ [ DOUBLE (DEFAULT, $2) ] }
-	|	genCaseList caseCondList COLON genItemBlock	{ $1 @ [TRIPLE (COLON, $2, $4) ] }
-	|       genCaseList DEFAULT genItemBlock		{ $1 @ [DOUBLE (DEFAULT, $3) ] }
-	|	genCaseList DEFAULT COLON genItemBlock		{ $1 @ [DOUBLE (DEFAULT, $4) ] }
+	|	genCaseList caseCondList COLON genItemBlock	{ TRIPLE (COLON, TLIST $2, $4) :: $1 }
+	|       genCaseList DEFAULT genItemBlock		{ DOUBLE (DEFAULT, $3) :: $1 }
+	|	genCaseList DEFAULT COLON genItemBlock		{ DOUBLE (DEFAULT, $4) :: $1 }
 	;
 
 //************************************************
 // Assignments and register declarations
 
 AssignList:
-		AssignOne				{ $1 }
-	|	AssignList COMMA AssignOne		{ $1 @ $3 }
+		AssignOne				{ [ $1 ] }
+	|	AssignList COMMA AssignOne		{ $1 @ [ $3 ] }
 	;
 
 AssignOne:
-		varRefDotBit EQUALS expr			{ [ TRIPLE (EQUALS, $1, $3) ] }
-	|	LCURLY concIdList RCURLY EQUALS expr		{ [ TRIPLE (EQUALS, $2, $5) ] }
+		varRefDotBit EQUALS expr			{ TRIPLE (EQUALS, $1, $3) }
+	|	LCURLY concIdList RCURLY EQUALS expr		{ TRIPLE (EQUALS, TLIST $2, $5) }
 	;
 
-delayE:		/* empty */				{ [] }
+delayE:		/* empty */				{ EMPTY }
 	|	delay					{ $1 } /* ignored */
 	;
 
-delayStrength:		/* empty */				{ [] }
+delayStrength:		/* empty */				{ EMPTY }
 	|	delay					{ $1 } /* ignored */
-	|	LPAREN strengthList RPAREN		{ $2 }
+	|	LPAREN strengthList RPAREN		{ TLIST $2 }
 	;
 
 strengthList:
@@ -735,131 +735,131 @@ strengthList:
 
 delay:
 		HASH dlyTerm
-			{ [ DOUBLE (HASH, $2) ] } /* ignored */
+			{ DOUBLE (HASH, $2) } /* ignored */
 	|	HASH LPAREN minTypMax RPAREN
-			{ [ DOUBLE (HASH, $3) ] } /* ignored */
+			{ DOUBLE (HASH, $3) } /* ignored */
 	|	HASH LPAREN minTypMax COMMA minTypMax RPAREN
-			{ [ TRIPLE (HASH, $3, $5) ] } /* ignored */
+			{ TRIPLE (HASH, $3, $5) } /* ignored */
 	|	HASH LPAREN minTypMax COMMA minTypMax COMMA minTypMax RPAREN
-			{ [ QUADRUPLE (HASH, $3, $5, $7) ] } /* ignored */
+			{ QUADRUPLE (HASH, $3, $5, $7) } /* ignored */
 	;
 
 dlyTerm:
-		identifier 				{ [ID $1] }
-	|	INTNUM 					{ [INTNUM $1] }
-	|	FLOATNUM 				{ [FLOATNUM $1] }
+		identifier 				{ ID $1 }
+	|	INTNUM 					{ INTNUM $1 }
+	|	FLOATNUM 				{ FLOATNUM $1 }
 	;
 
 // IEEE: mintypmax_expression and constant_mintypmax_expression
 minTypMax:
 		dlyTerm					{ $1 } /* ignored */
-	|	dlyTerm COLON dlyTerm COLON dlyTerm	{ [ QUADRUPLE(COLON, $1, $3, $5) ] } /* ignored */
+	|	dlyTerm COLON dlyTerm COLON dlyTerm	{ QUADRUPLE(COLON, $1, $3, $5) } /* ignored */
 	;
 
 sigAndAttr:
-		sigId sigAttrListE			{ [ DOUBLE ( $1, $2 ) ] }
+		sigId sigAttrListE			{ DOUBLE ( $1, $2 ) }
 	;
 
 netSigList:
-		netSig  				{ $1 }
-	|	netSigList COMMA netSig		       	{ $1 @ $3 }
+		netSig  				{ [ $1 ] }
+	|	netSigList COMMA netSig		       	{ $1 @ [ $3 ] }
 	;
 
 netSig:
-		sigId sigAttrListE			{ [ DOUBLE ( $1, $2 ) ] }
-	|	sigId sigAttrListE EQUALS expr		{ [ TRIPLE ($1, $2, $4 ) ] }
-	|	identifier RangeList sigAttrListE	{ [ TRIPLE ( ID $1, $2, $2 ) ] }
+		sigId sigAttrListE			{ DOUBLE ( $1, $2 ) }
+	|	sigId sigAttrListE EQUALS expr		{ TRIPLE ($1, $2, $4 ) }
+	|	identifier RangeList sigAttrListE	{ TRIPLE ( ID $1, TLIST $2, $3 ) }
 	;
 
 regsig:
-		identifier RangeListE sigAttrListE			{ [ TRIPLE (ID $1, $2, $3 ) ] }
-	|	identifier RangeListE EQUALS constExpr sigAttrListE	{ [ QUADRUPLE (ID $1, $2, $4, $5 ) ] }
+		identifier RangeListE sigAttrListE			{ TRIPLE (ID $1, $2, $3 ) }
+	|	identifier RangeListE EQUALS constExpr sigAttrListE	{ QUADRUPLE (ID $1, $2, $4, $5 ) }
 	;
 
 sigId:	identifier					{ ID $1 }
 	;
 
-sigAttrListE:	/* empty */				{ [] }
+sigAttrListE:	/* empty */				{ EMPTY }
 	;
 
 RangeListE:
-		/* empty */    		               	{ [] }
-	|	RangeList 				{ $1 }
+		/* empty */    		               	{ EMPTY }
+	|	RangeList 				{ TLIST $1 }
 	;
 
 RangeList:
-		Anyrange				{ $1 }
-        |	RangeList Anyrange			{ $1 @ $2 }
+		Anyrange				{ [ $1 ] }
+        |	RangeList Anyrange			{ $1 @ [ $2 ] }
 	;
 
 regrangeE:
-		/* empty */    		               	{ [] }
+		/* empty */    		               	{ EMPTY }
 	|	Anyrange 				{ $1 }
 	;
 
 Anyrange:
-		LBRACK constExpr COLON constExpr RBRACK	{ [ RANGE( $2, $4) ] }
+		LBRACK constExpr COLON constExpr RBRACK	{ RANGE( $2, $4) }
 	;
 
 delayrange:
-		regrangeE delayE 			{ [ TRIPLE (EMPTY, $1, $2) ] }
-	|	SCALARED regrangeE delayE 		{ [ TRIPLE (SCALARED, $2, $3) ] }
-	|	VECTORED regrangeE delayE 		{ [ TRIPLE (VECTORED, $2, $3) ] }
+		regrangeE delayE 			{ TRIPLE (EMPTY, $1, $2) }
+	|	SCALARED regrangeE delayE 		{ TRIPLE (SCALARED, $2, $3) }
+	|	VECTORED regrangeE delayE 		{ TRIPLE (VECTORED, $2, $3) }
 	;
 
 PortRangeE:
-		/* empty */	                   	{ [] }
+		/* empty */	                   	{ EMPTY }
 	|	LBRACK constExpr RBRACK              	{ $2 }
-	|	LBRACK constExpr COLON constExpr RBRACK	{ [ RANGE ($2, $4) ] }
+	|	LBRACK constExpr COLON constExpr RBRACK	{ RANGE ($2, $4) }
 	;
 
 //************************************************
 // Parameters
 
 param:
-		sigId sigAttrListE EQUALS expr		{ [ TRIPLE ( $1, $2, $4 ) ] }
+		sigId sigAttrListE EQUALS expr		{ TRIPLE ( $1, $2, $4 ) }
 	;
 
 paramList:
-		param					{ $1 }
-	|	paramList COMMA param			{ $1 @ $3 }
+		param					{ [ $1 ] }
+	|	paramList COMMA param			{ $1 @ [ $3 ] }
 	;
 
 // IEEE: list_of_defparam_assignments
 defpList:
-		defpOne					{ $1 }
-	|	defpList COMMA defpOne			{ $1 @ $3 }
+		defpOne					{ [ $1 ] }
+	|	defpList COMMA defpOne			{ $1 @ [ $3 ] }
 	;
 
 defpOne:
-		identifier DOT identifier EQUALS expr { [ TRIPLE (ID $1, [ ID $3 ], $5 ) ] }
+		identifier DOT identifier EQUALS expr { TRIPLE (ID $1, ID $3 , $5 ) }
 	;
 
 //************************************************
 // Instances
 
 instDecl:
-	identifier instparamListE instnameList SEMICOLON  { [ TRIPLE (ID $1, $2, $3 ) ] }
+	identifier instparamListE instnameList SEMICOLON  { TRIPLE (ID $1, $2, TLIST $3 ) }
 
 instparamListE:
-		/* empty */				{ [] }
-	|	HASH LPAREN cellpinList RPAREN		{ $3 }
+		/* empty */				{ EMPTY }
+	|	HASH LPAREN cellpinList RPAREN		{ TLIST $3 }
 	;
 
 instnameList:
-		instnameParen				{ $1 }
-	|	instnameList COMMA instnameParen	{ $1 @ $3 }
+		instnameParen				{ [ $1 ] }
+	|	instnameList COMMA instnameParen	{ $1 @ [ $3 ] }
 	;
 
 instnameParen:
-		identifier instRangeE LPAREN cellpinList RPAREN	{ [ TRIPLE (ID $1, $2, $4 ) ] }
-	|	instRangeE LPAREN cellpinList RPAREN	{ [ TRIPLE (EMPTY, $1, $3 ) ] }
-	|	identifier instRangeE 			{ [ DOUBLE ( ID $1, $2 ) ] }
+		identifier instRangeE LPAREN cellpinList RPAREN	{ TRIPLE (ID $1, $2, TLIST $4 ) }
+	|	instRangeE LPAREN cellpinList RPAREN	{ TRIPLE (EMPTY, $1, TLIST $3 ) }
+	|	identifier instRangeE 			{ DOUBLE ( ID $1, $2 ) }
 	;
 
 instRangeE:
-		/* empty */				{ [] }
-	|	LBRACK constExpr COLON constExpr RBRACK	{ [ RANGE ($2, $4) ] }
+		/* empty */				{ EMPTY }
+	|	LBRACK constExpr COLON constExpr RBRACK	{ RANGE ($2, $4) }
 	;
 
 cellpinList:
@@ -867,16 +867,16 @@ cellpinList:
 	;
 
 cellpinItList:
-		cellpinItemE				{ $1 }
-	|	cellpinItList COMMA cellpinItemE	{ $1 @ $3 }
+		cellpinItemE				{ [ $1 ] }
+	|	cellpinItList COMMA cellpinItemE	{ $1 @ [ $3 ] }
 	;
 
 cellpinItemE:
-		/* empty: ',,' is legal */		{ [] }
-	|	P_DOTSTAR				{ [P_DOTSTAR] }
-	|	DOT identifier			{ [ DOUBLE (DOT, [ID $2]) ] }
-	|	DOT identifier LPAREN RPAREN		{ [ DOUBLE (DOT, [ID $2]) ] }
-	|	DOT identifier LPAREN expr RPAREN	{ [ TRIPLE (DOT, [ID $2], $4) ] }
+		/* empty: ',,' is legal */		{ EMPTY }
+	|	P_DOTSTAR				{ P_DOTSTAR }
+	|	DOT identifier			{ DOUBLE (DOT, ID $2) }
+	|	DOT identifier LPAREN RPAREN		{ DOUBLE (DOT, ID $2) }
+	|	DOT identifier LPAREN expr RPAREN	{ TRIPLE (DOT, ID $2, $4) }
 	|	expr					{ $1 }
 	;
 
@@ -885,18 +885,18 @@ cellpinItemE:
 
 // IEEE: event_control
 eventControl:
-		AT LPAREN senList RPAREN		{ [ DOUBLE ( AT, $3 ) ] }
-	|	AT senitemVar				{ [ DOUBLE ( AT, $2 ) ] }
-	|	AT LPAREN TIMES RPAREN			{ [AT] }  /* Verilog 2001 */
-	|	AT TIMES				{ [AT] }  /* Verilog 2001 */
+		AT LPAREN senList RPAREN		{ DOUBLE ( AT, (TLIST $3) ) }
+	|	AT senitemVar				{ DOUBLE ( AT, $2 ) }
+	|	AT LPAREN TIMES RPAREN			{ AT }  /* Verilog 2001 */
+	|	AT TIMES				{ AT }  /* Verilog 2001 */
 	|	delay					{ $1 }
 	;
 
 // IEEE: event_expression - split over several
 senList:
-		senitem					{ $1 }
-	|	senList OR senitem			{ $1 @ $3 }
-	|	senList COMMA senitem			{ $1 @ $3 }	/* Verilog 2001 */
+		senitem					{ [ $1 ] }
+	|	senList OR senitem			{ $1 @ [ $3 ] }
+	|	senList COMMA senitem			{ $1 @ [ $3 ] }	/* Verilog 2001 */
 	;
 
 senitem:
@@ -910,10 +910,10 @@ senitemVar:
 	;
 
 senitemEdge:
-		POSEDGE varRefDotBit			{ [ DOUBLE ( POSEDGE, $2 ) ] }
-	|	NEGEDGE varRefDotBit			{ [ DOUBLE ( NEGEDGE, $2 ) ] }
-	|	POSEDGE LPAREN varRefDotBit RPAREN	{ [ DOUBLE ( POSEDGE, $3 ) ] }
-	|	NEGEDGE LPAREN varRefDotBit RPAREN	{ [ DOUBLE ( NEGEDGE, $3 ) ] }
+		POSEDGE varRefDotBit			{ DOUBLE ( POSEDGE, $2 ) }
+	|	NEGEDGE varRefDotBit			{ DOUBLE ( NEGEDGE, $2 ) }
+	|	POSEDGE LPAREN varRefDotBit RPAREN	{ DOUBLE ( POSEDGE, $3 ) }
+	|	NEGEDGE LPAREN varRefDotBit RPAREN	{ DOUBLE ( NEGEDGE, $3 ) }
 	;
 
 //************************************************
@@ -921,49 +921,49 @@ senitemEdge:
 
 stmtBlock:
 		stmt					{ $1 }
-	|	BEGIN stmtList END			{ $2 }
-	|	BEGIN END				{ [] }
-	|	beginNamed stmtList END endLabelE	{ [ TRIPLE (BEGIN, $2, $4) ] }
-	|	beginNamed 	    END endLabelE	{ [] }
+	|	BEGIN stmtList END			{ TLIST $2 }
+	|	BEGIN END				{ EMPTY }
+	|	beginNamed stmtList END endLabelE	{ TRIPLE (BEGIN, TLIST $2, $4) }
+	|	beginNamed 	    END endLabelE	{ EMPTY }
 	;
 
 beginNamed:
-		BEGIN COLON identifier varDeclList	{ [ TRIPLE (COLON, [ ID $3 ], $4 ) ] }
-	|	BEGIN COLON identifier 			{ [ DOUBLE (COLON, [ ID $3 ] ) ] }
+		BEGIN COLON identifier varDeclList	{ TRIPLE (COLON, ID $3 , TLIST $4 ) }
+	|	BEGIN COLON identifier 			{ DOUBLE (COLON, ID $3 ) }
 	;
 
 stmtList:
-		stmtBlock				{ $1 }
-	|	stmtList stmtBlock			{ $1 @ $2 }
+		stmtBlock				{ [ $1 ] }
+	|	stmtList stmtBlock			{ $1 @ [ $2 ] }
 	;
 
 stmt:
-		SEMICOLON				{ [] }
+		SEMICOLON				{ EMPTY }
 	|	labeledStmt				{ $1 }
-	|	identifier COLON labeledStmt		{ [ DOUBLE (ID $1, $3 ) ] }
+	|	identifier COLON labeledStmt		{ DOUBLE (ID $1, $3 ) }
 
-	|	eventControl stmtBlock			{ $1 @ $2 }
+	|	eventControl stmtBlock			{ DOUBLE ($1, $2 ) }
 
 	|	varRefDotBit P_LTE delayE expr SEMICOLON
-			{ [ QUADRUPLE (P_LTE, $1, $3, $4 ) ] }
+			{ QUADRUPLE (P_LTE, $1, $3, $4 ) }
 	|	varRefDotBit EQUALS delayE expr SEMICOLON
-			{ [ QUADRUPLE ( EQUALS, $1, $3, $4 ) ] }
+			{ QUADRUPLE ( EQUALS, $1, $3, $4 ) }
 	|	varRefDotBit EQUALS D_FOPEN LPAREN expr RPAREN SEMICOLON
-			{ [ TRIPLE (D_FOPEN, $1, $5) ] }
+			{ TRIPLE (D_FOPEN, $1, $5) }
 	|	ASSIGN varRefDotBit EQUALS delayStrength expr SEMICOLON
-			{ [ QUADRUPLE (ASSIGN, $2, $4, $5 ) ] }
+			{ QUADRUPLE (ASSIGN, $2, $4, $5 ) }
 	|	LCURLY concIdList RCURLY P_LTE delayE expr SEMICOLON
-			{ [ QUADRUPLE (P_LTE, $2, $5, $6 ) ] }
+			{ QUADRUPLE (P_LTE, TLIST $2, $5, $6 ) }
 	|	LCURLY concIdList RCURLY EQUALS delayE expr SEMICOLON
-			{ [ QUADRUPLE (EQUALS, $2, $5, $6 ) ] }
+			{ QUADRUPLE (EQUALS, TLIST $2, $5, $6 ) }
 	|	D_C LPAREN cStrList RPAREN SEMICOLON
-			{ $3 }
+			{ TLIST $3 }
 	|	D_FCLOSE LPAREN varRefDotBit RPAREN SEMICOLON
 			{ $3 }
 	|	D_FFLUSH SEMICOLON
-			{ [D_FFLUSH] }
+			{ D_FFLUSH }
 	|	D_FFLUSH LPAREN RPAREN SEMICOLON
-			{ [D_FFLUSH] }
+			{ D_FFLUSH }
 	|	D_FFLUSH LPAREN varRefDotBit RPAREN SEMICOLON
 			{ $3 }
 	|	D_FINISH parenE SEMICOLON
@@ -985,9 +985,9 @@ stmt:
 	|	D_WRITE    LPAREN ASCNUM commaEListE RPAREN SEMICOLON
 			{ $4 }
 	|	D_FDISPLAY LPAREN varRefDotBit COMMA ASCNUM commaEListE RPAREN SEMICOLON
-		 	{ [ TRIPLE ( D_FDISPLAY, $3, $6 ) ] }
+		 	{ TRIPLE ( D_FDISPLAY, $3, $6 ) }
 	|	D_FWRITE   LPAREN varRefDotBit COMMA ASCNUM commaEListE RPAREN SEMICOLON
-			{ [ TRIPLE ( D_FWRITE, $3, $6 ) ] }
+			{ TRIPLE ( D_FWRITE, $3, $6 ) }
 	|	D_INFO	    parenE SEMICOLON
 			{ $2 }
 	|	D_INFO	    LPAREN ASCNUM commaEListE RPAREN SEMICOLON
@@ -1005,14 +1005,14 @@ stmt:
 	|	D_FATAL    LPAREN expr RPAREN SEMICOLON
 			{ $3 }
 	|	D_FATAL    LPAREN expr COMMA ASCNUM commaEListE RPAREN SEMICOLON
-			{ [ TRIPLE ( D_FATAL, $3, $6 ) ] }
+			{ TRIPLE ( D_FATAL, $3, $6 ) }
 	|	readmem LPAREN expr COMMA varRefMem RPAREN SEMICOLON
-			{ [ TRIPLE ( D_READMEMB, $3, $5 ) ] }
+			{ TRIPLE ( D_READMEMB, $3, $5 ) }
 	|	readmem LPAREN expr COMMA varRefMem COMMA expr RPAREN SEMICOLON
-			{ [ QUADRUPLE ( D_READMEMB, $3, $5, $7 ) ] }
+			{ QUADRUPLE ( D_READMEMB, $3, $5, $7 ) }
 	|	readmem LPAREN expr COMMA varRefMem COMMA expr COMMA expr RPAREN SEMICOLON
-			{ [ QUINTUPLE ( D_READMEMB, $3, $5, $7, $9 ) ] }
-	|	PREPROC					{ (* Printf.fprintf Pervasives.stderr "%s\n" $1 *) [PREPROC $1 ] }
+			{ QUINTUPLE ( D_READMEMB, $3, $5, $7, $9 ) }
+	|	PREPROC					{ (* Printf.fprintf Pervasives.stderr "%s\n" $1 *) PREPROC $1 }
 
 ;
 
@@ -1021,18 +1021,18 @@ stmt:
 
 stateCaseForIf:
 		case LPAREN expr RPAREN caseAttrE caseListE ENDCASE
-			{ [ QUADRUPLE ($1, $3, $5, $6) ] }
+			{ QUADRUPLE ($1, $3, $5, $6) }
 	|	IF LPAREN expr RPAREN stmtBlock	%prec prLOWER_THAN_ELSE
-			{ [ TRIPLE (IF, $3, $5 ) ] }
+			{ TRIPLE (IF, $3, $5 ) }
 	|	IF LPAREN expr RPAREN stmtBlock ELSE stmtBlock
-			{ [ QUADRUPLE (IF, $3, $5, $7 ) ] }
+			{ QUADRUPLE (IF, $3, $5, $7 ) }
 	|	FOR LPAREN varRefBase EQUALS expr SEMICOLON
 			expr SEMICOLON varRefBase EQUALS expr RPAREN stmtBlock
-			{ [ SEPTUPLE ( FOR, $3, $5, $7, $9, $11, $13 ) ] }
+			{ SEPTUPLE ( FOR, $3, $5, $7, $9, $11, $13 ) }
 	|	WHILE LPAREN expr RPAREN stmtBlock
-			{ [ TRIPLE (WHILE, $3, $5 ) ] }
+			{ TRIPLE (WHILE, $3, $5 ) }
 	|	DO stmtBlock WHILE LPAREN expr RPAREN
-			{ [ TRIPLE (DO, $2, $5 ) ] }
+			{ TRIPLE (DO, $2, $5 ) }
 	;
 
 case:
@@ -1041,26 +1041,26 @@ case:
 	|	CASEZ		{ CASEZ }
 	;
 
-caseAttrE: 	/*empty*/				{ [] }
+caseAttrE: 	/*empty*/				{ EMPTY }
 	;
 
 caseListE:
-		/* empty */				{ [] }
-	|	caseList				{ $1 }
+		/* empty */				{ EMPTY }
+	|	caseList				{ TLIST $1 }
 	;
 
 caseList:
-		caseCondList COLON stmtBlock		{ [ TRIPLE (COLON, $1, $3 ) ] }
+		caseCondList COLON stmtBlock		{ [ TRIPLE (COLON, TLIST $1, $3 ) ] }
 	|	DEFAULT COLON stmtBlock			{ [ DOUBLE (DEFAULT, $3 ) ] }
 	|	DEFAULT stmtBlock			{ [ DOUBLE (DEFAULT, $2 ) ] }
-	|	caseList caseCondList COLON stmtBlock	{ $1 @ [TRIPLE (COLON, $2, $4) ] }
-	|       caseList DEFAULT stmtBlock		{ $1 @ [DOUBLE (DEFAULT, $3) ] }
-	|	caseList DEFAULT COLON stmtBlock	{ $1 @ [DOUBLE (DEFAULT, $4) ] }
+	|	caseList caseCondList COLON stmtBlock	{ TRIPLE (COLON, TLIST $2, $4) :: $1 }
+	|       caseList DEFAULT stmtBlock		{ DOUBLE (DEFAULT, $3) :: $1 }
+	|	caseList DEFAULT COLON stmtBlock	{ DOUBLE (DEFAULT, $4) :: $1 }
 	;
 
 caseCondList:
-		expr 					{ $1 }
-	|	caseCondList COMMA expr			{ $1 @ $3 }
+		expr 					{ [ $1 ] }
+	|	caseCondList COMMA expr			{ $1 @ [ $3 ] }
 	;
 
 //************************************************
@@ -1068,52 +1068,52 @@ caseCondList:
 
 taskRef:
 		idDotted		 		{ $1 }
-	|	idDotted LPAREN exprList RPAREN		{ [ TRIPLE (DOT, $1, $3) ] }
+	|	idDotted LPAREN exprList RPAREN		{ TRIPLE (DOT, $1, TLIST $3) }
 	;
 
 funcRef:
-		idDotted LPAREN exprList RPAREN		{ [ TRIPLE (FUNCTION, $1, $3) ] }
+		idDotted LPAREN exprList RPAREN		{ TRIPLE (FUNCTION, $1, TLIST $3) }
 	;
 
 taskDecl:
 		TASK lifetimeE identifier funcGuts ENDTASK endLabelE
-			{ [ QUINTUPLE ( TASK, $2, [ ID $3 ], $4, $6 ) ] }
+			{ QUINTUPLE ( TASK, $2, ID $3 , $4, $6 ) }
 	;
 
 funcDecl:
 	 	FUNCTION lifetimeE        funcTypeE
 			identifier                        funcGuts ENDFUNCTION endLabelE
-			{ [ SEXTUPLE (FUNCTION, $2, $3, [ID $4], $5, $7 ) ] }
+			{ SEXTUPLE (FUNCTION, $2, $3, ID $4, $5, $7 ) }
 	|	FUNCTION lifetimeE SIGNED funcTypeE
 			identifier                        funcGuts ENDFUNCTION endLabelE
-			{ [ SEXTUPLE (FUNCTION, $2, $4, [ID $5], $6, $8) ] }
+			{ SEXTUPLE (FUNCTION, $2, $4, ID $5, $6, $8) }
 	;
 
 // IEEE: lifetime - plus empty
-lifetimeE:	/* empty */		 		{ [] }
-	|	STATIC			 		{ [STATIC] }
-	|	AUTOMATIC		 		{ [AUTOMATIC] }
+lifetimeE:	/* empty */		 		{ EMPTY }
+	|	STATIC			 		{ STATIC }
+	|	AUTOMATIC		 		{ AUTOMATIC }
 	;
 
 funcGuts:
-		LPAREN PortV2kArgs RPAREN SEMICOLON funcBody	{ [ TRIPLE (ARGS, $2, $5) ] }
-	|	SEMICOLON funcBody				{ [ DOUBLE (BODY, $2) ] }
+		LPAREN PortV2kArgs RPAREN SEMICOLON funcBody	{ TRIPLE (ARGS, TLIST $2, $5) }
+	|	SEMICOLON funcBody				{ DOUBLE (BODY, $2) }
 	;
 
 funcBody:
-		funcVarList stmtBlock			{ $1 @ $2 }
+		funcVarList stmtBlock			{ DOUBLE (TLIST $1, $2 ) }
 	|	stmtBlock				{ $1 }
 	;
 
 funcTypeE:
-		/* empty */				{ [] }
-	|	INTEGER					{ [INTEGER] }
-	|	LBRACK constExpr COLON constExpr RBRACK	{ [ RANGE ( $2, $4 ) ] }
+		/* empty */				{ EMPTY }
+	|	INTEGER					{ INTEGER }
+	|	LBRACK constExpr COLON constExpr RBRACK	{ RANGE ( $2, $4 ) }
 	;
 
 funcVarList:
-		funcVar					{ $1 }
-	|	funcVarList funcVar			{ $1 @ $2 }
+		funcVar					{ [ $1 ] }
+	|	funcVarList funcVar			{ $1 @ [ $2 ] }
 	;
 
 funcVar:
@@ -1121,8 +1121,8 @@ funcVar:
 	|	varDecl 				{ $1 }
 	;
 
-parenE:		/* empty */				{ [] }
-	|	LPAREN RPAREN				{ [] }
+parenE:		/* empty */				{ EMPTY }
+	|	LPAREN RPAREN				{ EMPTY }
 	;
 
 //************************************************
@@ -1133,77 +1133,77 @@ constExpr:
 	;
 
 exprNoStr:
-		expr P_OROR expr			{ [ TRIPLE( P_OROR, $1, $3 ) ] }
-	|	expr P_ANDAND expr			{ [ TRIPLE( P_ANDAND, $1, $3 ) ] }
-	|	expr AMPERSAND expr			{ [ TRIPLE( AMPERSAND, $1, $3 ) ] }
-	|	expr VBAR expr				{ [ TRIPLE( VBAR, $1, $3 ) ] }
-	|	expr P_NAND expr			{ [ TRIPLE( P_NAND, $1, $3 ) ] }
-	|	expr P_NOR expr				{ [ TRIPLE( P_NOR, $1, $3 ) ] }
-	|	expr CARET expr				{ [ TRIPLE( CARET, $1, $3 ) ] }
-	|	expr P_XNOR expr			{ [ TRIPLE( P_XNOR, $1, $3 ) ] }
-	|	expr P_EQUAL expr			{ [ TRIPLE( P_EQUAL, $1, $3 ) ] }
-	|	expr P_NOTEQUAL expr			{ [ TRIPLE( P_NOTEQUAL, $1, $3 ) ] }
-	|	expr P_CASEEQUAL expr			{ [ TRIPLE( P_CASEEQUAL, $1, $3 ) ] }
-	|	expr P_CASENOTEQUAL expr		{ [ TRIPLE( P_CASENOTEQUAL, $1, $3 ) ] }
-	|	expr P_WILDEQUAL expr			{ [ TRIPLE( P_WILDEQUAL, $1, $3 ) ] }
-	|	expr P_WILDNOTEQUAL expr		{ [ TRIPLE( P_WILDNOTEQUAL, $1, $3 ) ] }
-	|	expr GREATER expr			{ [ TRIPLE( GREATER, $1, $3 ) ] }
-	|	expr LESS expr				{ [ TRIPLE( LESS, $1, $3 ) ] }
-	|	expr P_GTE expr				{ [ TRIPLE( P_GTE, $1, $3 ) ] }
-	|	expr P_LTE expr				{ [ TRIPLE( P_LTE, $1, $3 ) ] }
-	|	expr P_SLEFT expr			{ [ TRIPLE( P_SLEFT, $1, $3 ) ] }
-	|	expr P_SRIGHT expr			{ [ TRIPLE( P_SRIGHT, $1, $3 ) ] }
-	|	expr P_SSRIGHT expr			{ [ TRIPLE( P_SSRIGHT, $1, $3 ) ] }
-	|	expr PLUS expr				{ [ TRIPLE( PLUS, $1, $3 ) ] }
-	|	expr MINUS expr				{ [ TRIPLE( MINUS, $1, $3 ) ] }
-	|	expr TIMES expr				{ [ TRIPLE( TIMES, $1, $3 ) ] }
-	|	expr DIVIDE expr			{ [ TRIPLE( DIVIDE, $1, $3 ) ] }
-	|	expr MODULO expr			{ [ TRIPLE( MODULO, $1, $3 ) ] }
-	|	expr P_POW expr				{ [ TRIPLE( P_POW, $1, $3 ) ] }
+		expr P_OROR expr			{ TRIPLE( P_OROR, $1, $3 ) }
+	|	expr P_ANDAND expr			{ TRIPLE( P_ANDAND, $1, $3 ) }
+	|	expr AMPERSAND expr			{ TRIPLE( AMPERSAND, $1, $3 ) }
+	|	expr VBAR expr				{ TRIPLE( VBAR, $1, $3 ) }
+	|	expr P_NAND expr			{ TRIPLE( P_NAND, $1, $3 ) }
+	|	expr P_NOR expr				{ TRIPLE( P_NOR, $1, $3 ) }
+	|	expr CARET expr				{ TRIPLE( CARET, $1, $3 ) }
+	|	expr P_XNOR expr			{ TRIPLE( P_XNOR, $1, $3 ) }
+	|	expr P_EQUAL expr			{ TRIPLE( P_EQUAL, $1, $3 ) }
+	|	expr P_NOTEQUAL expr			{ TRIPLE( P_NOTEQUAL, $1, $3 ) }
+	|	expr P_CASEEQUAL expr			{ TRIPLE( P_CASEEQUAL, $1, $3 ) }
+	|	expr P_CASENOTEQUAL expr		{ TRIPLE( P_CASENOTEQUAL, $1, $3 ) }
+	|	expr P_WILDEQUAL expr			{ TRIPLE( P_WILDEQUAL, $1, $3 ) }
+	|	expr P_WILDNOTEQUAL expr		{ TRIPLE( P_WILDNOTEQUAL, $1, $3 ) }
+	|	expr GREATER expr			{ TRIPLE( GREATER, $1, $3 ) }
+	|	expr LESS expr				{ TRIPLE( LESS, $1, $3 ) }
+	|	expr P_GTE expr				{ TRIPLE( P_GTE, $1, $3 ) }
+	|	expr P_LTE expr				{ TRIPLE( P_LTE, $1, $3 ) }
+	|	expr P_SLEFT expr			{ TRIPLE( P_SLEFT, $1, $3 ) }
+	|	expr P_SRIGHT expr			{ TRIPLE( P_SRIGHT, $1, $3 ) }
+	|	expr P_SSRIGHT expr			{ TRIPLE( P_SSRIGHT, $1, $3 ) }
+	|	expr PLUS expr				{ TRIPLE( PLUS, $1, $3 ) }
+	|	expr MINUS expr				{ TRIPLE( MINUS, $1, $3 ) }
+	|	expr TIMES expr				{ TRIPLE( TIMES, $1, $3 ) }
+	|	expr DIVIDE expr			{ TRIPLE( DIVIDE, $1, $3 ) }
+	|	expr MODULO expr			{ TRIPLE( MODULO, $1, $3 ) }
+	|	expr P_POW expr				{ TRIPLE( P_POW, $1, $3 ) }
 
-	|	MINUS expr	%prec prUNARYARITH	{ [ DOUBLE (MINUS, $2) ] }
-	|	PLUS expr	%prec prUNARYARITH	{ [ DOUBLE (PLUS, $2) ] }
-	|	AMPERSAND expr	%prec prREDUCTION	{ [ DOUBLE (AMPERSAND, $2) ] }
-	|	VBAR expr	%prec prREDUCTION	{ [ DOUBLE (VBAR, $2) ] }
-	|	CARET expr	%prec prREDUCTION	{ [ DOUBLE (CARET, $2) ] }
-	|	P_XNOR expr	%prec prREDUCTION	{ [ DOUBLE (P_XNOR, $2) ] }
-	|	P_NAND expr	%prec prREDUCTION	{ [ DOUBLE (P_NAND, $2) ] }
-	|	P_NOR expr	%prec prREDUCTION	{ [ DOUBLE (P_NOR, $2) ] }
-	|	PLING expr	%prec prNEGATION	{ [ DOUBLE (PLING, $2) ] }
-	|	TILDE expr	%prec prNEGATION	{ [ DOUBLE (TILDE, $2) ] }
+	|	MINUS expr	%prec prUNARYARITH	{ DOUBLE (MINUS, $2) }
+	|	PLUS expr	%prec prUNARYARITH	{ DOUBLE (PLUS, $2) }
+	|	AMPERSAND expr	%prec prREDUCTION	{ DOUBLE (AMPERSAND, $2) }
+	|	VBAR expr	%prec prREDUCTION	{ DOUBLE (VBAR, $2) }
+	|	CARET expr	%prec prREDUCTION	{ DOUBLE (CARET, $2) }
+	|	P_XNOR expr	%prec prREDUCTION	{ DOUBLE (P_XNOR, $2) }
+	|	P_NAND expr	%prec prREDUCTION	{ DOUBLE (P_NAND, $2) }
+	|	P_NOR expr	%prec prREDUCTION	{ DOUBLE (P_NOR, $2) }
+	|	PLING expr	%prec prNEGATION	{ DOUBLE (PLING, $2) }
+	|	TILDE expr	%prec prNEGATION	{ DOUBLE (TILDE, $2) }
 
-	|	expr QUERY expr COLON expr		{ [ QUADRUPLE (QUERY, $1, $3, $5 ) ] }
+	|	expr QUERY expr COLON expr		{ QUADRUPLE (QUERY, $1, $3, $5 ) }
 	|	LPAREN expr RPAREN			{ $2 }
-	|	LCURLY cateList RCURLY			{ $2 }
+	|	LCURLY cateList RCURLY			{ TLIST $2 }
 	|	LCURLY constExpr LCURLY cateList RCURLY RCURLY
-							{ [ TRIPLE (LCURLY, $2, $4) ] }
-	|	D_BITS LPAREN expr RPAREN		{ [ DOUBLE (D_BITS, $3 ) ] }
-	|	D_C LPAREN cStrList RPAREN		{ [ DOUBLE (D_C, $3 ) ] }
-	|	D_CLOG2 LPAREN expr RPAREN		{ [ DOUBLE (D_CLOG2, $3 ) ] }
-	|	D_COUNTONES LPAREN expr RPAREN		{ [ DOUBLE (D_COUNTONES, $3 ) ] }
-	|	D_FEOF LPAREN expr RPAREN		{ [ DOUBLE (D_FEOF, $3 ) ] }
-	|	D_FGETC LPAREN expr RPAREN		{ [ DOUBLE (D_FGETC, $3 ) ] }
+							{ TRIPLE (LCURLY, $2, TLIST $4) }
+	|	D_BITS LPAREN expr RPAREN		{ DOUBLE (D_BITS, $3 ) }
+	|	D_C LPAREN cStrList RPAREN		{ DOUBLE (D_C, TLIST $3 ) }
+	|	D_CLOG2 LPAREN expr RPAREN		{ DOUBLE (D_CLOG2, $3 ) }
+	|	D_COUNTONES LPAREN expr RPAREN		{ DOUBLE (D_COUNTONES, $3 ) }
+	|	D_FEOF LPAREN expr RPAREN		{ DOUBLE (D_FEOF, $3 ) }
+	|	D_FGETC LPAREN expr RPAREN		{ DOUBLE (D_FGETC, $3 ) }
 	|	D_FGETS LPAREN varRefDotBit COMMA expr RPAREN
-							{ [ TRIPLE (D_FGETS, $3, $5) ] }
+							{ TRIPLE (D_FGETS, $3, $5) }
 	|	D_FSCANF LPAREN expr COMMA ASCNUM commaVRDListE RPAREN
-							{ [ TRIPLE (D_FSCANF, $3, $6) ]  }
+							{ TRIPLE (D_FSCANF, $3, $6) }
 	|	D_SSCANF LPAREN expr COMMA ASCNUM commaVRDListE RPAREN
-							{ [ TRIPLE (D_SSCANF, $3, $6) ]  }
-	|	D_ISUNKNOWN LPAREN expr RPAREN		{ [ DOUBLE (D_ISUNKNOWN, $3 ) ] }
-	|	D_ONEHOT LPAREN expr RPAREN		{ [ DOUBLE (D_ONEHOT, $3 ) ] }
-	|	D_ONEHOT0 LPAREN expr RPAREN		{ [ DOUBLE (D_ONEHOT0, $3 ) ] }
-	|	D_RANDOM LPAREN expr RPAREN		{ [ DOUBLE (D_RANDOM, $3 ) ] }
-	|	D_RANDOM LPAREN RPAREN			{ [D_RANDOM] }
-	|	D_RANDOM				{ [D_RANDOM] }
-	|	D_SIGNED LPAREN expr RPAREN		{ [ DOUBLE (D_SIGNED, $3 ) ] }
-	|	D_STIME					{ [D_STIME] }
-	|	D_TIME					{ [D_TIME] }
-	|	D_UNSIGNED LPAREN expr RPAREN		{ [ DOUBLE (D_UNSIGNED, $3 ) ] }
+							{ TRIPLE (D_SSCANF, $3, $6) }
+	|	D_ISUNKNOWN LPAREN expr RPAREN		{ DOUBLE (D_ISUNKNOWN, $3 ) }
+	|	D_ONEHOT LPAREN expr RPAREN		{ DOUBLE (D_ONEHOT, $3 ) }
+	|	D_ONEHOT0 LPAREN expr RPAREN		{ DOUBLE (D_ONEHOT0, $3 ) }
+	|	D_RANDOM LPAREN expr RPAREN		{ DOUBLE (D_RANDOM, $3 ) }
+	|	D_RANDOM LPAREN RPAREN			{ D_RANDOM }
+	|	D_RANDOM				{ D_RANDOM }
+	|	D_SIGNED LPAREN expr RPAREN		{ DOUBLE (D_SIGNED, $3 ) }
+	|	D_STIME					{ D_STIME }
+	|	D_TIME					{ D_TIME }
+	|	D_UNSIGNED LPAREN expr RPAREN		{ DOUBLE (D_UNSIGNED, $3 ) }
 	|	funcRef					{ $1 }
-	|	INTNUM				{ [INTNUM $1] }
-	|	BINNUM				{ [BINNUM $1] }
-	|	DECNUM				{ [DECNUM $1] }
-	|	HEXNUM				{ [HEXNUM $1] }
+	|	INTNUM				{ INTNUM $1 }
+	|	BINNUM				{ BINNUM $1 }
+	|	DECNUM				{ DECNUM $1 }
+	|	HEXNUM				{ HEXNUM $1 }
 	|	varRefDotBit	  			{ $1 }
 	;
 
@@ -1222,108 +1222,108 @@ exprStrText:
 	;
 
 cStrList:
-		exprStrText				{ $1 }
-	|	exprStrText COMMA cStrList		{ $1 @ $3 }
+		exprStrText				{ [ $1 ] }
+	|	exprStrText COMMA cStrList		{ $1 :: $3 }
 	;
 
 cateList:
-		expr					{ $1 }
-	|	cateList COMMA expr			{ $1 @ $3 }
+		expr					{ [ $1 ] }
+	|	cateList COMMA expr			{ $1 @ [ $3 ] }
 	;
 
 exprList:
-		expr					{ $1 }
-	|	exprList COMMA expr			{ $1 @ $3 }
+		expr					{ [ $1 ] }
+	|	exprList COMMA expr			{ $1 @ [ $3 ] }
 	;
 
 commaEListE:
-		/* empty */				{ [] }
-	|	COMMA exprList				{ [ DOUBLE (COMMA, $2) ] }
+		/* empty */				{ EMPTY }
+	|	COMMA exprList				{ TLIST $2 }
 	;
 
 vrdList:
-		varRefDotBit				{ $1 }
-	|	vrdList COMMA varRefDotBit		{ $1 @ $3 }
+		varRefDotBit				{ [ $1 ] }
+	|	vrdList COMMA varRefDotBit		{ $1 @ [ $3 ] }
 	;
 
 commaVRDListE:
-		/* empty */				{ [] }
-	|	COMMA vrdList				{ [ DOUBLE (COMMA, $2) ] }
+		/* empty */				{ EMPTY }
+	|	COMMA vrdList				{ DOUBLE (COMMA, TLIST $2) }
 	;
 
 attrDecl:
-		D_ATTRIBUTE LPAREN exprList RPAREN SEMICOLON	{ [ DOUBLE (D_ATTRIBUTE, $3) ] }
+		D_ATTRIBUTE LPAREN exprList RPAREN SEMICOLON	{ DOUBLE (D_ATTRIBUTE, TLIST $3) }
 
 //************************************************
 // Gate declarations
 
 gateDecl:
-		BUF  delayE gateBufList SEMICOLON		{ [ TRIPLE (BUF, $2, $3 ) ] }
-	|	NOT  delayE gateNotList SEMICOLON		{ [ TRIPLE (NOT, $2, $3 ) ] }
-	|	AND  delayE gateAndList SEMICOLON		{ [ TRIPLE (AND, $2, $3 ) ] }
-	|	NAND delayE gateNandList SEMICOLON		{ [ TRIPLE (NAND, $2, $3 ) ] }
-	|	OR   delayE gateOrList SEMICOLON		{ [ TRIPLE (OR, $2, $3 ) ] }
-	|	NOR  delayE gateNorList SEMICOLON		{ [ TRIPLE (NOR, $2, $3 ) ] }
-	|	XOR  delayE gateXorList SEMICOLON		{ [ TRIPLE (XOR, $2, $3 ) ] }
-	|	XNOR delayE gateXnorList SEMICOLON		{ [ TRIPLE (XNOR, $2, $3 ) ] }
+		BUF  delayE gateBufList SEMICOLON		{ TRIPLE (BUF, $2, TLIST $3 ) }
+	|	NOT  delayE gateNotList SEMICOLON		{ TRIPLE (NOT, $2, TLIST $3 ) }
+	|	AND  delayE gateAndList SEMICOLON		{ TRIPLE (AND, $2, TLIST $3 ) }
+	|	NAND delayE gateNandList SEMICOLON		{ TRIPLE (NAND, $2, TLIST $3 ) }
+	|	OR   delayE gateOrList SEMICOLON		{ TRIPLE (OR, $2, TLIST $3 ) }
+	|	NOR  delayE gateNorList SEMICOLON		{ TRIPLE (NOR, $2, TLIST $3 ) }
+	|	XOR  delayE gateXorList SEMICOLON		{ TRIPLE (XOR, $2, TLIST $3 ) }
+	|	XNOR delayE gateXnorList SEMICOLON		{ TRIPLE (XNOR, $2, TLIST $3 ) }
 	;
 
 gateBufList:
-		gateBuf 				{ $1 }
-	|	gateBufList COMMA gateBuf		{ $1 @ $3 }
+		gateBuf 				{ [ $1 ] }
+	|	gateBufList COMMA gateBuf		{ $1 @ [ $3 ] }
 	;
 gateNotList:
-		gateNot 				{ $1 }
-	|	gateNotList COMMA gateNot		{ $1 @ $3 }
+		gateNot 				{ [ $1 ] }
+	|	gateNotList COMMA gateNot		{ $1 @ [ $3 ] }
 	;
 gateAndList:
-		gateAnd 				{ $1 }
-	|	gateAndList COMMA gateAnd		{ $1 @ $3 }
+		gateAnd 				{ [ $1 ] }
+	|	gateAndList COMMA gateAnd		{ $1 @ [ $3 ] }
 	;
 gateNandList:
-		gateNand 				{ $1 }
-	|	gateNandList COMMA gateNand		{ $1 @ $3 }
+		gateNand 				{ [ $1 ] }
+	|	gateNandList COMMA gateNand		{ $1 @ [ $3 ] }
 	;
 gateOrList:
-		gateOr 					{ $1 }
-	|	gateOrList COMMA gateOr			{ $1 @ $3 }
+		gateOr 					{ [ $1 ] }
+	|	gateOrList COMMA gateOr			{ $1 @ [ $3 ] }
 	;
 gateNorList:
-		gateNor 				{ $1 }
-	|	gateNorList COMMA gateNor		{ $1 @ $3 }
+		gateNor 				{ [ $1 ] }
+	|	gateNorList COMMA gateNor		{ $1 @ [ $3 ] }
 	;
 gateXorList:
-		gateXor 				{ $1 }
-	|	gateXorList COMMA gateXor		{ $1 @ $3 }
+		gateXor 				{ [ $1 ] }
+	|	gateXorList COMMA gateXor		{ $1 @ [ $3 ] }
 	;
 gateXnorList:
-		gateXnor 				{ $1 }
-	|	gateXnorList COMMA gateXnor		{ $1 @ $3 }
+		gateXnor 				{ [ $1 ] }
+	|	gateXnorList COMMA gateXnor		{ $1 @ [ $3 ] }
 	;
 
 gateBuf:	gateIdE instRangeE LPAREN varRefDotBit COMMA expr RPAREN
-							{ [ QUADRUPLE ($1, $2, $4, $6) ] }
+							{ QUADRUPLE ($1, $2, $4, $6 ) }
 	;
 gateNot:	gateIdE instRangeE LPAREN varRefDotBit COMMA expr RPAREN
-							{ [ QUADRUPLE ($1 , $2, $4 , $6 ) ] }
+							{ QUADRUPLE ($1 , $2, $4 , $6 ) }
 	;
 gateAnd:	gateIdE instRangeE LPAREN varRefDotBit COMMA gateAndPinList RPAREN
-							{ [ QUADRUPLE ($1 , $2, $4 , $6 ) ] }
+							{ QUADRUPLE ($1 , $2, $4 , TLIST $6 ) }
 	;
 gateNand:	gateIdE instRangeE LPAREN varRefDotBit COMMA gateAndPinList RPAREN
-							{ [ QUADRUPLE ($1 , $2, $4 , $6 ) ] }
+							{ QUADRUPLE ($1 , $2, $4 , TLIST $6 ) }
 	;
 gateOr:		gateIdE instRangeE LPAREN varRefDotBit COMMA gateOrPinList RPAREN
-							{ [ QUADRUPLE ($1 , $2, $4 , $6 ) ] }
+							{ QUADRUPLE ($1 , $2, $4 , TLIST $6 ) }
 	;
 gateNor:	gateIdE instRangeE LPAREN varRefDotBit COMMA gateOrPinList RPAREN
-							{ [ QUADRUPLE ($1 , $2, $4 , $6 ) ] }
+							{ QUADRUPLE ($1 , $2, $4 , TLIST $6 ) }
 	;
 gateXor:	gateIdE instRangeE LPAREN varRefDotBit COMMA gateXorPinList RPAREN
-							{ [ QUADRUPLE ($1 , $2, $4 , $6 ) ] }
+							{ QUADRUPLE ($1 , $2, $4 , TLIST $6 ) }
 	;
 gateXnor:	gateIdE instRangeE LPAREN varRefDotBit COMMA gateXorPinList RPAREN
-							{ [ QUADRUPLE ($1 , $2, $4 , $6 ) ] }
+							{ QUADRUPLE ($1 , $2, $4 , TLIST $6 ) }
 	;
 
 gateIdE:	/*empty*/				{ EMPTY }
@@ -1331,122 +1331,123 @@ gateIdE:	/*empty*/				{ EMPTY }
 	;
 
 gateAndPinList:
-		expr 					{ $1 }
-	|	gateAndPinList COMMA expr		{ $1 @ $3 }
+		expr 					{ [ $1 ] }
+	|	gateAndPinList COMMA expr		{ $1 @ [ $3 ] }
 	;
 gateOrPinList:
-		expr 					{ $1 }
-	|	gateOrPinList COMMA expr		{ $1 @ $3 }
+		expr 					{ [ $1 ] }
+	|	gateOrPinList COMMA expr		{ $1 @ [ $3 ] }
 	;
 gateXorPinList:
-		expr 					{ $1 }
-	|	gateXorPinList COMMA expr		{ $1 @ $3 }
+		expr 					{ [ $1 ] }
+	|	gateXorPinList COMMA expr		{ $1 @ [ $3 ] }
 	;
 
 //************************************************
 // Tables
 // Not supported
 
-tableDecl:	TABLE specifyJunkList ENDTABLE { [] }	// placeholder
+tableDecl:	TABLE specifyJunkList ENDTABLE { TABLE }	// placeholder
 
 //************************************************
 // Specify
 
-specifyJunkList:	ENDOFFILE 			{ [] } /* ignored */
-	|	specifyJunk 				{ [] } /* ignored */
-	|	specifyJunkList specifyJunk		{ [] } /* ignored */
+specifyJunkList:	ENDOFFILE 			{ EMPTY } /* ignored */
+	|	specifyJunk 				{ EMPTY } /* ignored */
+	|	specifyJunkList specifyJunk		{ EMPTY } /* ignored */
 	;
 
-specifyJunk:	dlyTerm 				{ [] } /* ignored */
-	|	ARGS					{ [] }
-	|	BITSEL					{ [] }
-	|	BODY					{ [] }
-	|	COMMENT_BEGIN				{ [] }
-	|	EMPTY					{ [] }
-	|	EOF					{ [] }
-	|	ILLEGAL					{ [] }
-	|	PARTSEL					{ [] }
-	|	RANGE					{ [] }
-	|	IOPORT					{ [] }
-	|	SUBCCT					{ [] }
-	|	SUBMODULE				{ [] }
-	|	DOUBLE					{ [] }
-	|	TRIPLE					{ [] }
-	|	QUADRUPLE				{ [] }
-	|	QUINTUPLE				{ [] }
-	|	SEXTUPLE				{ [] }
-	|	SEPTUPLE				{ [] }
-	|	PLING					{ [] }
-	|	AMPERSAND				{ [] }
-	|	LPAREN					{ [] }
-	|	RPAREN					{ [] }
-	|	TIMES					{ [] }
-	|	DIVIDE					{ [] }
-	|	MODULO					{ [] }
-	|	PLUS					{ [] }
-	|	MINUS					{ [] }
-	|	COMMA					{ [] }
-	|	COLON					{ [] }
-	|	DOLLAR					{ [] }
-	|	EQUALS					{ [] }
-	|	GREATER					{ [] }
-	|	LESS					{ [] }
-	|	QUERY					{ [] }
-	|	CARET					{ [] }
-	|	LCURLY					{ [] }
-	|	RCURLY					{ [] }
-	|	LBRACK					{ [] }
-	|	RBRACK					{ [] }
-	|	VBAR					{ [] }
-	|	TILDE					{ [] }
-	|	AT					{ [] }
-	|	IF					{ [] }
-	|	NEGEDGE					{ [] }
-	|	POSEDGE					{ [] }
-	|	ASCNUM					{ [] }
-	|	TIMINGSPEC				{ [] }
-	|	P_ANDAND				{ [] }
-	|	P_GTE					{ [] }
-	|	P_LTE					{ [] }
-	|	P_EQUAL					{ [] }
-	|	P_NOTEQUAL				{ [] }
-	|	P_CASEEQUAL				{ [] }
-	|	P_CASENOTEQUAL				{ [] }
-	|	P_WILDEQUAL				{ [] }
-	|	P_WILDNOTEQUAL				{ [] }
-	|	P_XNOR					{ [] }
-	|	P_NOR					{ [] }
-	|	P_NAND					{ [] }
-	|	P_OROR					{ [] }
-	|	P_SLEFT					{ [] }
-	|	P_SRIGHT				{ [] }
-	|	P_SSRIGHT				{ [] }
-	|	P_PLUSCOLON				{ [] }
-	|	P_MINUSCOLON				{ [] }
-	|	P_POW					{ [] }
-	|	P_ORMINUSGT				{ [] }
-	|	P_OREQGT				{ [] }
-	|	P_EQGT					{ [] }
-	|	P_ASTGT					{ [] }
-	|	P_ANDANDAND				{ [] }
-	|	P_POUNDPOUND				{ [] }
-	|	P_DOTSTAR				{ [] }
-	|	P_ATAT					{ [] }
-	|	P_COLONCOLON				{ [] }
-	|	P_COLONEQ				{ [] }
-	|	P_COLONDIV				{ [] }
-	|	P_PLUSEQ				{ [] }
-	|	P_MINUSEQ				{ [] }
-	|	P_TIMESEQ				{ [] }
-	|	P_DIVEQ					{ [] }
-	|	P_MODEQ					{ [] }
-	|	P_ANDEQ					{ [] }
-	|	P_OREQ					{ [] }
-	|	P_XOREQ					{ [] }
-	|	P_SLEFTEQ				{ [] }
-	|	P_SRIGHTEQ				{ [] }
-	|	P_SSRIGHTEQ				{ [] }
-	|	error 					{ [] }
+specifyJunk:	dlyTerm 				{ EMPTY } /* ignored */
+	|	ARGS					{ EMPTY }
+	|	BITSEL					{ EMPTY }
+	|	BODY					{ EMPTY }
+	|	COMMENT_BEGIN				{ EMPTY }
+	|	EMPTY					{ EMPTY }
+	|	EOF					{ EMPTY }
+	|	ILLEGAL					{ EMPTY }
+	|	PARTSEL					{ EMPTY }
+	|	RANGE					{ EMPTY }
+	|	IOPORT					{ EMPTY }
+	|	SUBCCT					{ EMPTY }
+	|	SUBMODULE				{ EMPTY }
+	|	DOUBLE					{ EMPTY }
+	|	TRIPLE					{ EMPTY }
+	|	QUADRUPLE				{ EMPTY }
+	|	QUINTUPLE				{ EMPTY }
+	|	SEXTUPLE				{ EMPTY }
+	|	SEPTUPLE				{ EMPTY }
+	|	PLING					{ EMPTY }
+	|	TLIST					{ EMPTY }
+	|	AMPERSAND				{ EMPTY }
+	|	LPAREN					{ EMPTY }
+	|	RPAREN					{ EMPTY }
+	|	TIMES					{ EMPTY }
+	|	DIVIDE					{ EMPTY }
+	|	MODULO					{ EMPTY }
+	|	PLUS					{ EMPTY }
+	|	MINUS					{ EMPTY }
+	|	COMMA					{ EMPTY }
+	|	COLON					{ EMPTY }
+	|	DOLLAR					{ EMPTY }
+	|	EQUALS					{ EMPTY }
+	|	GREATER					{ EMPTY }
+	|	LESS					{ EMPTY }
+	|	QUERY					{ EMPTY }
+	|	CARET					{ EMPTY }
+	|	LCURLY					{ EMPTY }
+	|	RCURLY					{ EMPTY }
+	|	LBRACK					{ EMPTY }
+	|	RBRACK					{ EMPTY }
+	|	VBAR					{ EMPTY }
+	|	TILDE					{ EMPTY }
+	|	AT					{ EMPTY }
+	|	IF					{ EMPTY }
+	|	NEGEDGE					{ EMPTY }
+	|	POSEDGE					{ EMPTY }
+	|	ASCNUM					{ EMPTY }
+	|	TIMINGSPEC				{ EMPTY }
+	|	P_ANDAND				{ EMPTY }
+	|	P_GTE					{ EMPTY }
+	|	P_LTE					{ EMPTY }
+	|	P_EQUAL					{ EMPTY }
+	|	P_NOTEQUAL				{ EMPTY }
+	|	P_CASEEQUAL				{ EMPTY }
+	|	P_CASENOTEQUAL				{ EMPTY }
+	|	P_WILDEQUAL				{ EMPTY }
+	|	P_WILDNOTEQUAL				{ EMPTY }
+	|	P_XNOR					{ EMPTY }
+	|	P_NOR					{ EMPTY }
+	|	P_NAND					{ EMPTY }
+	|	P_OROR					{ EMPTY }
+	|	P_SLEFT					{ EMPTY }
+	|	P_SRIGHT				{ EMPTY }
+	|	P_SSRIGHT				{ EMPTY }
+	|	P_PLUSCOLON				{ EMPTY }
+	|	P_MINUSCOLON				{ EMPTY }
+	|	P_POW					{ EMPTY }
+	|	P_ORMINUSGT				{ EMPTY }
+	|	P_OREQGT				{ EMPTY }
+	|	P_EQGT					{ EMPTY }
+	|	P_ASTGT					{ EMPTY }
+	|	P_ANDANDAND				{ EMPTY }
+	|	P_POUNDPOUND				{ EMPTY }
+	|	P_DOTSTAR				{ EMPTY }
+	|	P_ATAT					{ EMPTY }
+	|	P_COLONCOLON				{ EMPTY }
+	|	P_COLONEQ				{ EMPTY }
+	|	P_COLONDIV				{ EMPTY }
+	|	P_PLUSEQ				{ EMPTY }
+	|	P_MINUSEQ				{ EMPTY }
+	|	P_TIMESEQ				{ EMPTY }
+	|	P_DIVEQ					{ EMPTY }
+	|	P_MODEQ					{ EMPTY }
+	|	P_ANDEQ					{ EMPTY }
+	|	P_OREQ					{ EMPTY }
+	|	P_XOREQ					{ EMPTY }
+	|	P_SLEFTEQ				{ EMPTY }
+	|	P_SRIGHTEQ				{ EMPTY }
+	|	P_SSRIGHTEQ				{ EMPTY }
+	|	error 					{ EMPTY }
 	;
 
 //************************************************
@@ -1464,48 +1465,48 @@ varRefDotBit:
 
 idDotted:
 		idArrayed 				{ $1 }
-	|	idDotted DOT idArrayed	 	{ [ TRIPLE(DOT, $1, $3) ] }
+	|	idDotted DOT idArrayed	 	{ TRIPLE(DOT, $1, $3) }
 	;
 
 // Single component of dotted path, maybe [#].
 // Due to lookahead constraints, we cant know if [:] or [+:] are valid (last dotted part),
 // well assume so and cleanup later.
 idArrayed:
-		identifier				{ [ID $1] }
-	|	idArrayed LBRACK expr RBRACK		{ [TRIPLE(BITSEL, $1, $3)] }  // Or AstArraySel, dont know et.
+		identifier				{ ID $1 }
+	|	idArrayed LBRACK expr RBRACK		{ TRIPLE(BITSEL, $1, $3) }  // Or AstArraySel, dont know et.
 	|	idArrayed LBRACK constExpr COLON constExpr RBRACK
-							{ [QUADRUPLE(PARTSEL, $1 , $3 , $5 ) ] }
+							{ QUADRUPLE(PARTSEL, $1 , $3 , $5 ) }
 	|	idArrayed LBRACK expr P_PLUSCOLON  constExpr RBRACK
-							{ [QUADRUPLE(P_PLUSCOLON, $1 , $3 , $5 ) ] }
+							{ QUADRUPLE(P_PLUSCOLON, $1 , $3 , $5 ) }
 	|	idArrayed LBRACK expr P_MINUSCOLON constExpr RBRACK
-							{ [QUADRUPLE(P_MINUSCOLON, $1, $3, $5 ) ] }
+							{ QUADRUPLE(P_MINUSCOLON, $1, $3, $5 ) }
 	;
 
 // VarRef without any dots or vectorization
 varRefBase:
-		identifier				{ [ID $1] }
+		identifier				{ ID $1 }
 	;
 
 strAsInt:
-		ASCNUM					{ [ASCNUM $1] }
+		ASCNUM					{ ASCNUM $1 }
 	;
 
 strAsText:
-		ASCNUM					{ [ASCNUM $1] }
+		ASCNUM					{ ASCNUM $1 }
 	;
 
 floatnum:
-		FLOATNUM				{ [FLOATNUM $1] }
+		FLOATNUM				{ FLOATNUM $1 }
 	;
 
 concIdList:
-		varRefDotBit				{ $1 }
-	|	concIdList COMMA varRefDotBit		{ $1 @ $3 }
+		varRefDotBit				{ [ $1 ] }
+	|	concIdList COMMA varRefDotBit		{ $1 @ [ $3 ] }
 	;
 
-endLabelE:	/* empty */				{ [] }
-	|	COLON identifier			{ [ DOUBLE (COLON, [ID $2] ) ] }
-	|	ENDOFFILE				{ [] }
+endLabelE:	/* empty */				{ EMPTY }
+	|	COLON identifier			{ DOUBLE (COLON, ID $2 ) }
+	|	ENDOFFILE				{ EMPTY }
 	;
 
 //************************************************
@@ -1517,7 +1518,7 @@ labeledStmt:
 
 clocking_declaration:		// IEEE: clocking_declaration  (INCOMPLETE)
 		DEFAULT CLOCKING AT LPAREN senitemEdge RPAREN SEMICOLON ENDCLOCKING
-							{ [CLOCKING] }
+							{ CLOCKING }
 	;
 
 concurrent_assertion_item:	// IEEE: concurrent_assertion_item  (complete)
@@ -1527,32 +1528,32 @@ concurrent_assertion_item:	// IEEE: concurrent_assertion_item  (complete)
 	;
 
 concurrent_assertion_statement:	// IEEE: concurrent_assertion_statement  (INCOMPLETE)
-		cover_property_statement		{ [COVER] }
+		cover_property_statement		{ COVER }
 	;
 
 cover_property_statement:	// IEEE: cover_property_statement (complete)
 		COVER PROPERTY LPAREN property_spec RPAREN stmtBlock
-							{ [COVER] }
+							{ COVER }
 	;
 
 property_spec:			// IEEE: property_spec
 		AT LPAREN senitemEdge RPAREN property_spec_disable expr
-							{ [DISABLE] }
-	|	property_spec_disable expr	 	{ [DISABLE] }
+							{ DISABLE }
+	|	property_spec_disable expr	 	{ DISABLE }
 	;
 
 property_spec_disable:
-		/* empty */				{ [] }
-	|	DISABLE IFF LPAREN expr RPAREN		{ [DISABLE] }
+		/* empty */				{ EMPTY }
+	|	DISABLE IFF LPAREN expr RPAREN		{ DISABLE }
 	;
 
 AssertStmt:
 		ASSERT LPAREN expr RPAREN stmtBlock %prec prLOWER_THAN_ELSE
-							{ [ASSERT] }
+							{ ASSERT }
 	|	ASSERT LPAREN expr RPAREN           ELSE stmtBlock
-							{ [ASSERT] }
+							{ ASSERT }
 	|	ASSERT LPAREN expr RPAREN stmtBlock ELSE stmtBlock
-							{ [ASSERT] }
+							{ ASSERT }
 	;
 
 //**********************************************************************

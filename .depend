@@ -15,4 +15,5 @@ semantics.cmo: semantics.cmi lexer.cmo
 semantics.cmi: vparser.cmi setup.cmi globals.cmi
 setup.cmo: setup.cmi
 setup.cmi: vparser.cmi ord.cmi
-ord.cmo: ord.cmi vparser.cmi
+ord.cmo: ord.cmi
+ord.cmi: vparser.cmi

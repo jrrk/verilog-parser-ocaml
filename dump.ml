@@ -23,19 +23,20 @@ open List
 
 let rec dump (exp, indent) =
    match exp with
-| DOUBLE(tok,arg) -> printf "\n"; for i = 1 to indent do printf " " done; dump (tok, indent) ; myiter indent dump arg
-| TRIPLE(EQUALS,arg1,arg2) -> printf "\n"; for i = 1 to indent do printf " " done; myiter indent dump arg1; printf "= "; myiter indent dump arg2;
-| TRIPLE(IF,arg1,arg2) -> printf "\n"; for i = 1 to indent do printf " " done; printf "if ( "; myiter indent dump arg1; printf ") "; myiter indent dump arg2;
-| TRIPLE(PLUS,arg1,arg2) -> printf "\n"; for i = 1 to indent do printf " " done; myiter indent dump arg1; printf "+ "; myiter indent dump arg2;
-| TRIPLE(tok,arg1,arg2) -> printf "\n"; for i = 1 to indent do printf " " done; dump (tok, indent) ; myiter indent dump arg1; myiter indent dump arg2;
-| QUADRUPLE(EQUALS,arg1,arg2,arg3) -> printf "\n"; for i = 1 to indent do printf " " done; myiter indent dump arg1; printf "= "; myiter indent dump arg2; myiter indent dump arg3;
-| QUADRUPLE(IF,arg1,arg2,arg3) -> printf "\n"; for i = 1 to indent do printf " " done; printf "if ( "; myiter indent dump arg1; printf ") "; myiter indent dump arg2; printf "else "; myiter indent dump arg3;
-| QUADRUPLE(tok,arg1,arg2,arg3) -> printf "\n"; for i = 1 to indent do printf " " done; dump (tok, indent) ; myiter indent dump arg1; myiter indent dump arg2; myiter indent dump arg3;
-| QUINTUPLE(MODULE,arg1,arg2,arg3,arg4) -> printf "module "; myiter indent dump arg1; printf " "; myiter indent dump arg2; printf "\n"; myiter indent dump arg3; printf "\n"; myiter indent dump arg4; printf "\nendmodule\n"
-| QUINTUPLE(tok,arg1,arg2,arg3,arg4) -> printf "\n"; for i = 1 to indent do printf " " done; dump (tok, indent) ; myiter indent dump arg1; myiter indent dump arg2; myiter indent dump arg3; myiter indent dump arg4;
-| SEXTUPLE(tok,arg1,arg2,arg3,arg4,arg5) -> printf "\n"; for i = 1 to indent do printf " " done; dump (tok, indent) ; myiter indent dump arg1; myiter indent dump arg2; myiter indent dump arg3; myiter indent dump arg4; myiter indent dump(arg5);
-| SEPTUPLE(tok,arg1,arg2,arg3,arg4,arg5,arg6) -> printf "\n"; for i = 1 to indent do printf " " done; dump (tok, indent) ; myiter indent dump arg1; myiter indent dump arg2; myiter indent dump arg3; myiter indent dump arg4; myiter indent dump(arg5); myiter indent dump(arg6);
-| RANGE(arg1,arg2) -> printf "[ "; myiter indent dump arg1; printf ": "; myiter indent dump arg2; printf "] "
+| TLIST lst -> myiter indent dump lst
+| DOUBLE(tok,arg) -> printf "\n"; for i = 1 to indent do printf " " done; dump (tok, indent) ; dump (arg, indent+2)
+| TRIPLE(EQUALS, arg1, arg2) -> printf "\n"; for i = 1 to indent do printf " " done; dump (arg1, indent+2); printf "= "; dump (arg2, indent+2);
+| TRIPLE(IF, arg1, arg2) -> printf "\n"; for i = 1 to indent do printf " " done; printf "if ( "; dump (arg1, indent+2); printf ") "; dump (arg2, indent+2);
+| TRIPLE(PLUS, arg1, arg2) -> printf "\n"; for i = 1 to indent do printf " " done; dump (arg1, indent+2); printf "+ "; dump (arg2, indent+2);
+| TRIPLE(tok, arg1, arg2) -> printf "\n"; for i = 1 to indent do printf " " done; dump (tok, indent) ; dump (arg1, indent+2); dump (arg2, indent+2);
+| QUADRUPLE(EQUALS, arg1, arg2, arg3) -> printf "\n"; for i = 1 to indent do printf " " done; dump (arg1, indent+2); printf "= "; dump (arg2, indent+2); dump (arg3, indent+2);
+| QUADRUPLE(IF, arg1, arg2, arg3) -> printf "\n"; for i = 1 to indent do printf " " done; printf "if ( "; dump (arg1, indent+2); printf ") "; dump (arg2, indent+2); printf "else "; dump (arg3, indent+2);
+| QUADRUPLE(tok, arg1, arg2, arg3) -> printf "\n"; for i = 1 to indent do printf " " done; dump (tok, indent) ; dump (arg1, indent+2); dump (arg2, indent+2); dump (arg3, indent+2);
+| QUINTUPLE(MODULE, arg1, arg2, arg3, arg4) -> printf "module "; dump (arg1, indent); printf " "; dump (arg2, indent); printf "\n"; dump (arg3, indent+2); printf "\n"; dump (arg4, indent+2); printf "\nendmodule\n"
+| QUINTUPLE(tok, arg1, arg2, arg3, arg4) -> printf "\n"; for i = 1 to indent do printf " " done; dump (tok, indent) ; dump (arg1, indent+2); dump (arg2, indent+2); dump (arg3, indent+2); dump (arg4, indent+2);
+| SEXTUPLE(tok, arg1, arg2, arg3, arg4, arg5) -> printf "\n"; for i = 1 to indent do printf " " done; dump (tok, indent) ; dump (arg1, indent+2); dump (arg2, indent+2); dump (arg3, indent+2); dump (arg4, indent+2); dump(arg5, indent+2);
+| SEPTUPLE(tok, arg1, arg2, arg3, arg4, arg5, arg6) -> printf "\n"; for i = 1 to indent do printf " " done; dump (tok, indent) ; dump (arg1, indent+2); dump (arg2, indent+2); dump (arg3, indent+2); dump (arg4, indent+2); dump(arg5, indent+2); dump(arg6, indent+2);
+| RANGE(arg1,arg2) -> printf "[ "; dump (arg1, indent); printf ": "; dump (arg2, indent); printf "] "
 | ALWAYS -> printf "always "
 | ASCNUM c -> printf "ASCNUM(%s) " c
 | ASSIGN -> printf "assign "
@@ -64,7 +65,7 @@ let rec dump (exp, indent) =
 | WEAK strength -> printf "weak%s" strength
 | _ -> printf "%s " (Ord.getstr exp)
 
-and myiter indent dump list =
+and myiter indent dump (list:token list) =
   let f x = dump (x, indent + 2) in List.iter f list
 ;;
 

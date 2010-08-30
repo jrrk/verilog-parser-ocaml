@@ -47,55 +47,62 @@ let rec semantics (tree:Globals.modtree) =
 (* These patterns are temporary till we decide on the proper general form *)
 DOUBLE
  (ALWAYS,
-  [DOUBLE
-    (AT, [DOUBLE (POSEDGE, [ID clk])]);
+   DOUBLE
+    (DOUBLE (AT, TLIST [DOUBLE (POSEDGE, ID clk)]),
    QUADRUPLE
-    (IF, [ID rst],
-     [QUADRUPLE
-       (EQUALS, [ID var1], [], [INTNUM start])],
-     [QUADRUPLE
-       (EQUALS, [ID var2], [],
-        [TRIPLE
-          (PLUS, [ID var3], [INTNUM inc])])])])
+    (IF, ID rst,
+      QUADRUPLE
+       (EQUALS, ID var1, EMPTY, INTNUM start),
+      QUADRUPLE
+       (EQUALS, ID var2, EMPTY,
+        TRIPLE
+          (PLUS, ID var3, INTNUM inc)))))
 -> iter (fun v -> try ignore(Hashtbl.find syms v); with Not_found -> printf "variable %s not found\n" v) [clk;rst;var1;var2;var3];
 | TRIPLE
- (ASSIGN, [],
-  [TRIPLE (EQUALS, [ID var1], [TRIPLE (PLUS, [ID var2], [ID var3])])])
+ (ASSIGN, EMPTY,
+  TLIST [TRIPLE (EQUALS, ID var1, TRIPLE (PLUS, ID var2, ID var3))])
 -> iter (fun v -> try ignore(Hashtbl.find syms v); with Not_found -> printf "variable %s not found\n" v) [var1;var2;var3];
-| TRIPLE(EQUALS,arg1,arg2) -> iter_ semantics syms arg1; iter_ semantics syms arg2
-| TRIPLE(IF,arg1,arg2) -> iter_ semantics syms arg1; iter_ semantics syms arg2
-| TRIPLE(PLUS,arg1,arg2) -> iter_ semantics syms arg1; iter_ semantics syms arg2
-| TRIPLE(ID kind,[],instances) ->
+| TRIPLE(EQUALS, TLIST arg1, TLIST arg2) -> iter_ semantics syms arg1; iter_ semantics syms arg2
+| TRIPLE(IF, TLIST arg1, TLIST arg2) -> iter_ semantics syms arg1; iter_ semantics syms arg2
+| TRIPLE(PLUS, TLIST arg1, TLIST arg2) -> iter_ semantics syms arg1; iter_ semantics syms arg2
+| TRIPLE(ID kind,EMPTY, TLIST instances) ->
     (try
       ignore(Hashtbl.find Globals.modprims kind);
     with Not_found -> printf "sub-module %s not found\n" kind );
     enter_a_sym syms kind SUBMODULE;
-    iter (fun inst -> match inst with TRIPLE (ID subcct, [], termlist) -> enter_a_sym syms subcct SUBCCT | _ -> unhandled syms inst) instances
-| QUADRUPLE(EQUALS,arg1,arg2,arg3) -> iter_ semantics syms arg1; iter_ semantics syms arg2; iter_ semantics syms arg3
-| QUADRUPLE(IF,arg1,arg2,arg3) -> iter_ semantics syms arg1; iter_ semantics syms arg2; iter_ semantics syms arg3
-| QUADRUPLE(REG,arg1,arg2,arg3) ->
+    iter (fun inst -> match inst with TRIPLE (ID subcct, EMPTY, termlist) -> enter_a_sym syms subcct SUBCCT | _ -> unhandled syms inst) instances
+| QUADRUPLE(EQUALS, TLIST arg1, TLIST arg2, TLIST arg3) -> iter_ semantics syms arg1; iter_ semantics syms arg2; iter_ semantics syms arg3
+| QUADRUPLE(IF, TLIST arg1, TLIST arg2, TLIST arg3) -> iter_ semantics syms arg1; iter_ semantics syms arg2; iter_ semantics syms arg3
+| QUADRUPLE(REG, arg1, arg2, TLIST arg3) ->
     let width = ref [REG] in begin
-    iter_ semantics syms arg1;
-    (match arg2 with [RANGE([INTNUM hi],[INTNUM lo]) as rangehilo] -> width := rangehilo :: !width
-      | _ ->  List.iter (fun arg -> unhandled syms arg) arg2);
-    ( List.iter (fun x -> match x with TRIPLE(ID id,arg5,arg6) -> enter_syms syms id !width | _ -> unhandled syms x) arg3); end
-| QUINTUPLE(MODULE,[ID arg1],arg2,arg3,arg4) ->
+    semantics {Globals.tree=arg1; symbols=syms};
+    (match arg2 with RANGE(INTNUM hi, INTNUM lo) as rangehilo -> width := rangehilo :: !width
+      | TLIST arg7 ->  List.iter (fun arg -> unhandled syms arg) arg7
+      | EMPTY -> ()
+      | _ ->  unhandled syms arg2);
+    ( List.iter (fun x -> match x with TRIPLE(ID id, arg5, arg6) -> enter_syms syms id !width | _ -> unhandled syms x) arg3); end
+| QUINTUPLE(MODULE,ID arg1, arg2, TLIST arg3, TLIST arg4) ->
     enter_a_sym syms arg1 MODULE;
-    iter_ semantics syms arg2;
+    semantics {Globals.tree=arg2; symbols=syms};
     iter (fun arg -> match arg with ID id -> enter_a_sym syms id IOPORT | _ -> semantics {Globals.tree=arg; symbols=syms}) arg3;
     iter_ semantics syms arg4
-| QUINTUPLE((INPUT|OUTPUT|INOUT) as dir,arg1,arg2,arg3,arg4) ->
+| QUINTUPLE((INPUT|OUTPUT|INOUT) as dir, arg1, arg2, arg3, arg4) ->
     let width = ref [dir] in begin
-    iter_ semantics syms arg1;
-    iter_ semantics syms arg2;
-    (match arg3 with [RANGE([INTNUM hi],[INTNUM lo]) as rangehilo] -> width := rangehilo :: !width
-      | _ ->  List.iter (fun arg -> unhandled syms arg) arg3);
-    ( match arg4 with [DOUBLE(ID id,arg5)] ->
+    semantics {Globals.tree=arg1; symbols=syms};
+    semantics {Globals.tree=arg2; symbols=syms};
+    (match arg3 with RANGE(INTNUM hi,INTNUM lo) as rangehilo -> width := rangehilo :: !width
+      | TLIST arg9 ->  List.iter (fun arg -> unhandled syms arg) arg9
+      | EMPTY -> ()
+      | _ -> unhandled syms arg3);
+    ( match arg4 with DOUBLE(ID id, arg5) ->
       enter_syms syms id !width
-      | [TRIPLE(ID id,arg5,arg6)] -> enter_syms syms id !width
-      | _ ->  List.iter (fun x -> match x with TRIPLE(ID id,arg5,arg6) -> enter_syms syms id !width | _ -> unhandled syms x) arg4); end
-| RANGE(arg1,arg2) -> iter_ semantics syms arg1; iter_ semantics syms arg2
+      | TRIPLE(ID id, TLIST arg5, TLIST arg6) -> enter_syms syms id !width
+      | TLIST arg9 ->  List.iter (fun x -> match x with TRIPLE(ID id, arg5, arg6) -> enter_syms syms id !width | _ -> unhandled syms x) arg9
+      | EMPTY -> ()
+      | _ -> unhandled syms arg4); end
+| RANGE(arg1, arg2) -> semantics {Globals.tree=arg1; symbols=syms}; semantics {Globals.tree=arg2; symbols=syms}
 | ID id -> enter_a_sym syms id EMPTY
+| EMPTY -> ()
 | _ -> unhandled syms exp;;
 
 let moditer k (x:Globals.modtree) = semantics x;;
