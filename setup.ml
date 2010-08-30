@@ -20,7 +20,7 @@
 open Vparser;;
 open Ord;;
 
-let compare_tok (a:token) (b:token) = ord(a) - ord(b);;
+let compare_tok (a:token) (b:token) = if (a > b) then 1 else if (a < b) then -1 else 0;;
 
 module type Ordered =
   sig

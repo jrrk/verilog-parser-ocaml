@@ -23,7 +23,7 @@ open List
 
 let rec dump (exp, indent) =
    match exp with
-| TLIST lst -> myiter indent dump lst
+| TLIST lst -> List.iter (fun x -> dump (x, indent + 2)) lst
 | DOUBLE(tok,arg) -> printf "\n"; for i = 1 to indent do printf " " done; dump (tok, indent) ; dump (arg, indent+2)
 | TRIPLE(EQUALS, arg1, arg2) -> printf "\n"; for i = 1 to indent do printf " " done; dump (arg1, indent+2); printf "= "; dump (arg2, indent+2);
 | TRIPLE(IF, arg1, arg2) -> printf "\n"; for i = 1 to indent do printf " " done; printf "if ( "; dump (arg1, indent+2); printf ") "; dump (arg2, indent+2);
@@ -65,9 +65,6 @@ let rec dump (exp, indent) =
 | WEAK strength -> printf "weak%s" strength
 | _ -> printf "%s " (Ord.getstr exp)
 
-and myiter indent dump (list:token list) =
-  let f x = dump (x, indent + 2) in List.iter f list
-;;
-
 let moditer k (x:Globals.modtree) = printf "Module %s : " k; dump (x.Globals.tree, 0);;
+let dump_module m = dump ((Hashtbl.find Globals.modprims m).Globals.tree, 0);;
 
