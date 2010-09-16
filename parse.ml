@@ -17,8 +17,8 @@
 * Based on verilator parser code by Paul Wasson, Duane Galbi and Wilson Snyder
 *******************************************************************************)
 
-let parse () =
-  let ic = open_in Sys.argv.( Array.length Sys.argv - 1 ) in
+let parse str =
+  let ic = open_in str in
   try
     let lexbuf = Lexing.from_channel ic in
     while true do

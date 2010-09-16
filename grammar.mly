@@ -145,6 +145,7 @@
 %token INOUT		// "inout"
 %token INPUT		// "input"
 %token INTEGER	// "integer"
+%token LATCH		// "latch"
 %token LOCALPARAM	// "localparam"
 %token MODULE		// "module"
 %token NAND		// "nand"
@@ -845,6 +846,7 @@ instDecl:
 instparamListE:
 		/* empty */				{ EMPTY }
 	|	HASH LPAREN cellpinList RPAREN		{ TLIST $3 }
+	|	LPAREN strengthList RPAREN		{ TLIST $2 }
 	;
 
 instnameList:
@@ -1267,6 +1269,8 @@ gateDecl:
 	|	NOR  delayE gateNorList SEMICOLON		{ TRIPLE (NOR, $2, TLIST $3 ) }
 	|	XOR  delayE gateXorList SEMICOLON		{ TRIPLE (XOR, $2, TLIST $3 ) }
 	|	XNOR delayE gateXnorList SEMICOLON		{ TRIPLE (XNOR, $2, TLIST $3 ) }
+	|	gateUdp SEMICOLON		                { $1 }
+	|	LATCH delayE gateOrList SEMICOLON		{ TRIPLE (LATCH, $2, TLIST $3 ) }
 	;
 
 gateBufList:
@@ -1326,6 +1330,9 @@ gateXor:	gateIdE instRangeE LPAREN varRefDotBit COMMA gateXorPinList RPAREN
 gateXnor:	gateIdE instRangeE LPAREN varRefDotBit COMMA gateXorPinList RPAREN
 							{ QUADRUPLE ($1 , $2, $4 , TLIST $6 ) }
 	;
+gateUdp:	identifier LPAREN varRefDotBit COMMA gateUdpPinList RPAREN
+							{ TRIPLE (ID $1 , $3, TLIST $5 ) }
+	;
 
 gateIdE:	/*empty*/				{ EMPTY }
 	|	identifier				{ ID $1 }
@@ -1335,13 +1342,20 @@ gateAndPinList:
 		expr 					{ [ $1 ] }
 	|	gateAndPinList COMMA expr		{ $1 @ [ $3 ] }
 	;
+
 gateOrPinList:
 		expr 					{ [ $1 ] }
 	|	gateOrPinList COMMA expr		{ $1 @ [ $3 ] }
 	;
+
 gateXorPinList:
 		expr 					{ [ $1 ] }
 	|	gateXorPinList COMMA expr		{ $1 @ [ $3 ] }
+	;
+
+gateUdpPinList:
+		expr 					{ [ $1 ] }
+	|	gateUdpPinList COMMA expr		{ $1 @ [ $3 ] }
 	;
 
 //************************************************

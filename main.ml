@@ -17,13 +17,11 @@
 * Based on verilator parser code by Paul Wasson, Duane Galbi and Wilson Snyder
 *******************************************************************************)
 
-let _ = Printexc.print Parse.parse ()
+(* let _ = Printexc.print Parse.parse Sys.argv.( Array.length Sys.argv - 1 );; -- Pass the last command line module *)
 
-(* let _ = Printexc.print Parse.parse ();; *)
+(* let m k x = Printf.printf "%s\n" k in Hashtbl.iter m Globals.modprims;;  -- Print all modules *)
 
-(* let m k x = Printf.printf "%s\n" k in Hashtbl.iter m Globals.modprims;; *)
-
-(* Hashtbl.find Globals.modprims "test";; *)
+(* Hashtbl.find Globals.modprims "test";; -- Find module "test" (displays result) *)
 
 (* Hashtbl.find Globals.modprims "test2";; *)
 
@@ -37,9 +35,5 @@ let _ = Printexc.print Parse.parse ()
 
 (* Semantics.semantics ( Hashtbl.find Globals.modprims "test2" ) ;; *)
 
-(* Hashtbl.iter (fun k x -> Printf.printf "%s: " k; Setup.TokSet.iter (fun e -> Dump.dump(e,0); Printf.printf "\n") x) Globals.symbols;; *)
-
-(* Setup.TokSet.iter (fun e -> Printf.printf "%s\n" (Ord.getstr(e))) one_elm;; *)
-
-(* let xx=Array.make 100 Vparser.EMPTY;; *)
+(* let xx=Array.make 100 Vparser.EMPTY;; -- show unhandled syntax in semantic tree descent *)
 (* let l = ref 0 in Globals.show_unhandled_f (fun t -> xx.(!l) <- t; l := !l+1 ) "test";; *)
