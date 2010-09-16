@@ -1,1 +1,1 @@
-val parse: unit -> unit
+val parse: string -> unit
