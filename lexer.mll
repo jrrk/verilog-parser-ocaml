@@ -50,6 +50,7 @@ rule token = parse
 |  "begin"		{BEGIN}
 |  "$bits"		{D_BITS}
 |  "buf"		{BUF}
+|  "bufif"digit+ as def	{BUFIF def }
 |  "casex"		{CASEX}
 |  "case"		{CASE}
 |  "casez"		{CASEZ}

@@ -22,11 +22,11 @@ open Vparser;;
 type modtree = { tree: token; symbols: (string, Set.Make(Setup.OrdTok).t) Hashtbl.t };;
 let modprims = Hashtbl.create 256;;
 (*let primitives = Hashtbl.create 256;;*)
-(*let symbols = Hashtbl.create 256;;*)
+let gsyms = Hashtbl.create 256;;
 
 let get_table (m:string) = Hashtbl.find modprims m;;
 let get_syms (r:modtree) = r.symbols;;
 let show_syms f x = Hashtbl.iter f x;;
 let show_table (m:string) = show_syms Setup.show_sym (get_syms(get_table m));;
-let show_unhandled_f f (m:string) = Setup.TokSet.iter f (Hashtbl.find (get_syms(get_table m)) "**unhandled**");;
-let show_unhandled m = show_unhandled_f Setup.show_token m;;
+let show_unhandled_f f = Setup.TokSet.iter f (Hashtbl.find (gsyms) "**unhandled**");;
+(*let show_unhandled = show_unhandled_f Setup.show_token;;*)
