@@ -44,6 +44,8 @@
 %token SUBCCT
 %token<token * token > RANGE
 %token<token list> TLIST
+// for undeclared wires
+%token IMPLICIT
 
 // pre-proc tokens
 (*
@@ -114,6 +116,7 @@
 %token AUTOMATIC	// "automatic"
 %token BEGIN		// "begin"
 %token BUF		// "buf"
+%token<string> BUFIF	// "bufif"
 %token CASE		// "case"
 %token CASEX		// "casex"
 %token CASEZ		// "casez"
@@ -726,6 +729,11 @@ delayE:		/* empty */				{ EMPTY }
 	|	delay					{ $1 } /* ignored */
 	;
 
+delayStrengthE:	/* empty */				{ EMPTY }
+	|	identifier				{ ID $1 }
+	|	delayStrength				{ $1 } /* ignored */
+	;
+
 delayStrength:		/* empty */				{ EMPTY }
 	|	delay					{ $1 } /* ignored */
 	|	LPAREN strengthList RPAREN		{ TLIST $2 }
@@ -1262,6 +1270,7 @@ attrDecl:
 
 gateDecl:
 		BUF  delayE gateBufList SEMICOLON		{ TRIPLE (BUF, $2, TLIST $3 ) }
+	|	BUFIF delayStrengthE gateBufIfList SEMICOLON	{ TRIPLE (BUFIF $1, $2, TLIST $3 ) }
 	|	NOT  delayE gateNotList SEMICOLON		{ TRIPLE (NOT, $2, TLIST $3 ) }
 	|	AND  delayE gateAndList SEMICOLON		{ TRIPLE (AND, $2, TLIST $3 ) }
 	|	NAND delayE gateNandList SEMICOLON		{ TRIPLE (NAND, $2, TLIST $3 ) }
@@ -1277,6 +1286,12 @@ gateBufList:
 		gateBuf 				{ [ $1 ] }
 	|	gateBufList COMMA gateBuf		{ $1 @ [ $3 ] }
 	;
+
+gateBufIfList:
+		gateBufIf 				{ [ $1 ] }
+	|	gateBufIfList COMMA gateBuf		{ $1 @ [ $3 ] }
+	;
+
 gateNotList:
 		gateNot 				{ [ $1 ] }
 	|	gateNotList COMMA gateNot		{ $1 @ [ $3 ] }
@@ -1309,33 +1324,50 @@ gateXnorList:
 gateBuf:	gateIdE instRangeE LPAREN varRefDotBit COMMA expr RPAREN
 							{ QUADRUPLE ($1, $2, $4, $6 ) }
 	;
+
+gateBufIf:	LPAREN varRefDotBit COMMA gateBufIfPinList RPAREN
+							{ DOUBLE ($2, TLIST $4 ) }
+	;
+
 gateNot:	gateIdE instRangeE LPAREN varRefDotBit COMMA expr RPAREN
 							{ QUADRUPLE ($1 , $2, $4 , $6 ) }
 	;
+
 gateAnd:	gateIdE instRangeE LPAREN varRefDotBit COMMA gateAndPinList RPAREN
 							{ QUADRUPLE ($1 , $2, $4 , TLIST $6 ) }
 	;
+
 gateNand:	gateIdE instRangeE LPAREN varRefDotBit COMMA gateAndPinList RPAREN
 							{ QUADRUPLE ($1 , $2, $4 , TLIST $6 ) }
 	;
+
 gateOr:		gateIdE instRangeE LPAREN varRefDotBit COMMA gateOrPinList RPAREN
 							{ QUADRUPLE ($1 , $2, $4 , TLIST $6 ) }
 	;
+
 gateNor:	gateIdE instRangeE LPAREN varRefDotBit COMMA gateOrPinList RPAREN
 							{ QUADRUPLE ($1 , $2, $4 , TLIST $6 ) }
 	;
+
 gateXor:	gateIdE instRangeE LPAREN varRefDotBit COMMA gateXorPinList RPAREN
 							{ QUADRUPLE ($1 , $2, $4 , TLIST $6 ) }
 	;
+
 gateXnor:	gateIdE instRangeE LPAREN varRefDotBit COMMA gateXorPinList RPAREN
 							{ QUADRUPLE ($1 , $2, $4 , TLIST $6 ) }
 	;
+
 gateUdp:	identifier LPAREN varRefDotBit COMMA gateUdpPinList RPAREN
 							{ TRIPLE (ID $1 , $3, TLIST $5 ) }
 	;
 
 gateIdE:	/*empty*/				{ EMPTY }
 	|	identifier				{ ID $1 }
+	;
+
+gateBufIfPinList:
+		expr 					{ [ $1 ] }
+	|	gateBufIfPinList COMMA expr		{ $1 @ [ $3 ] }
 	;
 
 gateAndPinList:
@@ -1385,6 +1417,7 @@ specifyJunk:	dlyTerm 				{ EMPTY } /* ignored */
 	|	IOPORT					{ EMPTY }
 	|	SUBCCT					{ EMPTY }
 	|	SUBMODULE				{ EMPTY }
+	|	IMPLICIT				{ EMPTY }
 	|	DOUBLE					{ EMPTY }
 	|	TRIPLE					{ EMPTY }
 	|	QUADRUPLE				{ EMPTY }
