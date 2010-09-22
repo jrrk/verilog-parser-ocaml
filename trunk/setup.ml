@@ -38,7 +38,11 @@ module TokSet = Set.Make (OrdTok)
 
 let one_elm = TokSet.add EMPTY TokSet.empty;;
 
-let show_set s = TokSet.iter (fun e -> Printf.printf "%s\n" (Ord.getstr(e))) s;;
 
-let show_token (e:token) = Printf.printf "%s\n" (match e with ID id -> id | RANGE (INTNUM hi,INTNUM lo) -> "[" ^ (Nativeint.to_string hi) ^ ":" ^ (Nativeint.to_string lo) ^ "] " | _ -> (Ord.getstr e));;
-let show_sym k (x:TokSet.t) = Printf.printf "%s: " k; TokSet.iter show_token x;;
+let str_token (e:token) = match e with ID id -> id | RANGE (INTNUM hi,INTNUM lo) -> "[" ^ (Nativeint.to_string hi) ^ ":" ^ (Nativeint.to_string lo) ^ "] " | _ -> (Ord.getstr e);;
+
+let show_token (e:token) = Printf.printf "%s " (str_token e)
+
+let show_set s = TokSet.iter (fun e -> Printf.printf "%s " (str_token e)) s;;
+
+let show_sym k (x:TokSet.t) = Printf.printf "%s: " k; TokSet.iter show_token x; print_char '\n';;
