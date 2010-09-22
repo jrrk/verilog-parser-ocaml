@@ -46,6 +46,9 @@
 %token<token list> TLIST
 // for undeclared wires
 %token IMPLICIT
+%token RECEIVER
+%token DRIVER
+%token BIDIR
 
 // pre-proc tokens
 (*
@@ -729,11 +732,6 @@ delayE:		/* empty */				{ EMPTY }
 	|	delay					{ $1 } /* ignored */
 	;
 
-delayStrengthE:	/* empty */				{ EMPTY }
-	|	identifier				{ ID $1 }
-	|	delayStrength				{ $1 } /* ignored */
-	;
-
 delayStrength:		/* empty */				{ EMPTY }
 	|	delay					{ $1 } /* ignored */
 	|	LPAREN strengthList RPAREN		{ TLIST $2 }
@@ -1270,7 +1268,7 @@ attrDecl:
 
 gateDecl:
 		BUF  delayE gateBufList SEMICOLON		{ TRIPLE (BUF, $2, TLIST $3 ) }
-	|	BUFIF delayStrengthE gateBufIfList SEMICOLON	{ TRIPLE (BUFIF $1, $2, TLIST $3 ) }
+	|	BUFIF delayStrength gateBufIfList SEMICOLON	{ TRIPLE (BUFIF $1, $2, TLIST $3 ) }
 	|	NOT  delayE gateNotList SEMICOLON		{ TRIPLE (NOT, $2, TLIST $3 ) }
 	|	AND  delayE gateAndList SEMICOLON		{ TRIPLE (AND, $2, TLIST $3 ) }
 	|	NAND delayE gateNandList SEMICOLON		{ TRIPLE (NAND, $2, TLIST $3 ) }
@@ -1418,6 +1416,9 @@ specifyJunk:	dlyTerm 				{ EMPTY } /* ignored */
 	|	SUBCCT					{ EMPTY }
 	|	SUBMODULE				{ EMPTY }
 	|	IMPLICIT				{ EMPTY }
+	|	BIDIR					{ EMPTY }
+	|	DRIVER					{ EMPTY }
+	|	RECEIVER				{ EMPTY }
 	|	DOUBLE					{ EMPTY }
 	|	TRIPLE					{ EMPTY }
 	|	QUADRUPLE				{ EMPTY }

@@ -25,10 +25,10 @@ YACC = menhir
 CMO = ord.cmo setup.cmo lexer.cmo globals.cmo grammar.cmo dump.cmo semantics.cmo parse.cmo main.cmo
 
 vtop: $(TARGET)
-	ocamlmktop -o vtop $(CMO)
+	ocamlmktop -o vtop str.cma $(CMO)
 
 $(TARGET): $(CMO)
-	ocamlc.opt -g -o $@ $(CMO)
+	ocamlc.opt -g -o $@ str.cma $(CMO)
 
 depend: grammar.ml lexer.ml
 	ocamldep *.ml *.mli > .depend

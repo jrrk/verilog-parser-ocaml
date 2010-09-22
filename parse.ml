@@ -26,5 +26,5 @@ let parse str =
     done
     
   with End_of_file ->
-    close_in_noerr ic;
-    Hashtbl.iter Semantics.moditer Globals.modprims
+    close_in_noerr ic
+(*    Hashtbl.iter Semantics.moditer Globals.modprims  *)

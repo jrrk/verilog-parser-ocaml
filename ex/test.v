@@ -1,5 +1,7 @@
 /* hello */
 
+`timescale 1ns/1ps
+
 module test2(input a, input b, output [1:0] c);
 
 assign c = a+b;
@@ -32,7 +34,7 @@ output [7:0] cnt;
 reg [7:0] cnt;
 output [1:0] cc;
 
-test2 subcct(.a(1), .b(cnt[0]), .c(cc));
+test2 subcct(.a(1'b1), .b(cnt[0]), .c(cc));
 
 always @(posedge clk)
 	if (rst)
