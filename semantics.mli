@@ -17,7 +17,8 @@ val stmts : exprt list ref
   (string -> Globals.modtree -> unit) -> string ->
   (string, Set.Make(Setup.OrdTok).t) Hashtbl.t -> Vparser.token list -> unit *)
 (*   val moditer : string -> Globals.modtree -> unit  *)
-   val unhand_str : string
    val unhandled : Vparser.token -> unit
    val find_ident : (string, Setup.TokSet.t) Hashtbl.t -> Vparser.token -> string -> (string, Setup.TokSet.t) Hashtbl.t -> Vparser.token -> Setup.TokSet.t
 val check_glob : (string, Setup.TokSet.t) Hashtbl.t -> unit
+val unhand_array : Vparser.token DynArray.t
+val unhandled_exception : string -> unit

@@ -23,17 +23,34 @@
 
 (* Hashtbl.find Globals.modprims "test";; -- Find module "test" (displays result) *)
 
-(* Hashtbl.find Globals.modprims "test2";; *)
+(* Dump.dump ((Hashtbl.find Globals.modprims "test").tree, 0);; -- dump module as text*)
 
 (* Hashtbl.iter (fun k x -> Printf.printf "%s\n" k) Globals.modprims;; *)
 
-(* Hashtbl.iter (fun k x -> Semantics.semantics x) Globals.modprims;; *)
-
 (* List.iter (fun x -> Dump.dump (x, 0)) arg;; *)
 
-(* Semantics.semantics ( Hashtbl.find Globals.modprims "test" ) ;; *)
+(* Hashtbl.iter (fun k x -> Printf.printf "%s\n" k) (Hashtbl.find Globals.modprims "test").symbols;; -- dump symbol names *)
 
-(* Semantics.semantics ( Hashtbl.find Globals.modprims "test2" ) ;; *)
+let my_syms m = Hashtbl.iter Setup.show_sym (Hashtbl.find Globals.modprims m).Globals.symbols;;
 
-(* let xx=Array.make 100 Vparser.EMPTY;; -- show unhandled syntax in semantic tree descent *)
-(* let l = ref 0 in Globals.show_unhandled_f (fun t -> xx.(!l) <- t; l := !l+1 ) "test";; *)
+let dump_sym m s = Setup.TokSet.iter Setup.show_token ( Hashtbl.find (Hashtbl.find Globals.modprims m).Globals.symbols s);;
+
+let dump_gsyms gsyms = Hashtbl.iter Setup.show_sym gsyms;;
+
+let dump_gsym gsyms s = Setup.TokSet.iter Setup.show_token ( Hashtbl.find gsyms s);;
+
+let vparser gsyms args = begin for i = 1 to ( Array.length args - 2 ) do
+    Printexc.print Parse.parse args.( i )
+  done;
+  if ( Array.length args > 2 ) then
+    begin
+    if (Hashtbl.mem Globals.modprims (args.( Array.length args - 1 ))) then
+      begin
+      Semantics.semantics gsyms "" (Hashtbl.find Globals.modprims (args.( Array.length args - 1 )));
+      Semantics.check_glob gsyms
+      end
+    else Printf.printf "Toplevel %s is not found\n" args.( Array.length args - 1 );
+    end
+  end
+
+let _ = Printexc.record_backtrace true; vparser (Hashtbl.create 256) Sys.argv;;

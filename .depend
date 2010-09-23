@@ -8,7 +8,7 @@ grammar.cmi: vparser.cmi
 dump.cmo: dump.cmi lexer.cmo
 dump.cmi: vparser.cmi globals.cmi
 parse.cmo: parse.cmi lexer.cmo globals.cmi dump.cmi semantics.cmi
-main.cmo: main.cmi parse.cmi
+main.cmo: main.cmi parse.cmi semantics.cmi
 globals.cmo: globals.cmi
 globals.cmi: vparser.cmi setup.cmi
 semantics.cmo: semantics.cmi lexer.cmo
