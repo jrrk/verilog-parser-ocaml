@@ -35,13 +35,15 @@
 %token<token * token * token * token * token * token * token > SEPTUPLE
 
 // non-keyword tokens
-%token ARGS
-%token BODY
+%token<token list> PRIMARGS
+%token FUNCARGS
+%token FUNCBODY
 %token BITSEL
 %token PARTSEL
 %token IOPORT
 %token SUBMODULE
 %token SUBCCT
+%token PRIMINST
 %token<token * token > RANGE
 %token<token list> TLIST
 // for undeclared wires
@@ -151,7 +153,6 @@
 %token INOUT		// "inout"
 %token INPUT		// "input"
 %token INTEGER	// "integer"
-%token LATCH		// "latch"
 %token LOCALPARAM	// "localparam"
 %token MODULE		// "module"
 %token NAND		// "nand"
@@ -404,7 +405,7 @@
 %type <token> sigId
 %type <token> signingE
 %type <token> specifyJunk
-%type <token> specifyJunkList
+%type <token list> specifyJunkList
 %type <unit>       start
 %type <token> stateCaseForIf
 %type <token> stmt
@@ -635,8 +636,8 @@ modItemList:
 modItem:
 		modOrGenItem 				{ $1 }
 	|	generateRegion				{ $1 }
-	|	SPECIFY specifyJunkList ENDSPECIFY	{ SPECIFY }
-	|	SPECIFY ENDSPECIFY			{ SPECIFY }
+	|	SPECIFY specifyJunkList ENDSPECIFY	{ DOUBLE (SPECIFY, TLIST $2) }
+	|	SPECIFY ENDSPECIFY			{ DOUBLE (SPECIFY, EMPTY ) }
 	|	PREPROC					{ (* Printf.fprintf Pervasives.stderr "%s\n" $1 *) PREPROC $1 }
 	;
 
@@ -1105,8 +1106,8 @@ lifetimeE:	/* empty */		 		{ EMPTY }
 	;
 
 funcGuts:
-		LPAREN PortV2kArgs RPAREN SEMICOLON funcBody	{ TRIPLE (ARGS, TLIST $2, $5) }
-	|	SEMICOLON funcBody				{ DOUBLE (BODY, $2) }
+		LPAREN PortV2kArgs RPAREN SEMICOLON funcBody	{ TRIPLE (FUNCARGS, TLIST $2, $5) }
+	|	SEMICOLON funcBody				{ DOUBLE (FUNCBODY, $2) }
 	;
 
 funcBody:
@@ -1277,7 +1278,6 @@ gateDecl:
 	|	XOR  delayE gateXorList SEMICOLON		{ TRIPLE (XOR, $2, TLIST $3 ) }
 	|	XNOR delayE gateXnorList SEMICOLON		{ TRIPLE (XNOR, $2, TLIST $3 ) }
 	|	gateUdp SEMICOLON		                { $1 }
-	|	LATCH delayE gateOrList SEMICOLON		{ TRIPLE (LATCH, $2, TLIST $3 ) }
 	;
 
 gateBufList:
@@ -1356,7 +1356,7 @@ gateXnor:	gateIdE instRangeE LPAREN varRefDotBit COMMA gateXorPinList RPAREN
 	;
 
 gateUdp:	identifier LPAREN varRefDotBit COMMA gateUdpPinList RPAREN
-							{ TRIPLE (ID $1 , $3, TLIST $5 ) }
+							{ TRIPLE (PRIMINST, ID $1, TLIST ($3::$5) ) }
 	;
 
 gateIdE:	/*empty*/				{ EMPTY }
@@ -1397,106 +1397,109 @@ tableDecl:	TABLE specifyJunkList ENDTABLE { TABLE }	// placeholder
 //************************************************
 // Specify
 
-specifyJunkList:	ENDOFFILE 			{ EMPTY } /* ignored */
-	|	specifyJunk 				{ EMPTY } /* ignored */
-	|	specifyJunkList specifyJunk		{ EMPTY } /* ignored */
+specifyJunkList:	ENDOFFILE 			{ [] } /* ignored */
+	|	specifyJunk 				{ [ $1 ] } /* ignored */
+	|	specifyJunkList specifyJunk		{ $1 @ [ $2 ] } /* ignored */
 	;
 
-specifyJunk:	dlyTerm 				{ EMPTY } /* ignored */
-	|	ARGS					{ EMPTY }
-	|	BITSEL					{ EMPTY }
-	|	BODY					{ EMPTY }
-	|	COMMENT_BEGIN				{ EMPTY }
+specifyJunk:	dlyTerm 				{ $1 } /* ignored */
+	|	PRIMARGS				{ PRIMARGS $1 }
+	|	PRIMINST				{ PRIMINST }
+	|	BITSEL					{ BITSEL }
+	|	FUNCARGS				{ FUNCARGS }
+	|	FUNCBODY				{ FUNCBODY }
+	|	COMMENT_BEGIN				{ COMMENT_BEGIN $1 }
 	|	EMPTY					{ EMPTY }
-	|	EOF					{ EMPTY }
-	|	ILLEGAL					{ EMPTY }
-	|	PARTSEL					{ EMPTY }
-	|	RANGE					{ EMPTY }
-	|	IOPORT					{ EMPTY }
-	|	SUBCCT					{ EMPTY }
-	|	SUBMODULE				{ EMPTY }
-	|	IMPLICIT				{ EMPTY }
-	|	BIDIR					{ EMPTY }
-	|	DRIVER					{ EMPTY }
-	|	RECEIVER				{ EMPTY }
+	|	EOF					{ EOF }
+	|	ILLEGAL					{ ILLEGAL $1 }
+	|	PARTSEL					{ PARTSEL }
+	|	RANGE					{ RANGE $1 }
+	|	IOPORT					{ IOPORT }
+	|	SUBCCT					{ SUBCCT }
+	|	SUBMODULE				{ SUBMODULE }
+	|	IMPLICIT				{ IMPLICIT }
+	|	BIDIR					{ BIDIR }
+	|	DRIVER					{ DRIVER }
+	|	RECEIVER				{ RECEIVER }
 	|	DOUBLE					{ EMPTY }
 	|	TRIPLE					{ EMPTY }
 	|	QUADRUPLE				{ EMPTY }
 	|	QUINTUPLE				{ EMPTY }
 	|	SEXTUPLE				{ EMPTY }
 	|	SEPTUPLE				{ EMPTY }
-	|	PLING					{ EMPTY }
-	|	TLIST					{ EMPTY }
-	|	AMPERSAND				{ EMPTY }
-	|	LPAREN					{ EMPTY }
-	|	RPAREN					{ EMPTY }
-	|	TIMES					{ EMPTY }
-	|	DIVIDE					{ EMPTY }
-	|	MODULO					{ EMPTY }
-	|	PLUS					{ EMPTY }
-	|	MINUS					{ EMPTY }
-	|	COMMA					{ EMPTY }
-	|	COLON					{ EMPTY }
-	|	DOLLAR					{ EMPTY }
-	|	EQUALS					{ EMPTY }
-	|	GREATER					{ EMPTY }
-	|	LESS					{ EMPTY }
-	|	QUERY					{ EMPTY }
-	|	CARET					{ EMPTY }
-	|	LCURLY					{ EMPTY }
-	|	RCURLY					{ EMPTY }
-	|	LBRACK					{ EMPTY }
-	|	RBRACK					{ EMPTY }
-	|	VBAR					{ EMPTY }
-	|	TILDE					{ EMPTY }
-	|	AT					{ EMPTY }
-	|	IF					{ EMPTY }
-	|	NEGEDGE					{ EMPTY }
-	|	POSEDGE					{ EMPTY }
-	|	ASCNUM					{ EMPTY }
-	|	TIMINGSPEC				{ EMPTY }
-	|	P_ANDAND				{ EMPTY }
-	|	P_GTE					{ EMPTY }
-	|	P_LTE					{ EMPTY }
-	|	P_EQUAL					{ EMPTY }
-	|	P_NOTEQUAL				{ EMPTY }
-	|	P_CASEEQUAL				{ EMPTY }
-	|	P_CASENOTEQUAL				{ EMPTY }
-	|	P_WILDEQUAL				{ EMPTY }
-	|	P_WILDNOTEQUAL				{ EMPTY }
-	|	P_XNOR					{ EMPTY }
-	|	P_NOR					{ EMPTY }
-	|	P_NAND					{ EMPTY }
-	|	P_OROR					{ EMPTY }
-	|	P_SLEFT					{ EMPTY }
-	|	P_SRIGHT				{ EMPTY }
-	|	P_SSRIGHT				{ EMPTY }
-	|	P_PLUSCOLON				{ EMPTY }
-	|	P_MINUSCOLON				{ EMPTY }
-	|	P_POW					{ EMPTY }
-	|	P_ORMINUSGT				{ EMPTY }
-	|	P_OREQGT				{ EMPTY }
-	|	P_EQGT					{ EMPTY }
-	|	P_ASTGT					{ EMPTY }
-	|	P_ANDANDAND				{ EMPTY }
-	|	P_POUNDPOUND				{ EMPTY }
-	|	P_DOTSTAR				{ EMPTY }
-	|	P_ATAT					{ EMPTY }
-	|	P_COLONCOLON				{ EMPTY }
-	|	P_COLONEQ				{ EMPTY }
-	|	P_COLONDIV				{ EMPTY }
-	|	P_PLUSEQ				{ EMPTY }
-	|	P_MINUSEQ				{ EMPTY }
-	|	P_TIMESEQ				{ EMPTY }
-	|	P_DIVEQ					{ EMPTY }
-	|	P_MODEQ					{ EMPTY }
-	|	P_ANDEQ					{ EMPTY }
-	|	P_OREQ					{ EMPTY }
-	|	P_XOREQ					{ EMPTY }
-	|	P_SLEFTEQ				{ EMPTY }
-	|	P_SRIGHTEQ				{ EMPTY }
-	|	P_SSRIGHTEQ				{ EMPTY }
-	|	error 					{ EMPTY }
+	|	PLING					{ PLING }
+	|	TLIST					{ TLIST [] }
+	|	AMPERSAND				{ AMPERSAND }
+	|	LPAREN					{ LPAREN }
+	|	RPAREN					{ RPAREN }
+	|	TIMES					{ TIMES }
+	|	DIVIDE					{ DIVIDE }
+	|	MODULO					{ MODULO }
+	|	PLUS					{ PLUS }
+	|	MINUS					{ MINUS }
+	|	COMMA					{ COMMA }
+	|	COLON					{ COLON }
+	|	SEMICOLON				{ SEMICOLON }
+	|	DOLLAR					{ DOLLAR }
+	|	EQUALS					{ EQUALS }
+	|	GREATER					{ GREATER }
+	|	LESS					{ LESS }
+	|	QUERY					{ QUERY }
+	|	CARET					{ CARET }
+	|	LCURLY					{ LCURLY }
+	|	RCURLY					{ RCURLY }
+	|	LBRACK					{ LBRACK }
+	|	RBRACK					{ RBRACK }
+	|	VBAR					{ VBAR }
+	|	TILDE					{ TILDE }
+	|	AT					{ AT }
+	|	IF					{ IF }
+	|	NEGEDGE					{ NEGEDGE }
+	|	POSEDGE					{ POSEDGE }
+	|	ASCNUM					{ ASCNUM $1 }
+	|	TIMINGSPEC				{ TIMINGSPEC }
+	|	P_ANDAND				{ P_ANDAND }
+	|	P_GTE					{ P_GTE }
+	|	P_LTE					{ P_LTE }
+	|	P_EQUAL					{ P_EQUAL }
+	|	P_NOTEQUAL				{ P_NOTEQUAL }
+	|	P_CASEEQUAL				{ P_CASEEQUAL }
+	|	P_CASENOTEQUAL				{ P_CASENOTEQUAL }
+	|	P_WILDEQUAL				{ P_WILDEQUAL }
+	|	P_WILDNOTEQUAL				{ P_WILDNOTEQUAL }
+	|	P_XNOR					{ P_XNOR }
+	|	P_NOR					{ P_NOR }
+	|	P_NAND					{ P_NAND }
+	|	P_OROR					{ P_OROR }
+	|	P_SLEFT					{ P_SLEFT }
+	|	P_SRIGHT				{ P_SRIGHT }
+	|	P_SSRIGHT				{ P_SSRIGHT }
+	|	P_PLUSCOLON				{ P_PLUSCOLON }
+	|	P_MINUSCOLON				{ P_MINUSCOLON }
+	|	P_POW					{ P_POW }
+	|	P_ORMINUSGT				{ P_ORMINUSGT }
+	|	P_OREQGT				{ P_OREQGT }
+	|	P_EQGT					{ P_EQGT }
+	|	P_ASTGT					{ P_ASTGT }
+	|	P_ANDANDAND				{ P_ANDANDAND }
+	|	P_POUNDPOUND				{ P_POUNDPOUND }
+	|	P_DOTSTAR				{ P_DOTSTAR }
+	|	P_ATAT					{ P_ATAT }
+	|	P_COLONCOLON				{ P_COLONCOLON }
+	|	P_COLONEQ				{ P_COLONEQ }
+	|	P_COLONDIV				{ P_COLONDIV }
+	|	P_PLUSEQ				{ P_PLUSEQ }
+	|	P_MINUSEQ				{ P_MINUSEQ }
+	|	P_TIMESEQ				{ P_TIMESEQ }
+	|	P_DIVEQ					{ P_DIVEQ }
+	|	P_MODEQ					{ P_MODEQ }
+	|	P_ANDEQ					{ P_ANDEQ }
+	|	P_OREQ					{ P_OREQ }
+	|	P_XOREQ					{ P_XOREQ }
+	|	P_SLEFTEQ				{ P_SLEFTEQ }
+	|	P_SRIGHTEQ				{ P_SRIGHTEQ }
+	|	P_SSRIGHTEQ				{ P_SSRIGHTEQ }
+	|	error 					{ D_ERROR }
 	;
 
 //************************************************

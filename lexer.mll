@@ -24,7 +24,7 @@
 
 let digit = ['0'-'9']
 let ident = ['a'-'z' 'A'-'Z' '_']
-let ident_num = ['a'-'z' 'A'-'Z' '_' '0'-'9']
+let ident_num = ['a'-'z' 'A'-'Z' '_' '0'-'9' '$']
 let anything_but_blank = [ '^'  '~'  '<'  '='  '>'  '|'  '_'  '-'  ','  ';'  ':'  '!'  '?'  '/'  '.'  '`'  '\''  '\"'  '('  ')'  '['  ']'  '{'  '}'  '@'  '$'  '*'  '\\'  '&'  '#'  '%'  '+'  '0'-'9'  'a'-'z'  'A'-'Z' ]
 let anything_but_star = [ '\r' '\n'  ' '  '^'  '~'  '<'  '='  '>'  '|'  '_'  '-'  ','  ';'  ':'  '!'  '?'  '.'  '`'  '\''  '\"'  '('  ')'  '['  ']'  '{'  '}'  '@'  '$'  '/'  '\\'  '&'  '#'  '%'  '+'  '0'-'9'  'a'-'z'  'A'-'Z' ]
 let anything_but_newline = [ '\r' '\t' ' '  '^'  '~'  '<'  '='  '>'  '|'  '_'  '-'  ','  ';'  ':'  '!'  '?'  '/'  '.'  '`'  '\''  '\"'  '('  ')'  '['  ']'  '{'  '}'  '@'  '$'  '*'  '\\'  '&'  '#'  '%'  '+'  '0'-'9'  'a'-'z'  'A'-'Z' ]
@@ -67,7 +67,9 @@ rule token = parse
 |  "edge"		{TIMINGSPEC}
 |  "else"		{ELSE}
 |  "endcase"		{ENDCASE}
+(*
 |  "endclocking"	{ENDCLOCKING}
+*)
 |  "endfunction"	{ENDFUNCTION}
 |  "endgenerate"	{ENDGENERATE}
 |  "endmodule"		{ENDMODULE}
@@ -89,7 +91,9 @@ rule token = parse
 |  "$fopen"		{D_FOPEN}
 |  "for"		{FOR}
 |  "$fscanf"		{D_FSCANF}
+(*
 |  "$fullskew"		{TIMINGSPEC}
+*)
 |  "function"		{FUNCTION}
 |  "$fwrite"		{D_FWRITE}
 |  "generate"		{GENERATE}
@@ -125,9 +129,11 @@ rule token = parse
 |  "posedge"		{POSEDGE}
 |  "property"		{PROPERTY}
 |  "primitive"		{PRIMITIVE}
+(*
 |  "pulsestyle_ondetect"	{TIMINGSPEC}
 |  "pulsestyle_onevent"	{TIMINGSPEC}
 |  "$random"		{D_RANDOM}
+*)
 |  "$readmemb"		{D_READMEMB}
 |  "$readmemh"		{D_READMEMH}
 |  "$realtime"		{D_TIME}
@@ -135,7 +141,9 @@ rule token = parse
 |  "$recrem"		{TIMINGSPEC}
 |  "reg"		{REG}
 |  "$removal"		{TIMINGSPEC}
+(*
 |  "scalared"		{SCALARED}
+*)
 |  "$setuphold"		{TIMINGSPEC}
 |  "$setup"		{TIMINGSPEC}
 (*|  "showcancelled"	{TIMINGSPEC}*)
@@ -145,8 +153,10 @@ rule token = parse
 |  "specify"		{SPECIFY}
 |  "specparam"		{TIMINGSPEC}
 |  "$sscanf"		{D_SSCANF}
+(*
 |  "static"		{STATIC}
 |  "$stime"		{D_STIME}
+*)
 |  "$stop"		{D_STOP}
 |  "supply0"		{SUPPLY0}
 |  "supply1"		{SUPPLY1}
@@ -250,7 +260,7 @@ rule token = parse
 | "`portcoerce"anything_but_newline+ as portcoerce {PORTCOERCE portcoerce }
 *)
 | '`' anything_but_newline+ as preproc {PREPROC preproc }
-| ident_num+ as word {ID word }
+| ident ident_num* as word {ID word }
   | [' ' '\t' '\r' '\n' ]	{token lexbuf }
   | _		{ILLEGAL ( lexeme_char lexbuf 0 ) }
   | eof		{ENDOFFILE}

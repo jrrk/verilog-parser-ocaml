@@ -23,13 +23,13 @@ YACC = menhir
 #YACCOPTS = --trace
 
 CMO = ord.cmo setup.cmo lexer.cmo globals.cmo grammar.cmo dump.cmo semantics.cmo parse.cmo main.cmo
-CML = str.cma extLib.cma
+CML = str.cma # extLib.cma
 
 vtop: $(TARGET)
 	ocamlmktop -g -o vtop $(CML) $(CMO)
 
 $(TARGET): $(CMO)
-	ocamlc -g -o $@ $(CML) $(CMO)
+	ocamlc.opt -g -o $@ $(CML) $(CMO)
 
 depend: grammar.ml lexer.ml
 	ocamldep *.ml *.mli > .depend
@@ -41,13 +41,13 @@ clean:
 .SUFFIXES: .ml .mli .mll .mly .cmo .cmi
 
 .ml.cmo:
-	ocamlc -g -c $<
+	ocamlc.opt -g -c $<
 
 .mli.cmi:
-	ocamlc -g -c $<
+	ocamlc.opt -g -c $<
 
 .mll.ml:
-	ocamllex $(LEXOPTS) $<
+	ocamllex.opt $(LEXOPTS) $<
 
 grammar.mli grammar.ml: grammar.mly
 	$(YACC) $(YACCOPTS) --external-tokens Vparser --base grammar $<
@@ -59,7 +59,7 @@ ord.ml: ord.sh vparser.cmi
 	sh ord.sh
 
 vparser.cmi: vparser.mli
-	ocamlc -g -c vparser.mli
+	ocamlc.opt -g -c vparser.mli
 
 test: vtop
 	ocamldebug ./vparser

@@ -48,26 +48,9 @@ let iter_ semantics gsyms (stem:string) syms list =
   List.iter (fun x -> semantics gsyms stem ({Globals.tree=x; symbols=syms})) list
 ;;
 
-exception MyException of string * int (* exceptions can carry a value *);;
+let unhand_list = ref [EMPTY];;
 
-let unhandled_exception s =
-  try
-    raise (MyException (s, 2));
-  with
-  | MyException (s, i) -> 
-      Printf.printf "MyException: %s, %d\n" s i
-  | e ->  (* catch all exceptions *)
-     Printf.eprintf "Unexpected exception : %s" (Printexc.to_string e);
-     (*If using Ocaml >= 3.11, it is possible to also print a backtrace: *)
-     Printexc.print_backtrace stderr;
-       (* Needs to beforehand enable backtrace recording with
-           Printexc.record_backtrace true
-         or by setting the environment variable OCAMLRUNPARAM="b1"*)
-;;
-
-let unhand_array=DynArray.init 1 (fun x -> EMPTY);;
-
-let unhandled arg = (fun xx t -> DynArray.add xx t ) unhand_array arg;Printexc.print_backtrace stderr(*;raise (MyException (Ord.getstr(arg), 1))*);;
+let unhandled arg = unhand_list := arg :: !unhand_list
 
 let not_found syms w = printf "wire/port %s not found\n" w; enter_a_sym syms w IMPLICIT;;
 
@@ -170,6 +153,8 @@ ignore(find_ident gsyms RECEIVER stem syms x);
 iter (fun t -> match t with ID w -> ( ignore(find_ident gsyms DRIVER stem syms t)
 	  ) | _ -> unhandled t) inlist;;
 
+let f2 inner t = show_token(inner);show_token(t);print_char '\n';;
+
 let rec semantics gsyms (stem:string) (tree:Globals.modtree) =
    let exp = tree.Globals.tree and syms = tree.Globals.symbols in match exp with
 (* These patterns are temporary till we decide on the proper general form *)
@@ -186,6 +171,7 @@ DOUBLE
         TRIPLE
           (PLUS, ID var3, INTNUM inc)))))
 -> iter (fun v -> try ignore(Hashtbl.find syms v); with Not_found -> not_found syms v) [clk;rst;var1;var2;var3];
+| DOUBLE(SPECIFY, TLIST speclist) -> iter (fun item -> match item with ID id -> enter_a_sym gsyms (stem^id) SPECIFY | _ -> ()) speclist
 | TRIPLE(ASSIGN, EMPTY, TLIST assignlist)
 -> iter (fun a -> match a with TRIPLE (EQUALS, var1, expr) -> statement gsyms stem syms ASSIGN var1 (expression gsyms stem syms expr) | _ -> unhandled a) assignlist
 | TRIPLE(EQUALS, TLIST arg1, TLIST arg2) -> iter_ semantics gsyms stem syms arg1; iter_ semantics gsyms stem syms arg2
@@ -228,22 +214,28 @@ DOUBLE
       | DOUBLE (x, TLIST inlist) -> vbufif gsyms stem syms x inlist
       | _ -> unhandled inst) instances
 (* Parse primitive instance *)
-| TRIPLE(ID prim,ID q, TLIST inlist) ->
-    (try
-      semantics gsyms (stem^prim^".") (Hashtbl.find Globals.modprims prim); (* scan the inner primitive *)
-    with Not_found -> printf "primitive %s not found\n" prim );
+| TRIPLE(PRIMINST, ID prim, TLIST inlist) ->
+    if (Hashtbl.mem Globals.modprims prim) then
+      semantics gsyms (stem^prim^".") (Hashtbl.find Globals.modprims prim) (* scan the inner primitive *)
+    else printf "Primitive %s not found\n" prim;
     enter_a_sym syms prim PRIMITIVE;
-iter (fun t -> match t with ID w -> ignore ( find_ident gsyms DRIVER stem syms t ) | _ -> unhandled t) inlist
+    let fc inner t = connect gsyms stem syms prim prim (match inner with ID id -> id|_ ->"") t in 
+    ( match (Hashtbl.find Globals.modprims prim).Globals.tree with QUINTUPLE(PRIMITIVE,ID arg1, EMPTY, TLIST primargs, TLIST arg4) ->
+iter2 fc primargs inlist | _ -> ())
 (* Parse module instance *)
 | TRIPLE(ID kind,EMPTY, TLIST instances) ->
-      if (Hashtbl.mem Globals.modprims kind == false) then printf "sub-module %s not found\n" kind;
+      if (Hashtbl.mem Globals.modprims kind == false) then printf "sub-module %s not found\n" kind else
 (*    printf "Scanning sub-module %s\n" kind;  *)
+    begin
     enter_a_sym syms kind SUBMODULE;
-    iter (fun inst -> match inst with
-      | TRIPLE (ID subcct, EMPTY, TLIST termlist) -> semantics gsyms (stem^subcct^".") (Hashtbl.find Globals.modprims kind); enter_a_sym syms subcct SUBCCT; iter (fun term -> match term with
+    let kindhash = Hashtbl.find Globals.modprims kind in iter (fun inst -> match inst with
+      | TRIPLE (ID subcct, EMPTY, TLIST termlist) -> semantics gsyms (stem^subcct^".") kindhash; enter_a_sym syms subcct SUBCCT;     ( match kindhash.Globals.tree with QUINTUPLE(MODULE,ID arg1, EMPTY, TLIST primargs, TLIST arg4) ->
+(try iter2 (fun inner term -> match term with
           | TRIPLE (DOT, ID inner, tok) -> connect gsyms stem syms kind subcct inner tok
-	  | _ -> unhandled term) termlist
+	  | _ -> unhandled term) primargs termlist; with Invalid_argument "List.iter2" -> printf "sub-module %s insufficient args\n" kind)
+        | _ -> unhandled kindhash.Globals.tree)
       | _ -> unhandled inst) instances
+    end
 | QUADRUPLE(EQUALS, TLIST arg1, TLIST arg2, TLIST arg3) -> iter_ semantics gsyms stem syms arg1; iter_ semantics gsyms stem syms arg2; iter_ semantics gsyms stem syms arg3
 | QUADRUPLE(IF, TLIST arg1, TLIST arg2, TLIST arg3) -> iter_ semantics gsyms stem syms arg1; iter_ semantics gsyms stem syms arg2; iter_ semantics gsyms stem syms arg3
 (* Parse wire/reg declarations *)
@@ -269,7 +261,7 @@ iter (fun t -> match t with ID w -> ignore ( find_ident gsyms DRIVER stem syms t
     iter_ semantics gsyms stem syms arg4
 (* Parse primitive declarations *)
 | QUINTUPLE(PRIMITIVE,ID arg1, EMPTY, TLIST arg3, TLIST arg4) ->
-    enter_a_sym syms arg1 PRIMITIVE;
+    enter_a_sym syms arg1 (PRIMARGS arg3);
     iter (fun arg -> match arg with ID id -> enter_a_sym syms id IOPORT | _ -> semantics gsyms stem {Globals.tree=arg; symbols=syms}) arg3;
     iter_ semantics gsyms stem syms arg4
 (* Parse IO declarations *)
@@ -291,7 +283,7 @@ iter (fun t -> match t with ID w -> ignore ( find_ident gsyms DRIVER stem syms t
 | QUINTUPLE(MODULE,ID arg1, EMPTY, EMPTY, EMPTY) -> enter_a_sym syms arg1 MODULE
 | RANGE(arg1, arg2) -> semantics gsyms stem {Globals.tree=arg1; symbols=syms}; semantics gsyms stem {Globals.tree=arg2; symbols=syms}
 | ID id -> enter_a_sym syms id EMPTY
-| SPECIFY -> ()
+| DOUBLE(SPECIFY,EMPTY) -> ()
 | PREPROC txt -> ()
 | TABLE -> ()
 | EMPTY -> ()
@@ -308,10 +300,14 @@ let dotted s = try String.index s '.' > 0 ; with Not_found -> false;;
 let erc_chk nam sym =
   begin
 	begin
-	  if (TokSet.mem WIRE sym) && not (TokSet.mem RECEIVER sym) then Printf.printf "%s is a dangling wire\n" nam
-	  else if (dotted nam) && (TokSet.mem INPUT sym) && not (TokSet.mem RECEIVER sym) then  Printf.printf "%s is a dangling input\n" nam
-	  else if (dotted nam) && (TokSet.mem OUTPUT sym) && not (TokSet.mem DRIVER sym)  then Printf.printf "%s is a dangling output\n" nam
-	  else if (dotted nam) && (TokSet.mem INOUT sym) then Printf.printf "%s is a inout\n" nam
+	  if (TokSet.mem WIRE sym) && not ((TokSet.mem RECEIVER sym) || (TokSet.mem SPECIFY sym)) then
+	    Printf.printf "%s is a dangling wire\n" nam
+	  else if (dotted nam) && (TokSet.mem INPUT sym) && not (TokSet.mem RECEIVER sym) then
+	    Printf.printf "%s is a dangling input\n" nam
+	  else if (dotted nam) && (TokSet.mem OUTPUT sym) && not (TokSet.mem DRIVER sym) then
+	    Printf.printf "%s is a dangling output\n" nam
+	  else if (dotted nam) && (TokSet.mem INOUT sym) then
+	    Printf.printf "%s is a inout\n" nam
 	end
   end
 ;;
