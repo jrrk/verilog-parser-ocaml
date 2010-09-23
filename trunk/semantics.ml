@@ -48,21 +48,39 @@ let iter_ semantics gsyms (stem:string) syms list =
   List.iter (fun x -> semantics gsyms stem ({Globals.tree=x; symbols=syms})) list
 ;;
 
-let unhand_str = "**unhandled**";;
+exception MyException of string * int (* exceptions can carry a value *);;
 
-let unhandled arg = Dump.dump(arg, 0);;
+let unhandled_exception s =
+  try
+    raise (MyException (s, 2));
+  with
+  | MyException (s, i) -> 
+      Printf.printf "MyException: %s, %d\n" s i
+  | e ->  (* catch all exceptions *)
+     Printf.eprintf "Unexpected exception : %s" (Printexc.to_string e);
+     (*If using Ocaml >= 3.11, it is possible to also print a backtrace: *)
+     Printexc.print_backtrace stderr;
+       (* Needs to beforehand enable backtrace recording with
+           Printexc.record_backtrace true
+         or by setting the environment variable OCAMLRUNPARAM="b1"*)
+;;
+
+let unhand_array=DynArray.init 1 (fun x -> EMPTY);;
+
+let unhandled arg = (fun xx t -> DynArray.add xx t ) unhand_array arg;Printexc.print_backtrace stderr(*;raise (MyException (Ord.getstr(arg), 1))*);;
 
 let not_found syms w = printf "wire/port %s not found\n" w; enter_a_sym syms w IMPLICIT;;
 
 let find_ident gsyms dir stem syms tok = match tok with ID id -> begin
 if Hashtbl.mem syms id == false then begin
   printf "Creating implicit wire %s\n" id;
-  Hashtbl.add syms id (TokSet.add IMPLICIT (TokSet.singleton (ID id)))
+  Hashtbl.add syms id (TokSet.singleton IMPLICIT)
   end;
 enter_a_sym gsyms (stem^id) dir;
 Hashtbl.find syms id
 end
-| _ -> unhandled tok; Hashtbl.find gsyms unhand_str
+| BINNUM lev -> TokSet.singleton tok
+| _ -> unhandled tok; TokSet.singleton tok
 ;;
 
 let enter_sym_attrs gsyms dir stem symbols (tok:token) list = match tok with
@@ -73,7 +91,8 @@ let enter_sym_attrs gsyms dir stem symbols (tok:token) list = match tok with
 
 let subexp gsyms stem syms exp = match exp with
 | ID id -> find_ident gsyms DRIVER stem syms exp
-| _ -> unhandled exp; Hashtbl.find gsyms unhand_str;;
+| TRIPLE (BITSEL, ID id, INTNUM n) -> find_ident gsyms DRIVER stem syms (ID id)
+| _ -> unhandled exp; TokSet.singleton exp;;
 
 let subexp2 gsyms stem syms exp = {entry=exp; symbol=(subexp gsyms stem syms exp)};;
 
@@ -99,17 +118,14 @@ if (Hashtbl.mem innersym inner) then let hier = (stem^wireport) and hier2 = (ste
 else printf "Instance port %s not found\n" inner;
 end
 
-let connect gsyms stem syms kind subcct inner tok = match tok with
+let rec connect gsyms stem syms kind subcct inner tok = match tok with
 | ID wireport -> if (Hashtbl.mem syms wireport) then inner_chk gsyms stem syms kind subcct inner wireport else not_found syms wireport
 | TRIPLE(BITSEL, ID wireport, INTNUM sel) -> if (Hashtbl.mem syms wireport) then inner_chk gsyms stem syms kind subcct inner wireport else not_found syms wireport
+| QUADRUPLE(PARTSEL, ID wireport, INTNUM hi, INTNUM lo) -> if (Hashtbl.mem syms wireport) then inner_chk gsyms stem syms kind subcct inner wireport else not_found syms wireport
 | INTNUM lev -> ()
 | BINNUM lev -> ()
+| TLIST concat -> iter (fun item -> connect gsyms stem syms kind subcct inner item) concat
 | _ -> unhandled tok
-
-let vconst gsyms stem syms (x:token) a = match x with
-| ID id -> ignore(Hashtbl.find syms id)
-| _ -> Dump.dump(x,0)
-;;
 
 let vbuf gsyms stem syms (x:token) a =
 ignore(find_ident gsyms RECEIVER stem syms x);
@@ -211,16 +227,17 @@ DOUBLE
     iter (fun inst -> match inst with
       | DOUBLE (x, TLIST inlist) -> vbufif gsyms stem syms x inlist
       | _ -> unhandled inst) instances
+(* Parse primitive instance *)
 | TRIPLE(ID prim,ID q, TLIST inlist) ->
     (try
       semantics gsyms (stem^prim^".") (Hashtbl.find Globals.modprims prim); (* scan the inner primitive *)
     with Not_found -> printf "primitive %s not found\n" prim );
-(*    printf "Scanned Primitive %s\n" prim;  *)
     enter_a_sym syms prim PRIMITIVE;
 iter (fun t -> match t with ID w -> ignore ( find_ident gsyms DRIVER stem syms t ) | _ -> unhandled t) inlist
+(* Parse module instance *)
 | TRIPLE(ID kind,EMPTY, TLIST instances) ->
       if (Hashtbl.mem Globals.modprims kind == false) then printf "sub-module %s not found\n" kind;
-(*    printf "Scanned sub-module %s\n" kind;  *)
+(*    printf "Scanning sub-module %s\n" kind;  *)
     enter_a_sym syms kind SUBMODULE;
     iter (fun inst -> match inst with
       | TRIPLE (ID subcct, EMPTY, TLIST termlist) -> semantics gsyms (stem^subcct^".") (Hashtbl.find Globals.modprims kind); enter_a_sym syms subcct SUBCCT; iter (fun term -> match term with
@@ -229,6 +246,7 @@ iter (fun t -> match t with ID w -> ignore ( find_ident gsyms DRIVER stem syms t
       | _ -> unhandled inst) instances
 | QUADRUPLE(EQUALS, TLIST arg1, TLIST arg2, TLIST arg3) -> iter_ semantics gsyms stem syms arg1; iter_ semantics gsyms stem syms arg2; iter_ semantics gsyms stem syms arg3
 | QUADRUPLE(IF, TLIST arg1, TLIST arg2, TLIST arg3) -> iter_ semantics gsyms stem syms arg1; iter_ semantics gsyms stem syms arg2; iter_ semantics gsyms stem syms arg3
+(* Parse wire/reg declarations *)
 | QUADRUPLE((WIRE|REG) as kind, arg1, arg2, TLIST arg3) ->
     let width = ref [kind] in begin
     semantics gsyms stem {Globals.tree=arg1; symbols=syms};
@@ -243,15 +261,18 @@ iter (fun t -> match t with ID w -> ignore ( find_ident gsyms DRIVER stem syms t
       | TRIPLE(id, arg5, arg6) -> enter_sym_attrs gsyms kind stem syms id !width
       | DOUBLE(id, EMPTY) -> enter_sym_attrs gsyms kind stem syms id !width
       | _ -> unhandled x) arg3); end
+(* Parse module declarations *)
 | QUINTUPLE(MODULE,ID arg1, arg2, TLIST arg3, TLIST arg4) ->
-    enter_a_sym syms arg1 MODULE;
+    enter_a_sym syms arg1 MODULE; (* print_endline (stem^arg1); *)
     semantics gsyms stem {Globals.tree=arg2; symbols=syms};
     iter (fun arg -> match arg with ID id -> enter_a_sym syms id IOPORT | _ -> semantics gsyms stem {Globals.tree=arg; symbols=syms}) arg3;
     iter_ semantics gsyms stem syms arg4
+(* Parse primitive declarations *)
 | QUINTUPLE(PRIMITIVE,ID arg1, EMPTY, TLIST arg3, TLIST arg4) ->
     enter_a_sym syms arg1 PRIMITIVE;
     iter (fun arg -> match arg with ID id -> enter_a_sym syms id IOPORT | _ -> semantics gsyms stem {Globals.tree=arg; symbols=syms}) arg3;
     iter_ semantics gsyms stem syms arg4
+(* Parse IO declarations *)
 | QUINTUPLE((INPUT|OUTPUT|INOUT) as dir, arg1, arg2, arg3, arg4) ->
     let width = ref [IOPORT;dir] in begin
     semantics gsyms stem {Globals.tree=arg1; symbols=syms};
