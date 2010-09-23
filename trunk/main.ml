@@ -23,7 +23,7 @@
 
 (* Hashtbl.find Globals.modprims "test";; -- Find module "test" (displays result) *)
 
-(* Dump.dump ((Hashtbl.find Globals.modprims "test").tree, 0);; -- dump module as text*)
+let dump_text m = Dump.dump ((Hashtbl.find Globals.modprims m).Globals.tree, 0);; (* dump module as text*)
 
 (* Hashtbl.iter (fun k x -> Printf.printf "%s\n" k) Globals.modprims;; *)
 
@@ -51,6 +51,23 @@ let vparser gsyms args = begin for i = 1 to ( Array.length args - 2 ) do
       end
     else Printf.printf "Toplevel %s is not found\n" args.( Array.length args - 1 );
     end
+  else
+    Printf.printf "Usage %s verilog_files TOPLEVEL\n" args.(0);
   end
 
-let _ = Printexc.record_backtrace true; vparser (Hashtbl.create 256) Sys.argv;;
+exception MyException of string * int (* exceptions can carry a value *);;
+
+let _ =
+  try
+    Printexc.record_backtrace true; vparser (Hashtbl.create 256) Sys.argv;
+  with
+  | MyException (s, i) -> 
+      Printf.printf "MyException: %s, %d\n" s i
+  | e ->  (* catch all exceptions *)
+     Printf.eprintf "Unexpected exception : %s" (Printexc.to_string e);
+     (*If using Ocaml >= 3.11, it is possible to also print a backtrace: *)
+     Printexc.print_backtrace stderr;
+       (* Needs to beforehand enable backtrace recording with
+           Printexc.record_backtrace true
+         or by setting the environment variable OCAMLRUNPARAM="b1"*)
+;;

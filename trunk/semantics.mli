@@ -20,5 +20,4 @@ val stmts : exprt list ref
    val unhandled : Vparser.token -> unit
    val find_ident : (string, Setup.TokSet.t) Hashtbl.t -> Vparser.token -> string -> (string, Setup.TokSet.t) Hashtbl.t -> Vparser.token -> Setup.TokSet.t
 val check_glob : (string, Setup.TokSet.t) Hashtbl.t -> unit
-val unhand_array : Vparser.token DynArray.t
-val unhandled_exception : string -> unit
+val unhand_list : Vparser.token list ref
