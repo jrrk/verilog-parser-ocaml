@@ -72,7 +72,7 @@
 %token<string>		ID		// "IDENTIFIER"
 
 // IEEE: integral_number
-%token<nativeint>	INTNUM	// "INTEGER NUMBER"
+%token<int>	INTNUM	// "INTEGER NUMBER"
 %token<string>		BINNUM	// "BINARY NUMBER"
 %token<string>		DECNUM	// "DECIMAL NUMBER"
 %token<string>		HEXNUM	// "HEXADECIMAL NUMBER"

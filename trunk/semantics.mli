@@ -1,7 +1,7 @@
 
 type exprtree = {
   entry : Vparser.token;
-  symbol : Set.Make(Setup.OrdTok).t;
+  symbol : Setup.symtab;
 }
 
 type exprt =
@@ -11,13 +11,26 @@ type exprt =
 
 val stmts : exprt list ref
 
-   val semantics : (string, Setup.TokSet.t) Hashtbl.t -> string -> Globals.modtree -> unit
-   val enter_a_sym : (string, Set.Make(Setup.OrdTok).t) Hashtbl.t -> string -> Vparser.token -> unit
+   val semantics : out_channel -> (string, Setup.symtab) Hashtbl.t -> string -> Globals.modtree -> unit
+   val enter_a_sym : (string, Setup.symtab) Hashtbl.t -> string -> Vparser.token -> Vparser.token -> unit
 (*   val iter_ :
   (string -> Globals.modtree -> unit) -> string ->
-  (string, Set.Make(Setup.OrdTok).t) Hashtbl.t -> Vparser.token list -> unit *)
+  (string, Setup.symtab) Hashtbl.t -> Vparser.token list -> unit *)
 (*   val moditer : string -> Globals.modtree -> unit  *)
    val unhandled : Vparser.token -> unit
-   val find_ident : (string, Setup.TokSet.t) Hashtbl.t -> Vparser.token -> string -> (string, Setup.TokSet.t) Hashtbl.t -> Vparser.token -> Setup.TokSet.t
-val check_glob : (string, Setup.TokSet.t) Hashtbl.t -> unit
+   val find_ident : (string, Setup.symtab) Hashtbl.t -> Vparser.token -> string -> (string, Setup.symtab) Hashtbl.t -> Vparser.token -> Setup.symtab
+val check_glob : out_channel -> (string, Setup.symtab) Hashtbl.t -> unit
 val unhand_list : Vparser.token list ref
+val unhandled : Vparser.token -> unit 
+val not_found : (string, Setup.symtab) Hashtbl.t -> string -> unit
+val widthnum : int -> string -> int*int
+val connect :
+  (string, Setup.symtab) Hashtbl.t ->
+  string ->
+  (string, Setup.symtab) Hashtbl.t ->
+  string -> string -> Vparser.token -> Vparser.token -> unit
+val fiter :
+  (string, Setup.symtab) Hashtbl.t ->
+  string ->
+  (string, Setup.symtab) Hashtbl.t ->
+  string -> string -> Vparser.token -> Vparser.token -> unit

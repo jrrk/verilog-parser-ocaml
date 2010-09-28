@@ -55,7 +55,7 @@ let rec dump (exp, indent) =
 | ILLEGAL c -> printf "ILLEGAL character %c " c
 | INOUT -> printf "inout "
 | INPUT -> printf "input "
-| INTNUM c -> printf "%d " (Nativeint.to_int c)
+| INTNUM c -> printf "%d " c
 | NEGEDGE -> printf "negedge "
 | OUTPUT -> printf "output "
 | PARTSEL -> printf "PartSelect "

@@ -33,11 +33,11 @@ let dump_text m = Dump.dump ((Hashtbl.find Globals.modprims m).Globals.tree, 0);
 
 let my_syms m = Hashtbl.iter Setup.show_sym (Hashtbl.find Globals.modprims m).Globals.symbols;;
 
-let dump_sym m s = Setup.TokSet.iter Setup.show_token ( Hashtbl.find (Hashtbl.find Globals.modprims m).Globals.symbols s);;
+let dump_sym m s = Setup.TokSet.iter Setup.show_token ( Hashtbl.find (Hashtbl.find Globals.modprims m).Globals.symbols s).Setup.symattr;;
 
 let dump_gsyms gsyms = Hashtbl.iter Setup.show_sym gsyms;;
 
-let dump_gsym gsyms s = Setup.TokSet.iter Setup.show_token ( Hashtbl.find gsyms s);;
+let dump_gsym gsyms s = Setup.TokSet.iter Setup.show_token ( Hashtbl.find gsyms s).Setup.symattr;;
 
 let vparser gsyms args = begin for i = 1 to ( Array.length args - 2 ) do
     Printexc.print Parse.parse args.( i )
@@ -45,10 +45,13 @@ let vparser gsyms args = begin for i = 1 to ( Array.length args - 2 ) do
   if ( Array.length args > 2 ) then
     begin
     if (Hashtbl.mem Globals.modprims (args.( Array.length args - 1 ))) then
-      begin
-      Semantics.semantics gsyms "" (Hashtbl.find Globals.modprims (args.( Array.length args - 1 )));
-      Semantics.check_glob gsyms
-      end
+      let out_chan = open_out (args.( Array.length args - 1 )) in
+	begin
+
+	Semantics.semantics out_chan gsyms "" (Hashtbl.find Globals.modprims (args.( Array.length args - 1 )));
+	Semantics.check_glob out_chan gsyms;
+	close_out out_chan
+	end
     else Printf.printf "Toplevel %s is not found\n" args.( Array.length args - 1 );
     end
   else
@@ -57,8 +60,8 @@ let vparser gsyms args = begin for i = 1 to ( Array.length args - 2 ) do
 
 exception MyException of string * int (* exceptions can carry a value *);;
 
-let _ =
-  try
+let _ = vparser (Hashtbl.create 256) Sys.argv
+(*  try
     Printexc.record_backtrace true; vparser (Hashtbl.create 256) Sys.argv;
   with
   | MyException (s, i) -> 
@@ -67,6 +70,7 @@ let _ =
      Printf.eprintf "Unexpected exception : %s" (Printexc.to_string e);
      (*If using Ocaml >= 3.11, it is possible to also print a backtrace: *)
      Printexc.print_backtrace stderr;
+*)
        (* Needs to beforehand enable backtrace recording with
            Printexc.record_backtrace true
          or by setting the environment variable OCAMLRUNPARAM="b1"*)
