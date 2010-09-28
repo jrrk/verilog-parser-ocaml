@@ -19,10 +19,10 @@
 
 open Vparser;;
 
-type modtree = { tree: token; symbols: (string, Set.Make(Setup.OrdTok).t) Hashtbl.t };;
+type symtab = { symattr : Set.Make(Setup.OrdTok).t; width : int; };;
+
+type modtree = { tree: token; symbols: (string, Setup.symtab) Hashtbl.t };;
 let modprims = Hashtbl.create 256;;
 
 let get_table (m:string) = Hashtbl.find modprims m;;
 let get_syms (r:modtree) = r.symbols;;
-let show_syms f x = Hashtbl.iter f x;;
-let show_table (m:string) = show_syms Setup.show_sym (get_syms(get_table m));;

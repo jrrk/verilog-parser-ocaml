@@ -252,7 +252,7 @@ rule token = parse
 | digit*'\'''b'['0' '1' 'x' 'X' 'z' 'Z' '?' '_']+ as bnum {BINNUM bnum }
 | digit*'\'''d'digit+ as dnum {DECNUM dnum }
 | digit*'\'''h'['0'-'9' 'A'-'F' 'a'-'f' 'x' 'X' 'z' 'Z' '?' '_']+ as hnum {HEXNUM hnum }
-| digit+ as inum {INTNUM ( Nativeint.of_string inum ) }
+| digit+ as inum {INTNUM ( int_of_string inum ) }
 | '\"'anything_but_quote+'\"' as asciinum {ASCNUM asciinum }
 (*
 | "`timescale"anything_but_newline+ as timescale {TIMESCALE timescale }

@@ -10,6 +10,11 @@ module OrdTok :
     val compare : Vparser.token -> Vparser.token -> int
   end
 
+type symtab = {
+  symattr : Set.Make(OrdTok).t;
+  width : Vparser.token;
+}
+
 module TokSet :
   sig
     type elt = OrdTok.t
@@ -41,6 +46,7 @@ module TokSet :
   end
 
 val show_set : TokSet.t -> unit
+val str_token : Vparser.token -> string
 val show_token : Vparser.token -> unit
-val show_sym : string -> TokSet.t -> unit
+val show_sym : string -> symtab -> unit
 
