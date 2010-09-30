@@ -10,15 +10,21 @@ module OrdTok :
     val compare : Vparser.token -> Vparser.token -> int
   end
 
-type symtab = {
-  symattr : Set.Make(OrdTok).t;
+type tset = Set.Make(OrdTok).t
+
+type refer = Nil | Referrer of symtab
+
+and symtab = {
+  symattr : tset;
   width : Vparser.token;
+  referrer : refer;
+  path : string;
 }
 
 module TokSet :
   sig
     type elt = OrdTok.t
-    type t = Set.Make(OrdTok).t
+    type t = tset
     val empty : t
     val is_empty : t -> bool
     val mem : elt -> t -> bool

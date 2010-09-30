@@ -34,20 +34,29 @@ module OrdTok : Ordered with type t = token =
     let compare a b = compare_tok a b;
   end
 
-type symtab = {
-  symattr : Set.Make(OrdTok).t;
+type tset = Set.Make(OrdTok).t
+
+type refer = Nil | Referrer of symtab
+
+and symtab = {
+  symattr : tset;
   width : token;
+  referrer : refer;
+  path : string;
 }
 
 module TokSet = Set.Make (OrdTok)
 
 let one_elm = TokSet.add EMPTY TokSet.empty;;
 
-
-let str_token (e:token) = match e with ID id -> id | RANGE (INTNUM hi,INTNUM lo) -> "[" ^ (string_of_int hi) ^ ":" ^ (string_of_int lo) ^ "] " | _ -> (Ord.getstr e);;
+let rec str_token (e:token) = match e with
+| ID id -> id
+| RANGE (INTNUM hi,INTNUM lo) -> "[" ^ (string_of_int hi) ^ ":" ^ (string_of_int lo) ^ "] "
+| TRIPLE (DOT, inner, tok) -> "."^(str_token inner)^"("^(str_token tok)^")"
+| _ -> (Ord.getstr e);;
 
 let show_token (e:token) = Printf.printf "%s " (str_token e)
 
 let show_set s = TokSet.iter (fun e -> Printf.printf "%s " (str_token e)) s;;
 
-let show_sym k (x:symtab) = Printf.printf "%s: " k; TokSet.iter show_token x.symattr; print_char '\n';;
+let show_sym _ (x:symtab) = Printf.printf "%s: " x.path; TokSet.iter show_token x.symattr; print_char '\n';;
