@@ -26,19 +26,17 @@ let digit = ['0'-'9']
 let ident = ['a'-'z' 'A'-'Z' '_']
 let ident_num = ['a'-'z' 'A'-'Z' '_' '0'-'9' '$']
 let anything_but_blank = [ '^'  '~'  '<'  '='  '>'  '|'  '_'  '-'  ','  ';'  ':'  '!'  '?'  '/'  '.'  '`'  '\''  '\"'  '('  ')'  '['  ']'  '{'  '}'  '@'  '$'  '*'  '\\'  '&'  '#'  '%'  '+'  '0'-'9'  'a'-'z'  'A'-'Z' ]
-let anything_but_star = [ '\r' '\n'  ' '  '^'  '~'  '<'  '='  '>'  '|'  '_'  '-'  ','  ';'  ':'  '!'  '?'  '.'  '`'  '\''  '\"'  '('  ')'  '['  ']'  '{'  '}'  '@'  '$'  '/'  '\\'  '&'  '#'  '%'  '+'  '0'-'9'  'a'-'z'  'A'-'Z' ]
 let anything_but_newline = [ '\r' '\t' ' '  '^'  '~'  '<'  '='  '>'  '|'  '_'  '-'  ','  ';'  ':'  '!'  '?'  '/'  '.'  '`'  '\''  '\"'  '('  ')'  '['  ']'  '{'  '}'  '@'  '$'  '*'  '\\'  '&'  '#'  '%'  '+'  '0'-'9'  'a'-'z'  'A'-'Z' ]
 let anything_but_quote = [ ' '  '^'  '~'  '<'  '='  '>'  '|'  '_'  '-'  ','  ';'  ':'  '!'  '?'  '/'  '.'  '`'  '\''  '('  ')'  '['  ']'  '{'  '}'  '@'  '$'  '*'  '\\'  '&'  '#'  '%'  '+'  '0'-'9'  'a'-'z'  'A'-'Z' ]
+
 rule token = parse
 |  '\\'anything_but_blank+' ' as word {ID word }
-|  '/''/'anything_but_newline*'\n' {token lexbuf}
-|  "(*"anything_but_star*"*)" {token lexbuf}
-|  "/*"anything_but_star*"*/" {token lexbuf}
-|  "/*"anything_but_star+ as comment {COMMENT_BEGIN comment }
-|  "(*"anything_but_star+ as comment {COMMENT_BEGIN comment }
-|  "*/" {COMMENT_END}
-|  "*)" {COMMENT_END}
-|  "always_comb"		{ALWAYS}
+| "/*"
+    { comment (Lexing.lexeme_start lexbuf) lexbuf; token lexbuf }
+| "(*"
+    { comment2 (Lexing.lexeme_start lexbuf) lexbuf; token lexbuf }
+|  "//"anything_but_newline* {token lexbuf}
+|  "always_comb"	{ALWAYS}
 |  "always_ff"		{ALWAYS}
 |  "always_latch"	{ALWAYS}
 |  "always"		{ALWAYS}
@@ -56,6 +54,7 @@ rule token = parse
 |  "casez"		{CASEZ}
 |  "clocking"		{CLOCKING}
 |  "$clog2"		{D_CLOG2}
+|  "$countdrivers"	{D_COUNTDRIVERS}
 |  "$countones"		{D_COUNTONES}
 |  "countones"		{D_COUNTONES}
 |  "cover"		{COVER}
@@ -67,9 +66,6 @@ rule token = parse
 |  "edge"		{TIMINGSPEC}
 |  "else"		{ELSE}
 |  "endcase"		{ENDCASE}
-(*
-|  "endclocking"	{ENDCLOCKING}
-*)
 |  "endfunction"	{ENDFUNCTION}
 |  "endgenerate"	{ENDGENERATE}
 |  "endmodule"		{ENDMODULE}
@@ -91,9 +87,6 @@ rule token = parse
 |  "$fopen"		{D_FOPEN}
 |  "for"		{FOR}
 |  "$fscanf"		{D_FSCANF}
-(*
-|  "$fullskew"		{TIMINGSPEC}
-*)
 |  "function"		{FUNCTION}
 |  "$fwrite"		{D_FWRITE}
 |  "generate"		{GENERATE}
@@ -110,13 +103,10 @@ rule token = parse
 |  "$isunknown"		{D_ISUNKNOWN}
 |  "isunknown"		{D_ISUNKNOWN}
 |  "localparam"		{LOCALPARAM}
-(*|  "macromodule"	{MODULE}*)
 |  "module"		{MODULE}
 |  "nand"		{NAND}
 |  "negedge"		{NEGEDGE}
-(*|  "$nochange"		{TIMINGSPEC}*)
 |  "nor"		{NOR}
-(*|  "noshowcancelled"	{TIMINGSPEC}*)
 |  "not"		{NOT}
 |  "$onehot0"		{D_ONEHOT0}
 |  "onehot0"		{D_ONEHOT0}
@@ -125,15 +115,11 @@ rule token = parse
 |  "or"			{OR}
 |  "output"		{OUTPUT}
 |  "parameter"		{PARAMETER}
+|  "pullup"		{PULLUP}
 |  "$period"		{TIMINGSPEC}
 |  "posedge"		{POSEDGE}
 |  "property"		{PROPERTY}
 |  "primitive"		{PRIMITIVE}
-(*
-|  "pulsestyle_ondetect"	{TIMINGSPEC}
-|  "pulsestyle_onevent"	{TIMINGSPEC}
-|  "$random"		{D_RANDOM}
-*)
 |  "$readmemb"		{D_READMEMB}
 |  "$readmemh"		{D_READMEMH}
 |  "$realtime"		{D_TIME}
@@ -141,27 +127,21 @@ rule token = parse
 |  "$recrem"		{TIMINGSPEC}
 |  "reg"		{REG}
 |  "$removal"		{TIMINGSPEC}
-(*
-|  "scalared"		{SCALARED}
-*)
 |  "$setuphold"		{TIMINGSPEC}
 |  "$setup"		{TIMINGSPEC}
-(*|  "showcancelled"	{TIMINGSPEC}*)
 |  "$signed"		{D_SIGNED}
 |  "signed"		{SIGNED}
 |  "$skew"		{TIMINGSPEC}
 |  "specify"		{SPECIFY}
 |  "specparam"		{TIMINGSPEC}
+|  "static"             {STATIC}
 |  "$sscanf"		{D_SSCANF}
-(*
-|  "static"		{STATIC}
-|  "$stime"		{D_STIME}
-*)
 |  "$stop"		{D_STOP}
 |  "supply0"		{SUPPLY0}
 |  "supply1"		{SUPPLY1}
 |  "table"		{TABLE}
 |  "task"		{TASK}
+|  "$test$plusargs"	{D_TEST_PLUSARGS}
 |  "$timeskew"		{TIMINGSPEC}
 |  "$time"		{D_TIME}
 |  "tri"digit+ as strength		{TRI strength}
@@ -170,6 +150,7 @@ rule token = parse
 |  "uwire"		{WIRE}
 |  "vectored"		{VECTORED}
 |  "$warning"		{D_WARNING}
+|  "(weak"digit+ as strength	{PWEAK strength }
 |  "weak"digit+ as strength	{WEAK strength }
 |  "while"		{WHILE}
 |  "$width"		{TIMINGSPEC}
@@ -254,13 +235,28 @@ rule token = parse
 | digit*'\'''h'['0'-'9' 'A'-'F' 'a'-'f' 'x' 'X' 'z' 'Z' '?' '_']+ as hnum {HEXNUM hnum }
 | digit+ as inum {INTNUM ( int_of_string inum ) }
 | '\"'anything_but_quote+'\"' as asciinum {ASCNUM asciinum }
-(*
-| "`timescale"anything_but_newline+ as timescale {TIMESCALE timescale }
-| "`inline"anything_but_newline+ as inline {INLINE inline }
-| "`portcoerce"anything_but_newline+ as portcoerce {PORTCOERCE portcoerce }
-*)
 | '`' anything_but_newline+ as preproc {PREPROC preproc }
 | ident ident_num* as word {ID word }
   | [' ' '\t' '\r' '\n' ]	{token lexbuf }
   | _		{ILLEGAL ( lexeme_char lexbuf 0 ) }
   | eof		{ENDOFFILE}
+
+and comment start = parse
+  "/*"
+    { comment (Lexing.lexeme_start lexbuf) lexbuf; comment start lexbuf }
+| "*/"
+    { () }
+| eof
+    { failwith (Printf.sprintf "Unterminated comment at offset %d." start) }
+| _
+    { comment start lexbuf }
+
+and comment2 start = parse
+  "(*"
+    { comment (Lexing.lexeme_start lexbuf) lexbuf; comment start lexbuf }
+| "*)"
+    { () }
+| eof
+    { failwith (Printf.sprintf "Unterminated comment at offset %d." start) }
+| _
+    { comment start lexbuf }

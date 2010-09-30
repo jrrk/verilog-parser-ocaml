@@ -27,4 +27,3 @@ let parse str =
     
   with End_of_file ->
     close_in_noerr ic
-(*    Hashtbl.iter Semantics.moditer Globals.modprims  *)

@@ -18,7 +18,8 @@
 ##*****************************************************************************
 
 TARGET = vparser
-YACC = menhir
+#YACC = menhir
+YACC = ocamlyacc -v
 #LEXOPTS = -ml
 #YACCOPTS = --trace
 
@@ -36,7 +37,7 @@ depend: grammar.ml lexer.ml
 
 clean:
 	rm -rf *.cmi *.cmo vtop $(TARGET)
-	rm -rf grammar.ml grammar.mli lexer.ml lexer.mli vparser.mli vparser.ml ord.ml
+	rm -rf grammar.ml grammar.mli lexer.ml lexer.mli grammar.mli grammar.ml ord.ml
 
 .SUFFIXES: .ml .mli .mll .mly .cmo .cmi
 
@@ -50,15 +51,15 @@ clean:
 	ocamllex.opt $(LEXOPTS) $<
 
 grammar.mli grammar.ml: grammar.mly
-	$(YACC) $(YACCOPTS) --external-tokens Vparser --base grammar $<
+	$(YACC) $(YACCOPTS) $<
+	mv -f grammar.mli{,.old}
+	sed 's=\(> \)\(token\)=\1Vparser.\2=' < grammar.mli.old > grammar.mli
 
-vparser.mli: grammar.mly
-	$(YACC) $(YACCOPTS) --only-tokens -b vparser $<
-
-ord.ml: ord.sh vparser.cmi
+ord.ml: ord.sh grammar.cmi
 	sh ord.sh
 
-vparser.cmi: vparser.mli
+vparser.cmi: grammar.mli
+	cat $< | grep -v : | grep -v \> >vparser.mli
 	ocamlc.opt -g -c vparser.mli
 
 test: vtop

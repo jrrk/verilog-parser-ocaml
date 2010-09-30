@@ -53,11 +53,6 @@
 %token BIDIR
 
 // pre-proc tokens
-(*
-%token<string> TIMESCALE
-%token<string> INLINE
-%token<string> PORTCOERCE
-*)
 %token<string> COMMENT_BEGIN
 %token COMMENT_END
 %token<string> PREPROC	// some other token, not (yet) recognized
@@ -165,6 +160,7 @@
 %token POSEDGE	// "posedge"
 %token PRIMITIVE	// "primitive"
 %token PROPERTY	// "property"
+%token PULLUP	// "pullup"
 %token REG		// "reg"
 %token SCALARED	// "scalared"
 %token SIGNED		// "signed"
@@ -178,6 +174,7 @@
 %token UNSIGNED	// "unsigned"
 %token VECTORED	// "vectored"
 %token<string> WEAK		// "weak"
+%token<string> PWEAK		// "(weak"
 %token WHILE		// "while"
 %token WIRE		// "wire"
 %token XNOR		// "xnor"
@@ -187,6 +184,7 @@
 %token D_BITS		// "$bits"
 %token D_C		// "$c"
 %token D_CLOG2	// "$clog2"
+%token D_COUNTDRIVERS	// "$countdrivers"
 %token D_COUNTONES	// "$countones"
 %token D_DISPLAY	// "$display"
 %token D_ERROR	// "$error"
@@ -212,6 +210,7 @@
 %token D_SSCANF	// "$sscanf"
 %token D_STIME	// "$stime"
 %token D_STOP		// "$stop"
+%token D_TEST_PLUSARGS	// "$test$plusargs"
 %token D_TIME		// "$time"
 %token D_UNSIGNED	// "$unsigned"
 %token D_WARNING	// "$warning"
@@ -404,8 +403,8 @@
 %type <token> sigAttrListE
 %type <token> sigId
 %type <token> signingE
-%type <token> specifyJunk
-%type <token list> specifyJunkList
+%type <token list> Junk
+%type <token list> JunkList
 %type <unit>       start
 %type <token> stateCaseForIf
 %type <token> stmt
@@ -443,7 +442,7 @@ start:		ENDOFFILE				{ raise End_of_file }
 	|	moduleDecl start			{ }
 	;
 
-commentDecl:	COMMENT_BEGIN specifyJunkList COMMENT_END { (* Printf.fprintf Pervasives.stderr "%s\n" *) $1 }	// placeholder
+commentDecl:	COMMENT_BEGIN JunkList COMMENT_END { (* Printf.fprintf Pervasives.stderr "%s\n" *) $1 }	// placeholder
 
 //**********************************************************************
 // Module headers
@@ -636,7 +635,7 @@ modItemList:
 modItem:
 		modOrGenItem 				{ $1 }
 	|	generateRegion				{ $1 }
-	|	SPECIFY specifyJunkList ENDSPECIFY	{ DOUBLE (SPECIFY, TLIST $2) }
+	|	SPECIFY JunkList ENDSPECIFY	{ DOUBLE (SPECIFY, TLIST $2) }
 	|	SPECIFY ENDSPECIFY			{ DOUBLE (SPECIFY, EMPTY ) }
 	|	PREPROC					{ (* Printf.fprintf Pervasives.stderr "%s\n" $1 *) PREPROC $1 }
 	;
@@ -733,14 +732,14 @@ delayE:		/* empty */				{ EMPTY }
 	|	delay					{ $1 } /* ignored */
 	;
 
-delayStrength:		/* empty */				{ EMPTY }
+delayStrength:	/* empty */				{ EMPTY }
 	|	delay					{ $1 } /* ignored */
-	|	LPAREN strengthList RPAREN		{ TLIST $2 }
+	|	PWEAK strengthList RPAREN		{ TLIST ((WEAK $1) :: $2) }
 	;
 
 strengthList:
-		WEAK 					{ [ WEAK $1 ] }
-	|	WEAK COMMA strengthList			{ WEAK $1 :: $3 }
+		/* empty */				{ [] }
+	|	COMMA WEAK strengthList			{ WEAK $2 :: $3 }
 
 delay:
 		HASH dlyTerm
@@ -1190,6 +1189,7 @@ exprNoStr:
 	|	D_BITS LPAREN expr RPAREN		{ DOUBLE (D_BITS, $3 ) }
 	|	D_C LPAREN cStrList RPAREN		{ DOUBLE (D_C, TLIST $3 ) }
 	|	D_CLOG2 LPAREN expr RPAREN		{ DOUBLE (D_CLOG2, $3 ) }
+	|	D_COUNTDRIVERS LPAREN expr RPAREN	{ DOUBLE (D_COUNTDRIVERS, $3 ) }
 	|	D_COUNTONES LPAREN expr RPAREN		{ DOUBLE (D_COUNTONES, $3 ) }
 	|	D_FEOF LPAREN expr RPAREN		{ DOUBLE (D_FEOF, $3 ) }
 	|	D_FGETC LPAREN expr RPAREN		{ DOUBLE (D_FGETC, $3 ) }
@@ -1208,6 +1208,7 @@ exprNoStr:
 	|	D_SIGNED LPAREN expr RPAREN		{ DOUBLE (D_SIGNED, $3 ) }
 	|	D_STIME					{ D_STIME }
 	|	D_TIME					{ D_TIME }
+	|	D_TEST_PLUSARGS LPAREN expr RPAREN	{ DOUBLE (D_TEST_PLUSARGS, $3 ) }
 	|	D_UNSIGNED LPAREN expr RPAREN		{ DOUBLE (D_UNSIGNED, $3 ) }
 	|	funcRef					{ $1 }
 	|	INTNUM				{ INTNUM $1 }
@@ -1268,16 +1269,22 @@ attrDecl:
 // Gate declarations
 
 gateDecl:
-		BUF  delayE gateBufList SEMICOLON		{ TRIPLE (BUF, $2, TLIST $3 ) }
+		BUF  delayStrength gateBufList SEMICOLON		{ TRIPLE (BUF, $2, TLIST $3 ) }
 	|	BUFIF delayStrength gateBufIfList SEMICOLON	{ TRIPLE (BUFIF $1, $2, TLIST $3 ) }
-	|	NOT  delayE gateNotList SEMICOLON		{ TRIPLE (NOT, $2, TLIST $3 ) }
-	|	AND  delayE gateAndList SEMICOLON		{ TRIPLE (AND, $2, TLIST $3 ) }
-	|	NAND delayE gateNandList SEMICOLON		{ TRIPLE (NAND, $2, TLIST $3 ) }
-	|	OR   delayE gateOrList SEMICOLON		{ TRIPLE (OR, $2, TLIST $3 ) }
-	|	NOR  delayE gateNorList SEMICOLON		{ TRIPLE (NOR, $2, TLIST $3 ) }
-	|	XOR  delayE gateXorList SEMICOLON		{ TRIPLE (XOR, $2, TLIST $3 ) }
-	|	XNOR delayE gateXnorList SEMICOLON		{ TRIPLE (XNOR, $2, TLIST $3 ) }
+	|	NOT  delayStrength gateNotList SEMICOLON		{ TRIPLE (NOT, $2, TLIST $3 ) }
+	|	AND  delayStrength gateAndList SEMICOLON		{ TRIPLE (AND, $2, TLIST $3 ) }
+	|	NAND delayStrength gateNandList SEMICOLON		{ TRIPLE (NAND, $2, TLIST $3 ) }
+	|	OR   delayStrength gateOrList SEMICOLON		{ TRIPLE (OR, $2, TLIST $3 ) }
+	|	NOR  delayStrength gateNorList SEMICOLON		{ TRIPLE (NOR, $2, TLIST $3 ) }
+	|	XOR  delayStrength gateXorList SEMICOLON		{ TRIPLE (XOR, $2, TLIST $3 ) }
+	|	XNOR delayStrength gateXnorList SEMICOLON		{ TRIPLE (XNOR, $2, TLIST $3 ) }
+	|	PULLUP delayStrength gatePullupList SEMICOLON		{ TRIPLE (PULLUP, $2, TLIST $3 ) }
 	|	gateUdp SEMICOLON		                { $1 }
+	;
+
+gatePullupList:
+		gatePullup 				{ [ $1 ] }
+	|	gatePullupList COMMA gatePullup		{ $1 @ [ $3 ] }
 	;
 
 gateBufList:
@@ -1294,6 +1301,7 @@ gateNotList:
 		gateNot 				{ [ $1 ] }
 	|	gateNotList COMMA gateNot		{ $1 @ [ $3 ] }
 	;
+
 gateAndList:
 		gateAnd 				{ [ $1 ] }
 	|	gateAndList COMMA gateAnd		{ $1 @ [ $3 ] }
@@ -1317,6 +1325,10 @@ gateXorList:
 gateXnorList:
 		gateXnor 				{ [ $1 ] }
 	|	gateXnorList COMMA gateXnor		{ $1 @ [ $3 ] }
+	;
+
+gatePullup:	gateIdE instRangeE LPAREN varRefDotBit RPAREN
+							{ TRIPLE ($1, $2, $4 ) }
 	;
 
 gateBuf:	gateIdE instRangeE LPAREN varRefDotBit COMMA expr RPAREN
@@ -1392,114 +1404,113 @@ gateUdpPinList:
 // Tables
 // Not supported
 
-tableDecl:	TABLE specifyJunkList ENDTABLE { TABLE }	// placeholder
+tableDecl:	TABLE JunkList ENDTABLE { TABLE }	// placeholder
 
 //************************************************
 // Specify
 
-specifyJunkList:	ENDOFFILE 			{ [] } /* ignored */
-	|	specifyJunk 				{ [ $1 ] } /* ignored */
-	|	specifyJunkList specifyJunk		{ $1 @ [ $2 ] } /* ignored */
+JunkList:	Junk	 				{ $1 } /* ignored */
+	|	JunkList Junk				{ $1 @ $2 } /* ignored */
 	;
 
-specifyJunk:	dlyTerm 				{ $1 } /* ignored */
-	|	PRIMARGS				{ PRIMARGS $1 }
-	|	PRIMINST				{ PRIMINST }
-	|	BITSEL					{ BITSEL }
-	|	FUNCARGS				{ FUNCARGS }
-	|	FUNCBODY				{ FUNCBODY }
-	|	COMMENT_BEGIN				{ COMMENT_BEGIN $1 }
-	|	EMPTY					{ EMPTY }
-	|	EOF					{ EOF }
-	|	ILLEGAL					{ ILLEGAL $1 }
-	|	PARTSEL					{ PARTSEL }
-	|	RANGE					{ RANGE $1 }
-	|	IOPORT					{ IOPORT }
-	|	SUBCCT					{ SUBCCT }
-	|	SUBMODULE				{ SUBMODULE }
-	|	IMPLICIT				{ IMPLICIT }
-	|	BIDIR					{ BIDIR }
-	|	DRIVER					{ DRIVER }
-	|	RECEIVER				{ RECEIVER }
-	|	DOUBLE					{ EMPTY }
-	|	TRIPLE					{ EMPTY }
-	|	QUADRUPLE				{ EMPTY }
-	|	QUINTUPLE				{ EMPTY }
-	|	SEXTUPLE				{ EMPTY }
-	|	SEPTUPLE				{ EMPTY }
-	|	PLING					{ PLING }
-	|	TLIST					{ TLIST [] }
-	|	AMPERSAND				{ AMPERSAND }
-	|	LPAREN					{ LPAREN }
-	|	RPAREN					{ RPAREN }
-	|	TIMES					{ TIMES }
-	|	DIVIDE					{ DIVIDE }
-	|	MODULO					{ MODULO }
-	|	PLUS					{ PLUS }
-	|	MINUS					{ MINUS }
-	|	COMMA					{ COMMA }
-	|	COLON					{ COLON }
-	|	SEMICOLON				{ SEMICOLON }
-	|	DOLLAR					{ DOLLAR }
-	|	EQUALS					{ EQUALS }
-	|	GREATER					{ GREATER }
-	|	LESS					{ LESS }
-	|	QUERY					{ QUERY }
-	|	CARET					{ CARET }
-	|	LCURLY					{ LCURLY }
-	|	RCURLY					{ RCURLY }
-	|	LBRACK					{ LBRACK }
-	|	RBRACK					{ RBRACK }
-	|	VBAR					{ VBAR }
-	|	TILDE					{ TILDE }
-	|	AT					{ AT }
-	|	IF					{ IF }
-	|	NEGEDGE					{ NEGEDGE }
-	|	POSEDGE					{ POSEDGE }
-	|	ASCNUM					{ ASCNUM $1 }
-	|	TIMINGSPEC				{ TIMINGSPEC }
-	|	P_ANDAND				{ P_ANDAND }
-	|	P_GTE					{ P_GTE }
-	|	P_LTE					{ P_LTE }
-	|	P_EQUAL					{ P_EQUAL }
-	|	P_NOTEQUAL				{ P_NOTEQUAL }
-	|	P_CASEEQUAL				{ P_CASEEQUAL }
-	|	P_CASENOTEQUAL				{ P_CASENOTEQUAL }
-	|	P_WILDEQUAL				{ P_WILDEQUAL }
-	|	P_WILDNOTEQUAL				{ P_WILDNOTEQUAL }
-	|	P_XNOR					{ P_XNOR }
-	|	P_NOR					{ P_NOR }
-	|	P_NAND					{ P_NAND }
-	|	P_OROR					{ P_OROR }
-	|	P_SLEFT					{ P_SLEFT }
-	|	P_SRIGHT				{ P_SRIGHT }
-	|	P_SSRIGHT				{ P_SSRIGHT }
-	|	P_PLUSCOLON				{ P_PLUSCOLON }
-	|	P_MINUSCOLON				{ P_MINUSCOLON }
-	|	P_POW					{ P_POW }
-	|	P_ORMINUSGT				{ P_ORMINUSGT }
-	|	P_OREQGT				{ P_OREQGT }
-	|	P_EQGT					{ P_EQGT }
-	|	P_ASTGT					{ P_ASTGT }
-	|	P_ANDANDAND				{ P_ANDANDAND }
-	|	P_POUNDPOUND				{ P_POUNDPOUND }
-	|	P_DOTSTAR				{ P_DOTSTAR }
-	|	P_ATAT					{ P_ATAT }
-	|	P_COLONCOLON				{ P_COLONCOLON }
-	|	P_COLONEQ				{ P_COLONEQ }
-	|	P_COLONDIV				{ P_COLONDIV }
-	|	P_PLUSEQ				{ P_PLUSEQ }
-	|	P_MINUSEQ				{ P_MINUSEQ }
-	|	P_TIMESEQ				{ P_TIMESEQ }
-	|	P_DIVEQ					{ P_DIVEQ }
-	|	P_MODEQ					{ P_MODEQ }
-	|	P_ANDEQ					{ P_ANDEQ }
-	|	P_OREQ					{ P_OREQ }
-	|	P_XOREQ					{ P_XOREQ }
-	|	P_SLEFTEQ				{ P_SLEFTEQ }
-	|	P_SRIGHTEQ				{ P_SRIGHTEQ }
-	|	P_SSRIGHTEQ				{ P_SSRIGHTEQ }
-	|	error 					{ D_ERROR }
+Junk:		dlyTerm 				{ [ $1 ] } /* ignored */
+	|	PRIMARGS				{ [] }
+	|	PRIMINST				{ [] }
+	|	BITSEL					{ [] }
+	|	FUNCARGS				{ [] }
+	|	FUNCBODY				{ [] }
+	|	COMMENT_BEGIN				{ [] }
+	|	EMPTY					{ [] }
+	|	EOF					{ [] }
+	|	ILLEGAL					{ [] }
+	|	PARTSEL					{ [] }
+	|	RANGE					{ [] }
+	|	IOPORT					{ [] }
+	|	SUBCCT					{ [] }
+	|	SUBMODULE				{ [] }
+	|	IMPLICIT				{ [] }
+	|	BIDIR					{ [] }
+	|	DRIVER					{ [] }
+	|	RECEIVER				{ [] }
+	|	DOUBLE					{ [] }
+	|	TRIPLE					{ [] }
+	|	QUADRUPLE				{ [] }
+	|	QUINTUPLE				{ [] }
+	|	SEXTUPLE				{ [] }
+	|	SEPTUPLE				{ [] }
+	|	PLING					{ [] }
+	|	TLIST					{ [] }
+	|	AMPERSAND				{ [] }
+	|	LPAREN					{ [] }
+	|	RPAREN					{ [] }
+	|	TIMES					{ [] }
+	|	DIVIDE					{ [] }
+	|	MODULO					{ [] }
+	|	PLUS					{ [] }
+	|	MINUS					{ [] }
+	|	COMMA					{ [] }
+	|	COLON					{ [] }
+	|	SEMICOLON				{ [] }
+	|	DOLLAR					{ [] }
+	|	EQUALS					{ [] }
+	|	GREATER					{ [] }
+	|	LESS					{ [] }
+	|	QUERY					{ [] }
+	|	CARET					{ [] }
+	|	LCURLY					{ [] }
+	|	RCURLY					{ [] }
+	|	LBRACK					{ [] }
+	|	RBRACK					{ [] }
+	|	VBAR					{ [] }
+	|	TILDE					{ [] }
+	|	AT					{ [] }
+	|	IF					{ [] }
+	|	NEGEDGE					{ [] }
+	|	POSEDGE					{ [] }
+	|	ASCNUM					{ [] }
+	|	TIMINGSPEC				{ [] }
+	|	P_ANDAND				{ [] }
+	|	P_GTE					{ [] }
+	|	P_LTE					{ [] }
+	|	P_EQUAL					{ [] }
+	|	P_NOTEQUAL				{ [] }
+	|	P_CASEEQUAL				{ [] }
+	|	P_CASENOTEQUAL				{ [] }
+	|	P_WILDEQUAL				{ [] }
+	|	P_WILDNOTEQUAL				{ [] }
+	|	P_XNOR					{ [] }
+	|	P_NOR					{ [] }
+	|	P_NAND					{ [] }
+	|	P_OROR					{ [] }
+	|	P_SLEFT					{ [] }
+	|	P_SRIGHT				{ [] }
+	|	P_SSRIGHT				{ [] }
+	|	P_PLUSCOLON				{ [] }
+	|	P_MINUSCOLON				{ [] }
+	|	P_POW					{ [] }
+	|	P_ORMINUSGT				{ [] }
+	|	P_OREQGT				{ [] }
+	|	P_EQGT					{ [] }
+	|	P_ASTGT					{ [] }
+	|	P_ANDANDAND				{ [] }
+	|	P_POUNDPOUND				{ [] }
+	|	P_DOTSTAR				{ [] }
+	|	P_ATAT					{ [] }
+	|	P_COLONCOLON				{ [] }
+	|	P_COLONEQ				{ [] }
+	|	P_COLONDIV				{ [] }
+	|	P_PLUSEQ				{ [] }
+	|	P_MINUSEQ				{ [] }
+	|	P_TIMESEQ				{ [] }
+	|	P_DIVEQ					{ [] }
+	|	P_MODEQ					{ [] }
+	|	P_ANDEQ					{ [] }
+	|	P_OREQ					{ [] }
+	|	P_XOREQ					{ [] }
+	|	P_SLEFTEQ				{ [] }
+	|	P_SRIGHTEQ				{ [] }
+	|	P_SSRIGHTEQ				{ [] }
+	|	error 					{ [] }
 	;
 
 //************************************************

@@ -23,7 +23,7 @@
 
 (* Hashtbl.find Globals.modprims "test";; -- Find module "test" (displays result) *)
 
-let dump_text m = Dump.dump ((Hashtbl.find Globals.modprims m).Globals.tree, 0);; (* dump module as text*)
+let dump_text out_chan m = Dump.dump out_chan (Hashtbl.find Globals.modprims m).Globals.tree 0;; (* dump module as text*)
 
 (* Hashtbl.iter (fun k x -> Printf.printf "%s\n" k) Globals.modprims;; *)
 
@@ -45,7 +45,7 @@ let vparser gsyms args = begin for i = 1 to ( Array.length args - 2 ) do
   if ( Array.length args > 2 ) then
     begin
     if (Hashtbl.mem Globals.modprims (args.( Array.length args - 1 ))) then
-      let out_chan = open_out (args.( Array.length args - 1 )) in
+      let out_chan = open_out (args.( Array.length args - 1 ) ^ ".report") in
 	begin
 
 	Semantics.semantics out_chan gsyms "" (Hashtbl.find Globals.modprims (args.( Array.length args - 1 )));
