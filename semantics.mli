@@ -6,7 +6,7 @@ type exprtree = {
 
 type exprt =
     DYADIC of (Vparser.token * exprtree * exprtree)
-  | ASSIGNMENT of (exprtree * exprt)
+  | ASSIGNS of (exprtree * exprt)
   | UNHANDLED of Vparser.token
 
 val stmts : exprt list ref
@@ -17,10 +17,8 @@ val stmts : exprt list ref
   (string -> Globals.modtree -> unit) -> string ->
   (string, Setup.symtab) Hashtbl.t -> Vparser.token list -> unit *)
 (*   val moditer : string -> Globals.modtree -> unit  *)
-   val unhandled : out_channel -> Vparser.token -> unit
    val find_ident : out_channel -> (string, Setup.symtab) Hashtbl.t -> Vparser.token -> string -> (string, Setup.symtab) Hashtbl.t -> Vparser.token -> Setup.symtab
 val check_glob : out_channel -> (string, Setup.symtab) Hashtbl.t -> unit
-val unhand_list : Vparser.token list ref
 val not_found : (string, Setup.symtab) Hashtbl.t -> string -> unit
 val widthnum : int -> string -> int*int
 val connect : out_channel ->

@@ -17,7 +17,7 @@
 // Based on verilator parser code by Paul Wasson, Duane Galbi and Wilson Snyder
 //*****************************************************************************
 
-%{ open Vparser %}
+%{ open Vparser exception Error %}
 
 // Generic void
 %token EMPTY
@@ -113,6 +113,7 @@
 %token AND		// "and"
 %token ASSERT		// "assert"
 %token ASSIGN		// "assign"
+%token ASSIGNMENT	// "assignment"
 %token AUTOMATIC	// "automatic"
 %token BEGIN		// "begin"
 %token BUF		// "buf"
@@ -161,6 +162,7 @@
 %token PRIMITIVE	// "primitive"
 %token PROPERTY	// "property"
 %token PULLUP	// "pullup"
+%token REAL		// "real"
 %token REG		// "reg"
 %token SCALARED	// "scalared"
 %token SIGNED		// "signed"
@@ -260,6 +262,8 @@
 %token P_SLEFTEQ	// "<<="
 %token P_SRIGHTEQ	// ">>="
 %token P_SSRIGHTEQ	// ">>>="
+
+%token P_MINUSGT	// "->"
 
 %token ENDOFFILE
 
@@ -426,11 +430,11 @@
 %type <token> varRefMem
 %type <token>      varReg
 %type <token list> vrdList
-%type <string> identifier
+%type <token> identifier
 
 %%
 
-identifier:	ID	{ (* Printf.fprintf Pervasives.stderr "%s\n" $1; *) $1 }
+identifier:	ID	{ ID $1 }
 
 //**********************************************************************
 // Files
@@ -448,7 +452,7 @@ commentDecl:	COMMENT_BEGIN JunkList COMMENT_END { (* Printf.fprintf Pervasives.s
 // Module headers
 
 // IEEE: module_declaration:
-moduleDecl:	MODULE identifier modParE modPortsE SEMICOLON modItemListE ENDMODULE
+moduleDecl:	MODULE ID modParE modPortsE SEMICOLON modItemListE ENDMODULE
 			{
 			Hashtbl.add Globals.modprims $2
 				{ Globals.tree=QUINTUPLE ( MODULE, ID $2, $3, $4, $6 );
@@ -457,7 +461,7 @@ moduleDecl:	MODULE identifier modParE modPortsE SEMICOLON modItemListE ENDMODULE
 	;
 
 // IEEE: primitive_declaration:
-primDecl:	PRIMITIVE identifier modParE modPortsE SEMICOLON primItemList ENDPRIMITIVE
+primDecl:	PRIMITIVE ID modParE modPortsE SEMICOLON primItemList ENDPRIMITIVE
 			{
 			Hashtbl.add Globals.modprims $2
 				{ Globals.tree=QUINTUPLE ( PRIMITIVE, ID $2, $3, $4, TLIST $6 );
@@ -511,8 +515,8 @@ PortList:
 	;
 
 Port:
-		identifier PortRangeE		       	{ ID $1 }
-	|	DOT identifier LPAREN expr RPAREN	{ DOUBLE( DOT, ID $2  ) }
+		identifier PortRangeE		       	{ $1 }
+	|	DOT identifier LPAREN expr RPAREN	{ DOUBLE( DOT, $2  ) }
 	;
 
 PortV2kArgs:
@@ -594,6 +598,7 @@ varLParam:	LOCALPARAM				{ LOCALPARAM }
 varGenVar:	GENVAR					{ GENVAR }
 	;
 varReg:		REG					{ REG }
+	|	REAL					{ REAL }
 	|	INTEGER					{ INTEGER }
 	;
 
@@ -680,8 +685,8 @@ genTopBlock:
 genItemBegin:
 		BEGIN genItemList END			{ TLIST $2 }
 	|	BEGIN END				{ EMPTY }
-	|	BEGIN COLON identifier genItemList END endLabelE	{ TRIPLE (ID $3, TLIST $4, $6) }
-	|	BEGIN COLON identifier 	           END endLabelE	{ TRIPLE (ID $3, EMPTY, $5) }
+	|	BEGIN COLON identifier genItemList END endLabelE	{ TRIPLE ($3, TLIST $4, $6) }
+	|	BEGIN COLON identifier 	           END endLabelE	{ TRIPLE ($3, EMPTY, $5) }
 	;
 
 genItemList:
@@ -753,7 +758,7 @@ delay:
 	;
 
 dlyTerm:
-		identifier 				{ ID $1 }
+		identifier 				{ $1 }
 	|	INTNUM 					{ INTNUM $1 }
 	|	FLOATNUM 				{ FLOATNUM $1 }
 	;
@@ -775,16 +780,16 @@ netSigList:
 
 netSig:
 		sigId sigAttrListE			{ DOUBLE ( $1, $2 ) }
-	|	sigId sigAttrListE EQUALS expr		{ TRIPLE ($1, $2, $4 ) }
-	|	identifier RangeList sigAttrListE	{ TRIPLE ( ID $1, TLIST $2, $3 ) }
+	|	sigId sigAttrListE EQUALS expr		{ TRIPLE ( $1, $2, $4 ) }
+	|	identifier RangeList sigAttrListE	{ TRIPLE ( $1, TLIST $2, $3 ) }
 	;
 
 regsig:
-		identifier RangeListE sigAttrListE			{ TRIPLE (ID $1, $2, $3 ) }
-	|	identifier RangeListE EQUALS constExpr sigAttrListE	{ QUADRUPLE (ID $1, $2, $4, $5 ) }
+		identifier RangeListE sigAttrListE			{ TRIPLE ($1, $2, $3 ) }
+	|	identifier RangeListE EQUALS constExpr sigAttrListE	{ QUADRUPLE ($1, $2, $4, $5 ) }
 	;
 
-sigId:	identifier					{ ID $1 }
+sigId:	identifier					{ $1 }
 	;
 
 sigAttrListE:	/* empty */				{ EMPTY }
@@ -840,19 +845,20 @@ defpList:
 	;
 
 defpOne:
-		identifier DOT identifier EQUALS expr { TRIPLE (ID $1, ID $3 , $5 ) }
+		identifier DOT identifier EQUALS expr { TRIPLE ($1, $3 , $5 ) }
 	;
 
 //************************************************
 // Instances
 
 instDecl:
-	identifier instparamListE instnameList SEMICOLON  { TRIPLE (ID $1, $2, TLIST $3 ) }
-
+		identifier instparamListE instnameList SEMICOLON  { TRIPLE ($1, $2, TLIST $3 ) }
+	| 	identifier instparamListE LPAREN varRefDotBit COMMA gateUdpPinList RPAREN SEMICOLON
+							{ QUADRUPLE (PRIMINST, $1, $2, TLIST ($4::$6) ) }
 instparamListE:
 		/* empty */				{ EMPTY }
 	|	HASH LPAREN cellpinList RPAREN		{ TLIST $3 }
-	|	LPAREN strengthList RPAREN		{ TLIST $2 }
+	|	PWEAK strengthList RPAREN		{ TLIST ((WEAK $1) :: $2) }
 	;
 
 instnameList:
@@ -861,9 +867,8 @@ instnameList:
 	;
 
 instnameParen:
-		identifier instRangeE LPAREN cellpinList RPAREN	{ TRIPLE (ID $1, $2, TLIST $4 ) }
-	|	instRangeE LPAREN cellpinList RPAREN	{ TRIPLE (EMPTY, $1, TLIST $3 ) }
-	|	identifier instRangeE 			{ DOUBLE ( ID $1, $2 ) }
+		identifier instRangeE LPAREN cellpinList RPAREN	{ TRIPLE ($1, $2, TLIST $4 ) }
+	|	identifier instRangeE 			{ DOUBLE ( $1, $2 ) }
 	;
 
 instRangeE:
@@ -883,9 +888,9 @@ cellpinItList:
 cellpinItemE:
 		/* empty: ',,' is legal */		{ EMPTY }
 	|	P_DOTSTAR				{ P_DOTSTAR }
-	|	DOT identifier			{ DOUBLE (DOT, ID $2) }
-	|	DOT identifier LPAREN RPAREN		{ DOUBLE (DOT, ID $2) }
-	|	DOT identifier LPAREN expr RPAREN	{ TRIPLE (DOT, ID $2, $4) }
+	|	DOT identifier			{ DOUBLE (DOT, $2) }
+	|	DOT identifier LPAREN RPAREN		{ DOUBLE (DOT, $2) }
+	|	DOT identifier LPAREN expr RPAREN	{ TRIPLE (DOT, $2, $4) }
 	|	expr					{ $1 }
 	;
 
@@ -932,13 +937,13 @@ stmtBlock:
 		stmt					{ $1 }
 	|	BEGIN stmtList END			{ TLIST $2 }
 	|	BEGIN END				{ EMPTY }
-	|	beginNamed stmtList END endLabelE	{ TRIPLE (BEGIN, TLIST $2, $4) }
+	|	beginNamed stmtList END endLabelE	{ TRIPLE ($1, TLIST $2, $4) }
 	|	beginNamed 	    END endLabelE	{ EMPTY }
 	;
 
 beginNamed:
-		BEGIN COLON identifier varDeclList	{ TRIPLE (COLON, ID $3 , TLIST $4 ) }
-	|	BEGIN COLON identifier 			{ DOUBLE (COLON, ID $3 ) }
+		BEGIN COLON identifier varDeclList	{ TRIPLE (COLON, $3 , TLIST $4 ) }
+	|	BEGIN COLON identifier 			{ DOUBLE (COLON, $3 ) }
 	;
 
 stmtList:
@@ -949,14 +954,14 @@ stmtList:
 stmt:
 		SEMICOLON				{ EMPTY }
 	|	labeledStmt				{ $1 }
-	|	identifier COLON labeledStmt		{ DOUBLE (ID $1, $3 ) }
+	|	identifier COLON labeledStmt		{ DOUBLE ($1, $3 ) }
 
 	|	eventControl stmtBlock			{ DOUBLE ($1, $2 ) }
 
 	|	varRefDotBit P_LTE delayE expr SEMICOLON
 			{ QUADRUPLE (P_LTE, $1, $3, $4 ) }
 	|	varRefDotBit EQUALS delayE expr SEMICOLON
-			{ QUADRUPLE ( EQUALS, $1, $3, $4 ) }
+			{ QUADRUPLE ( ASSIGNMENT, $1, $3, $4 ) }
 	|	varRefDotBit EQUALS D_FOPEN LPAREN expr RPAREN SEMICOLON
 			{ TRIPLE (D_FOPEN, $1, $5) }
 	|	ASSIGN varRefDotBit EQUALS delayStrength expr SEMICOLON
@@ -1021,6 +1026,8 @@ stmt:
 			{ QUADRUPLE ( D_READMEMB, $3, $5, $7 ) }
 	|	readmem LPAREN expr COMMA varRefMem COMMA expr COMMA expr RPAREN SEMICOLON
 			{ QUINTUPLE ( D_READMEMB, $3, $5, $7, $9 ) }
+	|	P_MINUSGT varRefDotBit SEMICOLON
+			{ DOUBLE ( P_MINUSGT, $2 ) }	
 	|	PREPROC					{ (* Printf.fprintf Pervasives.stderr "%s\n" $1 *) PREPROC $1 }
 
 ;
@@ -1086,16 +1093,16 @@ funcRef:
 
 taskDecl:
 		TASK lifetimeE identifier funcGuts ENDTASK endLabelE
-			{ QUINTUPLE ( TASK, $2, ID $3 , $4, $6 ) }
+			{ QUINTUPLE ( TASK, $2, $3 , $4, $6 ) }
 	;
 
 funcDecl:
 	 	FUNCTION lifetimeE        funcTypeE
 			identifier                        funcGuts ENDFUNCTION endLabelE
-			{ SEXTUPLE (FUNCTION, $2, $3, ID $4, $5, $7 ) }
+			{ SEXTUPLE (FUNCTION, $2, $3, $4, $5, $7 ) }
 	|	FUNCTION lifetimeE SIGNED funcTypeE
 			identifier                        funcGuts ENDFUNCTION endLabelE
-			{ SEXTUPLE (FUNCTION, $2, $4, ID $5, $6, $8) }
+			{ SEXTUPLE (FUNCTION, $2, $4, $5, $6, $8) }
 	;
 
 // IEEE: lifetime - plus empty
@@ -1116,6 +1123,7 @@ funcBody:
 
 funcTypeE:
 		/* empty */				{ EMPTY }
+	|	REAL					{ REAL }
 	|	INTEGER					{ INTEGER }
 	|	LBRACK constExpr COLON constExpr RBRACK	{ RANGE ( $2, $4 ) }
 	;
@@ -1223,6 +1231,7 @@ expr:
 		exprNoStr				{ $1 }
 	|	strAsInt				{ $1 }
 	|	floatnum				{ $1 }
+	|	PREPROC					{ PREPROC $1 }
 	;
 
 // PLI calls exclude "" as integers, they're strings
@@ -1243,7 +1252,8 @@ cateList:
 	;
 
 exprList:
-		expr					{ [ $1 ] }
+		/* empty */				{ [] }
+	|	expr					{ [ $1 ] }
 	|	exprList COMMA expr			{ $1 @ [ $3 ] }
 	;
 
@@ -1279,7 +1289,6 @@ gateDecl:
 	|	XOR  delayStrength gateXorList SEMICOLON		{ TRIPLE (XOR, $2, TLIST $3 ) }
 	|	XNOR delayStrength gateXnorList SEMICOLON		{ TRIPLE (XNOR, $2, TLIST $3 ) }
 	|	PULLUP delayStrength gatePullupList SEMICOLON		{ TRIPLE (PULLUP, $2, TLIST $3 ) }
-	|	gateUdp SEMICOLON		                { $1 }
 	;
 
 gatePullupList:
@@ -1367,12 +1376,8 @@ gateXnor:	gateIdE instRangeE LPAREN varRefDotBit COMMA gateXorPinList RPAREN
 							{ QUADRUPLE ($1 , $2, $4 , TLIST $6 ) }
 	;
 
-gateUdp:	identifier LPAREN varRefDotBit COMMA gateUdpPinList RPAREN
-							{ TRIPLE (PRIMINST, ID $1, TLIST ($3::$5) ) }
-	;
-
 gateIdE:	/*empty*/				{ EMPTY }
-	|	identifier				{ ID $1 }
+	|	identifier				{ $1 }
 	;
 
 gateBufIfPinList:
@@ -1414,6 +1419,7 @@ JunkList:	Junk	 				{ $1 } /* ignored */
 	;
 
 Junk:		dlyTerm 				{ [ $1 ] } /* ignored */
+	|	ASSIGNMENT				{ [] }
 	|	PRIMARGS				{ [] }
 	|	PRIMINST				{ [] }
 	|	BITSEL					{ [] }
@@ -1510,6 +1516,7 @@ Junk:		dlyTerm 				{ [ $1 ] } /* ignored */
 	|	P_SLEFTEQ				{ [] }
 	|	P_SRIGHTEQ				{ [] }
 	|	P_SSRIGHTEQ				{ [] }
+	|	P_MINUSGT				{ [] }
 	|	error 					{ [] }
 	;
 
@@ -1535,7 +1542,7 @@ idDotted:
 // Due to lookahead constraints, we cant know if [:] or [+:] are valid (last dotted part),
 // well assume so and cleanup later.
 idArrayed:
-		identifier				{ ID $1 }
+		identifier				{ $1 }
 	|	idArrayed LBRACK expr RBRACK		{ TRIPLE(BITSEL, $1, $3) }  // Or AstArraySel, dont know et.
 	|	idArrayed LBRACK constExpr COLON constExpr RBRACK
 							{ QUADRUPLE(PARTSEL, $1 , $3 , $5 ) }
@@ -1547,7 +1554,7 @@ idArrayed:
 
 // VarRef without any dots or vectorization
 varRefBase:
-		identifier				{ ID $1 }
+		identifier				{ $1 }
 	;
 
 strAsInt:
@@ -1568,7 +1575,7 @@ concIdList:
 	;
 
 endLabelE:	/* empty */				{ EMPTY }
-	|	COLON identifier			{ DOUBLE (COLON, ID $2 ) }
+	|	COLON identifier			{ DOUBLE (COLON, $2 ) }
 	|	ENDOFFILE				{ EMPTY }
 	;
 

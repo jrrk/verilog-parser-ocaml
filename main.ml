@@ -17,7 +17,7 @@
 * Based on verilator parser code by Paul Wasson, Duane Galbi and Wilson Snyder
 *******************************************************************************)
 
-(* let _ = Printexc.print Parse.parse Sys.argv.( Array.length Sys.argv - 1 );; -- Pass the last command line module *)
+(* let _ = Printexc.print Vparse.parse Sys.argv.( Array.length Sys.argv - 1 );; -- Pass the last command line module *)
 
 (* let m k x = Printf.printf "%s\n" k in Hashtbl.iter m Globals.modprims;;  -- Print all modules *)
 
@@ -39,10 +39,14 @@ let dump_gsyms gsyms = Hashtbl.iter Setup.show_sym gsyms;;
 
 let dump_gsym gsyms s = Setup.TokSet.iter Setup.show_token ( Hashtbl.find gsyms s).Setup.symattr;;
 
-let vparser gsyms args = begin for i = 1 to ( Array.length args - 2 ) do
-    Printexc.print Parse.parse args.( i )
+let vparser gsyms args = begin
+  Setup.psuccess := true;
+  for i = 1 to ( Array.length args - 2 ) do
+    Printexc.print Vparse.parse args.( i )
   done;
-  if ( Array.length args > 2 ) then
+  if (!Setup.psuccess == false) then
+    Printf.printf "Not continuing due to parse errors\n"
+  else if ( Array.length args > 2 ) then
     begin
     if (Hashtbl.mem Globals.modprims (args.( Array.length args - 1 ))) then
       let out_chan = open_out (args.( Array.length args - 1 ) ^ ".report") in
