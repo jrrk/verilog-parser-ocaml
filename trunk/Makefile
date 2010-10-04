@@ -32,7 +32,7 @@ vtop: $(TARGET)
 
 ocamlyacc: grammar.mly
 	ocamlyacc -v $<
-	mv -f grammar.mli{,.old}
+	mv -f grammar.mli grammar.mli.old
 	sed 's=\(> \)\(token\)=\1Vparser.\2=' < grammar.mli.old > grammar.mli
 	cat grammar.mli | grep -v : | grep -v \> >vparser.mli
 	echo exception Error >> grammar.mli
