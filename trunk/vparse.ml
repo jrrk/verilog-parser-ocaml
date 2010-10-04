@@ -17,13 +17,26 @@
 * Based on verilator parser code by Paul Wasson, Duane Galbi and Wilson Snyder
 *******************************************************************************)
 
-let parse str =
+open Setup;;
+
+let parse str = begin
   let ic = open_in str in
   try
     let lexbuf = Lexing.from_channel ic in
     while true do
-      Grammar.start Lexer.token lexbuf
+      Grammar.start Vlexer.token lexbuf
     done
     
   with End_of_file ->
-    close_in_noerr ic
+    close_in_noerr ic;
+    | Parsing.Parse_error
+    | Grammar.Error ->
+    begin
+    close_in_noerr ic;
+    psuccess := false;
+    Printf.fprintf stderr "Parse Error in %s\n" str;
+    for i = 1 to hsiz do let idx = (hsiz-i+(!histcnt))mod hsiz in let item = !(history.(idx)) in
+        Printf.fprintf stderr "Backtrace %d : %s (%d-%d)\n"  i (str_token (item.tok)) item.strt item.stop;
+    done;
+    end;
+  end

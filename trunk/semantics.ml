@@ -22,12 +22,13 @@ open Printf
 open Vparser
 open Globals
 open Setup
+open Mytoploop (* for unhandled syntax *)
 
 type exprtree = { entry: token; symbol: symtab };;
 
 type exprt =
 | DYADIC of (token * exprtree * exprtree)
-| ASSIGNMENT of (exprtree * exprt)
+| ASSIGNS of (exprtree * exprt)
 | UNHANDLED of token
 ;;
 
@@ -59,10 +60,6 @@ let iter_ semantics out_chan gsyms (stem:string) syms list =
   List.iter (fun x -> semantics out_chan gsyms stem ({Globals.tree=x; symbols=syms})) list
 ;;
 
-let unhand_list = ref [EMPTY];;
-
-let unhandled out_chan arg = unhand_list := arg :: !unhand_list; Dump.dump out_chan arg 0
-
 let not_found syms w = printf "wire/port %s not found\n" w; enter_a_sym syms w IMPLICIT EMPTY "";;
 
 let find_ident out_chan gsyms dir stem syms tok = match tok with ID id -> begin
@@ -86,6 +83,7 @@ let enter_sym_attrs out_chan gsyms dir stem symbols (tok:token) list width = mat
 let subexp out_chan gsyms stem syms exp = match exp with
 | ID id -> find_ident out_chan gsyms DRIVER stem syms exp
 | TRIPLE (BITSEL, ID id, INTNUM n) -> find_ident out_chan gsyms DRIVER stem syms (ID id)
+| INTNUM n -> {symattr=TokSet.singleton exp; width=EMPTY; referrer=Nil; path=""}
 | _ -> unhandled out_chan exp; {symattr=TokSet.singleton exp; width=EMPTY; referrer=Nil; path=""};;
 
 let subexp2 out_chan gsyms stem syms exp = {entry=exp; symbol=(subexp out_chan gsyms stem syms exp)};;
@@ -99,7 +97,7 @@ let expression out_chan gsyms stem syms (tree:token) = match tree with
 let statement out_chan gsyms stem syms tok var expr = (
 let x = subexp out_chan gsyms stem syms var in
 let r = {entry=var; symbol=x} in
-stmts := ASSIGNMENT(r, expr) :: !stmts );;
+stmts := ASSIGNS(r, expr) :: !stmts );;
 
 let widthnum expbase (str:string) =
 let base = ref 10
@@ -244,12 +242,16 @@ let fiter out_chan gsyms (stem:string) syms (kind:string) (subcct:string) (inner
 let rec semantics out_chan gsyms (stem:string) (tree:Globals.modtree) =
    let exp = tree.Globals.tree and syms = tree.Globals.symbols in match exp with
 (* These patterns are temporary till we decide on the proper general form *)
-DOUBLE
+| DOUBLE
  (ALWAYS,
    DOUBLE
-    (DOUBLE (AT, TLIST sens_list),
-   TLIST stmts))
--> iter_ semantics out_chan gsyms stem syms sens_list; iter_ semantics out_chan gsyms stem syms stmts
+    (DOUBLE (AT, TLIST sens_list), stmt))
+-> iter_ semantics out_chan gsyms stem syms sens_list; ( match stmt with
+  | TRIPLE (BEGIN, TLIST stmts, EMPTY)
+    -> iter_ semantics out_chan gsyms stem syms stmts
+  | TLIST stmts
+    -> iter_ semantics out_chan gsyms stem syms stmts
+  | _ -> stmtBlock out_chan gsyms stem syms stmt )
 | DOUBLE(SPECIFY, TLIST speclist) -> iter (fun item -> match item with ID id -> enter_a_sym gsyms (stem^id) SPECIFY EMPTY ""| _ -> ()) speclist
 | TRIPLE(ASSIGN, EMPTY, TLIST assignlist)
 -> iter (fun a -> match a with TRIPLE (EQUALS, var1, expr) -> statement out_chan gsyms stem syms ASSIGN var1 (expression out_chan gsyms stem syms expr) | _ -> unhandled out_chan a) assignlist
@@ -299,7 +301,7 @@ stmtBlock out_chan gsyms stem syms then_clause
       | TRIPLE(EMPTY, EMPTY, x) -> vpullup out_chan gsyms stem syms x
       | _ -> unhandled out_chan inst) instances
 (* Parse primitive instance *)
-| TRIPLE(PRIMINST, ID prim, TLIST inlist) ->
+| QUADRUPLE(PRIMINST, ID prim, EMPTY, TLIST inlist) ->
     if (Hashtbl.mem Globals.modprims prim) then
       semantics out_chan gsyms (stem^prim^".") (Hashtbl.find Globals.modprims prim) (* scan the inner primitive *)
     else printf "Primitive %s not found\n" prim;
@@ -333,6 +335,8 @@ end)
         | _ -> unhandled out_chan kindhash.Globals.tree)
       | _ -> unhandled out_chan inst) instances
     end
+| QUADRUPLE(ASSIGNMENT, var1, EMPTY, expr)
+-> statement out_chan gsyms stem syms ASSIGNMENT var1 (expression out_chan gsyms stem syms expr)
 | QUADRUPLE(EQUALS, TLIST arg1, TLIST arg2, TLIST arg3) -> iter_ semantics out_chan gsyms stem syms arg1; iter_ semantics out_chan gsyms stem syms arg2; iter_ semantics out_chan gsyms stem syms arg3
 | QUADRUPLE(IF, expr, then_clause, else_clause) ->
 exprGeneric out_chan gsyms stem syms expr;
@@ -384,6 +388,7 @@ stmtBlock out_chan gsyms stem syms else_clause
 | RANGE(arg1, arg2) -> semantics out_chan gsyms stem {Globals.tree=arg1; symbols=syms}; semantics out_chan gsyms stem {Globals.tree=arg2; symbols=syms}
 | ID id -> enter_a_sym syms id EMPTY EMPTY ""
 | DOUBLE(SPECIFY,EMPTY) -> ()
+| DOUBLE (POSEDGE, ID clk) -> ()
 | PREPROC txt -> ()
 | TABLE -> ()
 | EMPTY -> ()

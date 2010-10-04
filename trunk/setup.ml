@@ -47,12 +47,30 @@ and symtab = {
 
 module TokSet = Set.Make (OrdTok)
 
+  let hsiz = 256;;
+  type hist = {tok:token;strt:int;stop:int;key:bool;};;
+  let histcnt = ref 0;;
+  let history = Array.init hsiz (fun i-> ref {tok=EMPTY;strt=0;stop=0;key=false});;
+  let psuccess = ref false;;
+
 let one_elm = TokSet.add EMPTY TokSet.empty;;
 
 let rec str_token (e:token) = match e with
 | ID id -> id
 | RANGE (INTNUM hi,INTNUM lo) -> "[" ^ (string_of_int hi) ^ ":" ^ (string_of_int lo) ^ "] "
 | TRIPLE (DOT, inner, tok) -> "."^(str_token inner)^"("^(str_token tok)^")"
+| WEAK arg | PWEAK arg -> arg
+| TRI arg  -> arg
+| PREPROC arg  -> arg
+| INTNUM arg  -> "INTNUM "^(string_of_int arg)
+| ILLEGAL arg  -> "ILLEGAL "^(String.make 1 arg)
+| HEXNUM arg  -> "HEXNUM "^arg
+| FLOATNUM arg  -> "FLOATNUM "^(string_of_float arg)
+| DECNUM arg  -> "DECNUM "^arg
+| COMMENT_BEGIN arg  -> "COMMENT_BEGIN "^arg
+| BUFIF arg  -> arg
+| BINNUM arg  -> "BINNUM "^arg
+| ASCNUM arg  -> "ASCNUM "^arg
 | _ -> (Ord.getstr e);;
 
 let show_token (e:token) = Printf.printf "%s " (str_token e)

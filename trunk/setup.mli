@@ -51,6 +51,11 @@ module TokSet :
     val split : elt -> t -> t * bool * t
   end
 
+val hsiz : int
+val histcnt : int ref
+type hist = { tok : Vparser.token; strt : int; stop : int; key : bool; }
+val history : hist ref array
+val psuccess : bool ref
 val show_set : TokSet.t -> unit
 val str_token : Vparser.token -> string
 val show_token : Vparser.token -> unit
