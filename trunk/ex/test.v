@@ -34,7 +34,7 @@ output [7:0] cnt;
 reg [7:0] cnt;
 output [1:0] cc;
 
-test2 cct(.a(1'b1), .b(cnt[0]), .c(cc));
+test2 cct(.a(), .c(cc));
 
 always @(posedge clk)
 	if (rst)
@@ -50,7 +50,7 @@ input clk, rst;
 output [7:0] count;
 wire [1:0] cc;
 
-test1 split(clk, rst, {count[7],count[6],count[5],count[4],count[3],count[2],count[1],count[0]}, cc[1:0]);
+test1 split(clk, {count[7],count[6],count[5],count[4],count[3],count[2],count[1],count[0]}, cc[1:0]);
 
 // another comment
 
