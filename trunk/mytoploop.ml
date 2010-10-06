@@ -106,6 +106,8 @@ let loop ppf =
 
 let unhand_list = ref [Vparser.EMPTY];;
 
-let unhandled out_chan arg = if (List.mem arg !unhand_list == false) then unhand_list := arg :: !unhand_list;
+let unhandled_dbg out_chan arg = if (List.mem arg !unhand_list == false) then unhand_list := arg :: !unhand_list;
 Printexc.print_backtrace out_chan;
 loop Format.std_formatter;;
+
+let _ = Semantics.unhandled_ptr := (Semantics.UPTR unhandled_dbg);;

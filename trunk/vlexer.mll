@@ -76,6 +76,7 @@ let _ = List.iter (fun (str,key) -> enter_keyword str key)
 (  "endtable",		ENDTABLE ) ;
 (  "endtask",		ENDTASK ) ;
 (  "end",		END ) ;
+(  "event",		EVENT ) ;
 (  "$error",		D_ERROR ) ;
 (  "$fatal",		D_FATAL ) ;
 (  "$fclose",		D_FCLOSE ) ;
@@ -108,6 +109,7 @@ let _ = List.iter (fun (str,key) -> enter_keyword str key)
 (  "module",		MODULE ) ;
 (  "nand",		NAND ) ;
 (  "negedge",		NEGEDGE ) ;
+(  "nmos",		NMOS ) ;
 (  "nor",		NOR ) ;
 (  "not",		NOT ) ;
 (  "$onehot0",		D_ONEHOT0 ) ;
@@ -117,6 +119,7 @@ let _ = List.iter (fun (str,key) -> enter_keyword str key)
 (  "or",		OR ) ;
 (  "output",		OUTPUT ) ;
 (  "parameter",		PARAMETER ) ;
+(  "pmos",		PMOS ) ;
 (  "pullup",		PULLUP ) ;
 (  "$period",		TIMINGSPEC ) ;
 (  "posedge",		POSEDGE ) ;
@@ -157,7 +160,16 @@ let _ = List.iter (fun (str,key) -> enter_keyword str key)
 (  "wire",		WIRE ) ;
 (  "$write",		D_WRITE ) ;
 (  "xnor",		XNOR ) ;
-(  "xor",		XOR ) ];;
+(  "xor",		XOR ) ;
+("`celldefine", P_CELLDEFINE );
+("`define", P_DEFINE );
+("`disable_portfaults", P_DISABLE_PORTFAULTS );
+("`enable_portfaults", P_ENABLE_PORTFAULTS );
+("`endcelldefine", P_ENDCELLDEFINE );
+("`ifdef", P_IFDEF );
+("`nosuppress_faults", P_NOSUPPRESS_FAULTS );
+("`resetall", P_RESETALL );
+("`suppress_faults", P_SUPPRESS_FAULTS ) ];;
 
 }
 
@@ -261,13 +273,15 @@ if Hashtbl.mem ksymbols word then hlog lexbuf (Hashtbl.find ksymbols word) else 
 | digit+ as inum { hlog lexbuf (INTNUM ( int_of_string inum ) ) }
 | '\"'anything_but_quote*'\"' as asciinum { hlog lexbuf (ASCNUM asciinum ) }
 | "`timescale" anything_but_newline+ as preproc { hlog lexbuf (PREPROC preproc) }
-| "`define" anything_but_newline+ as macro {
-let blank1 = String.index macro ' ' in
+| "`define" anything_but_newline+ as macro_raw {
+let blank1 = String.index macro_raw ' ' in
+(* check the replacement text is not null, if so define it to blank *)
+let macro = if (String.contains_from macro_raw (blank1+1) ' ') then macro_raw else macro_raw^"  " in
 let blank2 = String.index_from macro (blank1+1) ' ' in
 let name = "`" ^ (String.sub macro (blank1+1) (blank2-blank1-1)) in
 let defn = String.sub macro (blank2+1) (String.length(macro)-blank2-1) in
 let idx = ref 0 in begin
-while (defn.[!idx] == ' ') do idx := !idx+1; done;
+while (!idx < String.length defn) && (defn.[!idx] == ' ') do idx := !idx+1; done;
 Hashtbl.add ksymbols name (token (Lexing.from_string (String.sub (defn) (!idx) (String.length(defn)-(!idx)))))
 end; token lexbuf }
 | "`ifdef" anything_but_newline+ as macro

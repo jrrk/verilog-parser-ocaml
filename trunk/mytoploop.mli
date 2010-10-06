@@ -27,4 +27,3 @@ val loop : formatter -> unit
 (* variables to be debugged *)
 
 val unhand_list : Vparser.token list ref
-val unhandled : out_channel -> Vparser.token -> unit

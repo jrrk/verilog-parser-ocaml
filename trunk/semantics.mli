@@ -9,6 +9,14 @@ type exprt =
   | ASSIGNS of (exprtree * exprt)
   | UNHANDLED of Vparser.token
 
+type uptr = UPTR of (out_channel -> Vparser.token -> unit) | UNIL
+   val unhand_list : Vparser.token list ref
+   val unhandled_dflt : out_channel -> Vparser.token -> unit
+   val unhandled_ptr : uptr ref
+   val unhandled : out_channel -> Vparser.token -> unit
+
+val stk : Vparser.token Stack.t
+
 val stmts : exprt list ref
 
    val semantics : out_channel -> (string, Setup.symtab) Hashtbl.t -> string -> Globals.modtree -> unit

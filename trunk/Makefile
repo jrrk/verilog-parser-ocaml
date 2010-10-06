@@ -24,8 +24,13 @@ TARGET = vparser
 YACC = ocamlyacc -v
 #LEXOPTS = -ml
 
-CMO = ord.cmo setup.cmo vlexer.cmo globals.cmo grammar.cmo dump.cmo mytoploop.cmo semantics.cmo vparse.cmo main.cmo
-CML = toplevellib.cma str.cma # extLib.cma
+CMO = ord.cmo setup.cmo vlexer.cmo globals.cmo grammar.cmo dump.cmo semantics.cmo mytoploop.cmo vparse.cmo main.cmo
+CMX = ord.cmx setup.cmx vlexer.cmx globals.cmx grammar.cmx dump.cmx semantics.cmx vparse.cmx main.cmx
+CML = toplevellib.cma str.cma
+CMLX = str.cmxa
+
+all:
+	@echo "Choose make ocamlyacc or make menhir"
 
 vtop: $(TARGET)
 	ocamlmktop -g -o vtop $(CML) $(CMO)
@@ -36,6 +41,7 @@ ocamlyacc: grammar.mly
 	sed 's=\(> \)\(token\)=\1Vparser.\2=' < grammar.mli.old > grammar.mli
 	cat grammar.mli | grep -v : | grep -v \> >vparser.mli
 	echo exception Error >> grammar.mli
+	rm -f vparser.ml
 	make vtop
 
 menhir: grammar.mly
@@ -43,8 +49,7 @@ menhir: grammar.mly
 	menhir --trace --external-tokens Vparser --base grammar $<
 	make vtop
 
-grammar.mli grammar.ml:
-	echo "Choose make ocamlyacc or make menhir"
+grammar.mli grammar.ml: grammar.mly
 
 $(TARGET): $(CMO)
 	ocamlc.opt -g -o $@ $(CML) $(CMO)
@@ -53,10 +58,10 @@ depend: grammar.ml vlexer.ml
 	ocamldep *.ml *.mli > .depend
 
 clean:
-	rm -rf *.cmi *.cmo vtop $(TARGET)
+	rm -rf *.cmi *.cmo *.cmx vtop $(TARGET)
 	rm -rf grammar.ml grammar.mli vlexer.ml vlexer.mli grammar.mli grammar.ml ord.ml
 
-.SUFFIXES: .ml .mli .mll .mly .cmo .cmi
+.SUFFIXES: .ml .mli .mll .mly .cmo .cmi .cmx
 
 .ml.cmo:
 	ocamlc.opt -g -c $<
@@ -66,6 +71,9 @@ clean:
 
 .mll.ml:
 	ocamllex.opt $(LEXOPTS) $<
+
+.ml.cmx:
+	ocamlopt.opt -g -c $<
 
 ord.ml: ord.sh grammar.cmi
 	sh ord.sh
@@ -78,6 +86,9 @@ test: vtop
 
 debug: vtop
 	ocamldebug ./vtop
+
+vopt: $(CMX)
+	ocamlopt.opt -g -o $@ $(CMLX) $(CMX)
 
 I = -I /home/jrrk/cmd/src/ocaml-3.12.0/driver -I /home/jrrk/cmd/src/ocaml-3.12.0/toplevel -I /home/jrrk/cmd/src/ocaml-3.12.0/bytecomp -I /home/jrrk/cmd/src/ocaml-3.12.0/parsing -I /home/jrrk/cmd/src/ocaml-3.12.0/utils -I /home/jrrk/cmd/src/ocaml-3.12.0/typing
 
