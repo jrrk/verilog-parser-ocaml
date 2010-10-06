@@ -24,8 +24,9 @@ TARGET = vparser
 YACC = ocamlyacc -v
 #LEXOPTS = -ml
 
-CMO = ord.cmo setup.cmo vlexer.cmo globals.cmo grammar.cmo dump.cmo semantics.cmo mytoploop.cmo vparse.cmo main.cmo
-CMX = ord.cmx setup.cmx vlexer.cmx globals.cmx grammar.cmx dump.cmx semantics.cmx vparse.cmx main.cmx
+CMO1 = ord.cmo setup.cmo vlexer.cmo globals.cmo dump.cmo semantics.cmo grammar.cmo
+CMO2 = vparse.cmo main.cmo
+CMX = ord.cmx setup.cmx vlexer.cmx globals.cmx dump.cmx semantics.cmx grammar.cmx vparse.cmx main.cmx
 CML = toplevellib.cma str.cma
 CMLX = str.cmxa
 
@@ -33,7 +34,7 @@ all:
 	@echo "Choose make ocamlyacc or make menhir"
 
 vtop: $(TARGET)
-	ocamlmktop -g -o vtop $(CML) $(CMO)
+	ocamlmktop -g -o vtop $(CML) $(CMO1) $(CMO2)
 
 ocamlyacc: grammar.mly
 	ocamlyacc -v $<
@@ -51,8 +52,8 @@ menhir: grammar.mly
 
 grammar.mli grammar.ml: grammar.mly
 
-$(TARGET): $(CMO)
-	ocamlc.opt -g -o $@ $(CML) $(CMO)
+$(TARGET): $(CMO1) $(CMO2) mytoploop.cmo
+	ocamlc.opt -g -o $@ $(CML) $(CMO1) mytoploop.cmo $(CMO2)
 
 depend: grammar.ml vlexer.ml
 	ocamldep *.ml *.mli > .depend

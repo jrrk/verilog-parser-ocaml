@@ -38,8 +38,10 @@ let stk = Stack.create();;
 
 let unhand_list = ref [Vparser.EMPTY];;
 
-let unhandled_dflt out_chan arg = if (List.mem arg !unhand_list == false) then unhand_list := arg :: !unhand_list;
-Printexc.print_backtrace out_chan;;
+let unhandled_dflt out_chan arg = if (List.mem arg !unhand_list == false) then begin
+unhand_list := arg :: !unhand_list;
+Dump.dump out_chan arg 0
+end
 
 let unhandled_ptr = ref (UPTR unhandled_dflt);;
 
@@ -251,8 +253,9 @@ iter (fun t -> match t with ID w -> ( ignore(subexp out_chan gsyms DRIVER stem s
 let f2 inner t = show_token(inner);show_token(t);print_char '\n';;
 
 let fiter out_chan gsyms (stem:string) syms (kind:string) (subcct:string) (inner:token) (term:token) = match term with
-          (* connect by position syntax - deprecated *)
+          | DOUBLE (CELLPIN, myinner) -> ()
           | TRIPLE (CELLPIN, myinner, tok) -> connect out_chan gsyms stem syms kind subcct myinner tok
+          (* connect by position syntax - deprecated *)
           | ID id -> connect out_chan gsyms stem syms kind subcct inner term
 	  | DOUBLE (CONCAT, TLIST concat) -> connect out_chan gsyms stem syms kind subcct inner term
           | QUADRUPLE (PARTSEL, ID net, INTNUM hi, INTNUM lo) -> connect out_chan gsyms stem syms kind subcct inner term
@@ -364,16 +367,22 @@ iter2 fc primargs inlist | _ -> ())
       | TRIPLE (ID subcct, EMPTY, TLIST termlist) -> semantics out_chan gsyms (stem^subcct^".") kindhash;
         enter_a_sym syms subcct SUBCCT EMPTY "";
         ( match kindhash.Globals.tree with QUINTUPLE(MODULE,ID arg1, EMPTY, TLIST primargs, TLIST arg4) ->
-        (try iter2 (fun (inner:token) (term:token) -> fiter out_chan gsyms stem syms kind subcct inner term) primargs termlist; with Invalid_argument "List.iter2" -> let ids = ref [] and partlist = ref ([],[]) in begin
-(*
-iter (fun (inner:token) -> (fprintf out_chan "%s " (str_token inner))) primargs;
-output_char out_chan '\n';
-iter (fun (term:token) -> (fprintf out_chan "%s " (str_token term))) termlist;
-output_char out_chan '\n';
-*)
-iter (fun (inner:token) -> (match inner with ID id -> ids := (!ids @ [id]) | _ -> unhandled out_chan inner)) primargs;
-iter (fun (term:token) -> (match term with TRIPLE (CELLPIN, ID inner, tok) -> ids := filter (fun item -> item<>inner) !ids | _ -> unhandled out_chan term)) termlist;
-begin
+        (try iter2 (fun (inner:token) (term:token) -> fiter out_chan gsyms stem syms kind subcct inner term) primargs termlist; with Invalid_argument "List.iter2" -> let ids = ref [] and partlist = ref ([],[])and byposn = ref false in begin
+iter (fun (inner:token) -> (match inner with
+| ID id -> ids := (!ids @ [id])
+| QUINTUPLE ((INPUT|OUTPUT|INOUT), EMPTY, EMPTY, range, DOUBLE (ID id, EMPTY)) -> ids := (!ids @ [id])
+| _ -> unhandled out_chan inner)) primargs;
+let primstr = !ids in try iter2 (fun (innert:string) (term:token) -> (match term with
+| DOUBLE (CELLPIN, ID innern) -> () (*Explicitly unconnected pin*)
+| TRIPLE (CELLPIN, ID innern, tok) -> ids := filter (fun item -> item<>innern) !ids
+| _ -> byposn := true; ids := filter (fun item -> item<>innert) !ids)) primstr termlist;
+with Invalid_argument "List.iter2" -> ();
+if (!byposn) then begin
+  fprintf out_chan "sub-module %s of kind %s deprecated connect by position - %d unconnected pins(s) - might be " subcct kind (length (!ids));
+  iter (fun id -> fprintf out_chan "%s " id) (!ids);
+  output_char out_chan '\n';
+end;
+(* Find which of the unconnected pins are inputs *)
 partlist := partition (fun inner -> 
 (Hashtbl.mem kindhash.symbols inner) && (TokSet.mem INPUT (Hashtbl.find kindhash.symbols inner).symattr)
 ) !ids;
@@ -381,7 +390,6 @@ if (length (fst(!partlist)) > 0) then begin
 fprintf out_chan "sub-module %s of kind %s insufficient args - %d unconnected inputs(s): " subcct kind (length (fst(!partlist)));
 iter (fun id -> fprintf out_chan "%s " id) (fst(!partlist));
 output_char out_chan '\n';
-end
 end
 end)
         | _ -> unhandled out_chan kindhash.Globals.tree)
@@ -434,12 +442,16 @@ stmtBlock out_chan gsyms stem syms clause
 | QUINTUPLE(MODULE,ID arg1, arg2, TLIST arg3, TLIST arg4) ->
     enter_a_sym syms arg1 MODULE EMPTY ""; (* print_endline (stem^arg1); *)
     semantics out_chan gsyms stem {Globals.tree=arg2; symbols=syms};
-    iter (fun arg -> match arg with ID id -> enter_a_sym syms id IOPORT EMPTY ""| _ -> semantics out_chan gsyms stem {Globals.tree=arg; symbols=syms}) arg3;
+    iter (fun arg -> match arg with
+| ID id -> enter_a_sym syms id IOPORT EMPTY ""
+| _ -> semantics out_chan gsyms stem {Globals.tree=arg; symbols=syms}) arg3;
     iter_ semantics out_chan gsyms stem syms arg4
 (* Parse primitive declarations *)
 | QUINTUPLE(PRIMITIVE,ID arg1, EMPTY, TLIST arg3, TLIST arg4) ->
     enter_a_sym syms arg1 (PRIMARGS arg3) EMPTY "";
-    iter (fun arg -> match arg with ID id -> enter_a_sym syms id IOPORT EMPTY ""| _ -> semantics out_chan gsyms stem {Globals.tree=arg; symbols=syms}) arg3;
+    iter (fun arg -> match arg with
+| ID id -> enter_a_sym syms id IOPORT EMPTY ""
+| _ -> semantics out_chan gsyms stem {Globals.tree=arg; symbols=syms}) arg3;
     iter_ semantics out_chan gsyms stem syms arg4
 (* Parse IO declarations *)
 | QUINTUPLE((INPUT|OUTPUT|INOUT) as dir, arg1, arg2, arg3, arg4) ->
