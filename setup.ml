@@ -47,7 +47,7 @@ and symtab = {
 
 module TokSet = Set.Make (OrdTok)
 
-  let hsiz = 256;;
+  let hsiz = 64;;
   type hist = {tok:token;strt:int;stop:int;key:bool;};;
   let histcnt = ref 0;;
   let history = Array.init hsiz (fun i-> ref {tok=EMPTY;strt=0;stop=0;key=false});;
@@ -67,7 +67,6 @@ let rec str_token (e:token) = match e with
 | HEXNUM arg  -> "HEXNUM "^arg
 | FLOATNUM arg  -> "FLOATNUM "^(string_of_float arg)
 | DECNUM arg  -> "DECNUM "^arg
-| COMMENT_BEGIN arg  -> "COMMENT_BEGIN "^arg
 | BUFIF arg  -> arg
 | BINNUM arg  -> "BINNUM "^arg
 | ASCNUM arg  -> "ASCNUM "^arg

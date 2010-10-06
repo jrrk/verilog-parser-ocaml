@@ -42,7 +42,7 @@ let dump_gsym gsyms s = Setup.TokSet.iter Setup.show_token ( Hashtbl.find gsyms 
 let vparser gsyms args = begin
   Setup.psuccess := true;
   for i = 1 to ( Array.length args - 2 ) do
-    Printexc.print Vparse.parse args.( i )
+    (*Printexc.print*) Vparse.parse args.( i )
   done;
   if (!Setup.psuccess == false) then
     Printf.printf "Not continuing due to parse errors\n"

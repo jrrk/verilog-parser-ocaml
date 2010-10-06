@@ -29,6 +29,7 @@ let parse str = begin
     
   with End_of_file ->
     close_in_noerr ic;
+(*    | Not_found  *)
     | Parsing.Parse_error
     | Grammar.Error ->
     begin
@@ -38,5 +39,6 @@ let parse str = begin
     for i = 1 to hsiz do let idx = (hsiz-i+(!histcnt))mod hsiz in let item = !(history.(idx)) in
         Printf.fprintf stderr "Backtrace %d : %s (%d-%d)\n"  i (str_token (item.tok)) item.strt item.stop;
     done;
+    exit 1;
     end;
   end

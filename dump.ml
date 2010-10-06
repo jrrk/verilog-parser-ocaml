@@ -44,7 +44,6 @@ let rec dump out_chan exp indent =
 | BINNUM c -> fprintf out_chan "BINNUM(%s) " c
 | BITSEL -> fprintf out_chan "BitSelect "
 | BUFIF lev -> fprintf out_chan "%s " lev
-| COMMENT_BEGIN cmnt -> fprintf out_chan "COMMENT_BEGIN %s " cmnt
 | D_ATTRIBUTE -> fprintf out_chan "$attribute "
 | DECNUM c -> fprintf out_chan "DECNUM(%s) " c
 | DOT -> fprintf out_chan " ."
