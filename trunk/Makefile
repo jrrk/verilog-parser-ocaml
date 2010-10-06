@@ -90,7 +90,9 @@ debug: vtop
 vopt: $(CMX)
 	ocamlopt.opt -g -o $@ $(CMLX) $(CMX)
 
-I = -I /home/jrrk/cmd/src/ocaml-3.12.0/driver -I /home/jrrk/cmd/src/ocaml-3.12.0/toplevel -I /home/jrrk/cmd/src/ocaml-3.12.0/bytecomp -I /home/jrrk/cmd/src/ocaml-3.12.0/parsing -I /home/jrrk/cmd/src/ocaml-3.12.0/utils -I /home/jrrk/cmd/src/ocaml-3.12.0/typing
+INC = /home/jrrk/cmd/src/ocaml-3.12.0
+
+I = -I $(INC)/driver -I $(INC)/toplevel -I $(INC)/bytecomp -I $(INC)/parsing -I $(INC)/utils -I $(INC)/typing
 
 mytoploop.cmo: mytoploop.ml
 	ocamlc.opt -g -c $I $<
