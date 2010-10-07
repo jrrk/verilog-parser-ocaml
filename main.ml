@@ -35,25 +35,22 @@ let my_syms m = Hashtbl.iter Setup.show_sym (Hashtbl.find Globals.modprims m).Gl
 
 let dump_sym m s = Setup.TokSet.iter Setup.show_token ( Hashtbl.find (Hashtbl.find Globals.modprims m).Globals.symbols s).Setup.symattr;;
 
-let dump_gsyms gsyms = Hashtbl.iter Setup.show_sym gsyms;;
+let dump_all_syms syms = Hashtbl.iter Setup.show_sym syms;;
 
-let dump_gsym gsyms s = Setup.TokSet.iter Setup.show_token ( Hashtbl.find gsyms s).Setup.symattr;;
-
-let vparser gsyms args = begin
+let vparser args = begin
   Setup.psuccess := true;
   for i = 1 to ( Array.length args - 2 ) do
     (*Printexc.print*) Vparse.parse args.( i )
   done;
   if (!Setup.psuccess == false) then
     Printf.printf "Not continuing due to parse errors\n"
-  else if ( Array.length args > 2 ) then
+  else if ( Array.length args > 2 ) then let nam = args.( Array.length args - 1 ) in
     begin
-    if (Hashtbl.mem Globals.modprims (args.( Array.length args - 1 ))) then
-      let out_chan = open_out (args.( Array.length args - 1 ) ^ ".report") in
+    Semantics.endscan 0 nam;
+    if (Hashtbl.mem Globals.modprims nam) then
+      let out_chan = open_out (nam ^ ".report") in
 	begin
-
-	Semantics.semantics out_chan gsyms "" (Hashtbl.find Globals.modprims (args.( Array.length args - 1 )));
-	Semantics.check_glob out_chan gsyms;
+	Semantics.prescan "module" nam (Hashtbl.find Globals.modprims nam);
 	close_out out_chan
 	end
     else Printf.printf "Toplevel %s is not found\n" args.( Array.length args - 1 );
@@ -64,7 +61,7 @@ let vparser gsyms args = begin
 
 exception MyException of string * int (* exceptions can carry a value *);;
 
-let _ = vparser (Hashtbl.create 256) Sys.argv
+let _ = vparser Sys.argv
 (*  try
     Printexc.record_backtrace true; vparser (Hashtbl.create 256) Sys.argv;
   with

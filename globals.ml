@@ -25,10 +25,11 @@ type modtree = {
 tree: token;
 symbols: (string, Setup.symtab) Hashtbl.t;
 mutable unresolved: string list;
-gsyms : (string, Setup.symtab) Hashtbl.t;
+(* gsyms : (string, Setup.symtab) Hashtbl.t; *)
  };;
 
 let modprims = Hashtbl.create 256;;
+let unresolved_list = ref [];;
 
 let get_table (m:string) = Hashtbl.find modprims m;;
 let get_syms (r:modtree) = r.symbols;;
