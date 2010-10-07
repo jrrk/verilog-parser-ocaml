@@ -60,16 +60,17 @@ let rec str_token (e:token) = match e with
 | RANGE (INTNUM hi,INTNUM lo) -> "[" ^ (string_of_int hi) ^ ":" ^ (string_of_int lo) ^ "] "
 | TRIPLE (DOT, inner, tok) -> "."^(str_token inner)^"("^(str_token tok)^")"
 | WEAK arg | PWEAK arg -> arg
-| TRI arg  -> arg
-| PREPROC arg  -> arg
-| INTNUM arg  -> "INTNUM "^(string_of_int arg)
-| ILLEGAL arg  -> "ILLEGAL "^(String.make 1 arg)
-| HEXNUM arg  -> "HEXNUM "^arg
-| FLOATNUM arg  -> "FLOATNUM "^(string_of_float arg)
-| DECNUM arg  -> "DECNUM "^arg
-| BUFIF arg  -> arg
-| BINNUM arg  -> "BINNUM "^arg
-| ASCNUM arg  -> "ASCNUM "^arg
+| TRI arg -> arg
+| PREPROC arg -> arg
+| INTNUM arg -> "INTNUM "^(string_of_int arg)
+| ILLEGAL arg -> "ILLEGAL "^(String.make 1 arg)
+| HEXNUM arg -> "HEXNUM "^arg
+| FLOATNUM arg -> "FLOATNUM "^(string_of_float arg)
+| DECNUM arg -> "DECNUM "^arg
+| BUFIF arg -> arg
+| BINNUM arg -> "BINNUM "^arg
+| ASCNUM arg -> "ASCNUM "^arg
+| EDGE arg  -> "EDGE "^arg
 | _ -> (Ord.getstr e);;
 
 let show_token (e:token) = Printf.printf "%s " (str_token e)

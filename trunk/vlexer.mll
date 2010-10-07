@@ -150,6 +150,7 @@ let _ = List.iter (fun (str,key) -> enter_keyword str key)
 (  "$test$plusargs",	D_TEST_PLUSARGS ) ;
 (  "$timeskew",		TIMINGSPEC ) ;
 (  "$time",		D_TIME ) ;
+(  "tran",		TRAN ) ;
 (  "$unsigned",		D_UNSIGNED ) ;
 (  "unsigned",		UNSIGNED ) ;
 (  "uwire",		WIRE ) ;
@@ -174,6 +175,7 @@ let _ = List.iter (fun (str,key) -> enter_keyword str key)
 }
 
 let digit = ['0'-'9']
+let state4 = ['0'-'1' 'x' 'z' '?' 'X' 'Z' 'b' 'B']
 let ident = ['a'-'z' 'A'-'Z' '_']
 let ident_num = ['a'-'z' 'A'-'Z' '_' '0'-'9' '$']
 let anything_but_blank = [ '^'  '~'  '<'  '='  '>'  '|'  '_'  '-'  ','  ';'  ':'  '!'  '?'  '/'  '.'  '`'  '\''  '\"'  '('  ')'  '['  ']'  '{'  '}'  '@'  '$'  '*'  '\\'  '&'  '#'  '%'  '+'  '0'-'9'  'a'-'z'  'A'-'Z' ]
@@ -187,10 +189,12 @@ rule token = parse
 | "(*"
     { comment2 (Lexing.lexeme_start lexbuf) lexbuf; token lexbuf }
 |  "//"anything_but_newline* {token lexbuf}
-|  "bufif"digit+ as def	{ hlog lexbuf (BUFIF def) }
-|  "tri"digit+ as strength		{ hlog lexbuf (TRI strength) }
+|  "bufif"digit+ as def		{ hlog lexbuf (BUFIF def) }
+|  "tranif"digit+ as def	{ hlog lexbuf (TRANIF def) }
+|  "tri"digit+ as strength	{ hlog lexbuf (TRI strength) }
 |  "(weak"digit+ as strength	{ hlog lexbuf (PWEAK strength ) }
 |  "weak"digit+ as strength	{ hlog lexbuf (WEAK strength ) }
+|  "("state4 state4")" as edge	{ hlog lexbuf (EDGE edge) }
 |  "&&"			{ hlog lexbuf (P_ANDAND) }
 |  "&&&"		{ hlog lexbuf (P_ANDANDAND) }
 |  "&="			{ hlog lexbuf (P_ANDEQ) }

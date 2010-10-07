@@ -30,34 +30,36 @@ let logfile = ref Closed;;
 
 let scan out_chan key contents = let gsyms = contents.Globals.gsyms in begin
 Hashtbl.add Globals.modprims key contents;
+Printf.fprintf out_chan "scanning ..\n";
 Semantics.semantics out_chan gsyms "" contents;
-Printf.fprintf out_chan "scanned ";
 Semantics.check_glob out_chan gsyms;
 end
 
-let prescan mykey expt =
+let prescan kind mykey expt =
 	if (!logfile == Closed) then logfile := Open (open_out "report.report");
-	match !logfile with Open out_chan ->
+	match !logfile with Open out_chan -> begin
+	Printf.fprintf out_chan "%s %s: parsed " kind mykey;
 	if (List.length(!unresolved_list)==0) then let reslist = ref [] in begin
-		Printf.fprintf out_chan "module %s: parsed " mykey;
 		scan out_chan mykey expt;
 		Hashtbl.iter (fun key contents ->
 contents.Globals.unresolved <- List.filter(fun item -> item <> mykey) contents.Globals.unresolved;
-if contents.Globals.unresolved == [] then ( scan out_chan key contents; reslist := key :: !reslist)
-) pending;
+if contents.Globals.unresolved == [] then (
+			Printf.fprintf out_chan "module %s: resumed " key;
+			scan out_chan key contents; reslist := key :: !reslist)) pending;
 		if (List.length(!reslist) > 0) then Printf.fprintf out_chan "no longer pending: ";
 		List.iter (fun key -> Printf.fprintf out_chan " %s" key;
 			Hashtbl.remove pending key) !reslist;
 		output_char out_chan '\n';
 		end
 	else begin
-		Printf.fprintf out_chan "pending module %s - undeclared: " mykey;
+		Printf.fprintf out_chan "pending: not yet encountered: ";
 		List.iter (fun key -> Printf.fprintf out_chan "%s " key) !unresolved_list;
 		output_char out_chan '\n';
 		Hashtbl.add pending mykey expt;
 		unresolved_list := [];
 	end;
-	flush out_chan
+	flush out_chan;
+	end
 	| Closed -> raise Error
 ;;
 
@@ -120,6 +122,8 @@ open Vparser
 // for transistor level
 %token NMOS
 %token PMOS
+%token TRAN
+%token<string> TRANIF
 // for function/task refs
 %token TASKREF
 %token FUNCREF
@@ -135,6 +139,8 @@ open Vparser
 %token ENDLABEL
 // for {a,b,c}
 %token CONCAT
+// for tables
+%token<string> EDGE
 // Generic lexer tokens, for example a number
 // IEEE: real_number
 %token<float>		FLOATNUM	// "FLOATING-POINT NUMBER"
@@ -374,6 +380,10 @@ open Vparser
 
 %start start
 
+%type <token list> trowList
+%type <token list> tinList
+%type <token list> tregList
+%type <token list> toutList
 %type <token> Anyrange
 %type <token> AssertStmt
 %type <token list> AssignList
@@ -546,7 +556,7 @@ preproc:        P_CELLDEFINE			        { EMPTY }
 // IEEE: module_declaration:
 moduleDecl:	MODULE ID modParE modPortsE SEMICOLON modItemListE ENDMODULE
 			{
-			prescan $2 { Globals.tree=QUINTUPLE ( MODULE, ID $2, $3, $4, $6 );
+			prescan "module" $2 { Globals.tree=QUINTUPLE ( MODULE, ID $2, $3, $4, $6 );
 					  	symbols=Hashtbl.create 256;
 					  	gsyms=Hashtbl.create 256;
 						unresolved=(!unresolved_list)}
@@ -556,7 +566,7 @@ moduleDecl:	MODULE ID modParE modPortsE SEMICOLON modItemListE ENDMODULE
 // IEEE: primitive_declaration:
 primDecl:	PRIMITIVE ID modParE modPortsE SEMICOLON primItemList ENDPRIMITIVE
 			{
-			prescan $2 { Globals.tree=QUINTUPLE ( PRIMITIVE, ID $2, $3, $4, TLIST $6 );
+			prescan "primitive" $2 { Globals.tree=QUINTUPLE ( PRIMITIVE, ID $2, $3, $4, TLIST $6 );
 						symbols=Hashtbl.create 256;
 					  	gsyms=Hashtbl.create 256;
 						unresolved=[]}
@@ -1413,17 +1423,19 @@ attrDecl:
 
 gateDecl:
 		BUF  delayStrength gateBufList SEMICOLON		{ TRIPLE (BUF, $2, TLIST $3 ) }
-	|	BUFIF delayStrength gateBufIfList SEMICOLON	{ TRIPLE (BUFIF $1, $2, TLIST $3 ) }
+	|	BUFIF delayStrength gateBufIfList SEMICOLON		{ TRIPLE (BUFIF $1, $2, TLIST $3 ) }
 	|	NOT  delayStrength gateNotList SEMICOLON		{ TRIPLE (NOT, $2, TLIST $3 ) }
 	|	AND  delayStrength gateAndList SEMICOLON		{ TRIPLE (AND, $2, TLIST $3 ) }
 	|	NAND delayStrength gateNandList SEMICOLON		{ TRIPLE (NAND, $2, TLIST $3 ) }
-	|	OR   delayStrength gateOrList SEMICOLON		{ TRIPLE (OR, $2, TLIST $3 ) }
+	|	OR   delayStrength gateOrList SEMICOLON			{ TRIPLE (OR, $2, TLIST $3 ) }
 	|	NOR  delayStrength gateNorList SEMICOLON		{ TRIPLE (NOR, $2, TLIST $3 ) }
 	|	XOR  delayStrength gateXorList SEMICOLON		{ TRIPLE (XOR, $2, TLIST $3 ) }
 	|	XNOR delayStrength gateXnorList SEMICOLON		{ TRIPLE (XNOR, $2, TLIST $3 ) }
 	|	PULLUP delayStrength gatePullupList SEMICOLON		{ TRIPLE (PULLUP, $2, TLIST $3 ) }
 	|	NMOS delayStrength gateMosList SEMICOLON		{ TRIPLE (NMOS, $2, TLIST $3 ) }
 	|	PMOS delayStrength gateMosList SEMICOLON		{ TRIPLE (PMOS, $2, TLIST $3 ) }
+	|	TRAN delayStrength gateTranList SEMICOLON		{ TRIPLE (TRAN, $2, TLIST $3 ) }
+	|	TRANIF delayStrength gateTranIfList SEMICOLON		{ TRIPLE (TRANIF $1, $2, TLIST $3 ) }
 	;
 
 gateMosList:
@@ -1443,7 +1455,17 @@ gateBufList:
 
 gateBufIfList:
 		gateBufIf 				{ [ $1 ] }
-	|	gateBufIfList COMMA gateBuf		{ $1 @ [ $3 ] }
+	|	gateBufIfList COMMA gateBufIf		{ $1 @ [ $3 ] }
+	;
+
+gateTranIfList:
+		gateTranIf 				{ [ $1 ] }
+	|	gateTranIfList COMMA gateTranIf		{ $1 @ [ $3 ] }
+	;
+
+gateTranList:
+		gateTran 				{ [ $1 ] }
+	|	gateTranIfList COMMA gateTran		{ $1 @ [ $3 ] }
 	;
 
 gateNotList:
@@ -1477,6 +1499,14 @@ gateXnorList:
 	;
 
 gateMos:	LPAREN varRefDotBit COMMA varRefDotBit COMMA expr RPAREN
+							{ TRIPLE ($2, $4, $6 ) }
+	;
+
+gateTran:	LPAREN varRefDotBit COMMA varRefDotBit RPAREN
+							{ DOUBLE ($2, $4 ) }
+	;
+
+gateTranIf:	LPAREN varRefDotBit COMMA varRefDotBit COMMA expr RPAREN
 							{ TRIPLE ($2, $4, $6 ) }
 	;
 
@@ -1551,9 +1581,49 @@ gateUdpPinList:
 
 //************************************************
 // Tables
-// Not supported
+// parsed but not supported
 
-tableDecl:	TABLE JunkList ENDTABLE { TABLE }	// placeholder
+tableDecl:	TABLE trowList ENDTABLE 		{ DOUBLE(TABLE, TLIST $2) }
+	;
+
+trowList:
+		/* empty */				{ [ ] }
+	|	trow					{ [ $1 ] }
+	|	trow SEMICOLON trowList			{ $1 :: $3 }
+	;
+
+trow:		tinList COLON toutList			{ DOUBLE(TLIST $1,TLIST $3) }
+	|	tinList COLON tregList COLON toutList	{ TRIPLE(TLIST $1,TLIST $3,TLIST $5) }
+
+tinList:	tin					{ [ $1 ] }
+	|	tin tinList				{ $1 :: $2 }
+	;
+
+tin:		INTNUM					{ BINNUM (string_of_int $1) }
+	|	TIMES					{ TIMES }
+	|	QUERY					{ QUERY }
+	|	EDGE					{ EDGE $1 }
+	|	ID					{ BINNUM $1 }
+	;
+
+tregList:	treg					{ [ $1 ] }
+	|	treg tregList				{ $1 :: $2 }
+	;
+
+treg:		INTNUM					{ BINNUM (string_of_int $1) }
+	|	QUERY					{ QUERY }
+	|	ID					{ BINNUM $1 }
+	;
+
+toutList:	tout					{ [ $1 ] }
+	|	tout toutList				{ $1 :: $2 }
+	;
+
+tout:		INTNUM					{ BINNUM (string_of_int $1) }
+	|	QUERY					{ QUERY }
+	|	MINUS					{ MINUS }
+	|	ID					{ BINNUM $1 }
+	;
 
 //************************************************
 // Specify
