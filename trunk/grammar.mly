@@ -20,49 +20,6 @@
 %{
 exception Error
 
-type logt = Closed | Open of out_channel;;
-
-let pending = Hashtbl.create 256;;
-
-let unresolved_list = ref [];;
-
-let logfile = ref Closed;;
-
-let scan out_chan key contents = let gsyms = contents.Globals.gsyms in begin
-Hashtbl.add Globals.modprims key contents;
-Printf.fprintf out_chan "scanning ..\n";
-Semantics.semantics out_chan gsyms "" contents;
-Semantics.check_glob out_chan gsyms;
-end
-
-let prescan kind mykey expt =
-	if (!logfile == Closed) then logfile := Open (open_out "report.report");
-	match !logfile with Open out_chan -> begin
-	Printf.fprintf out_chan "%s %s: parsed " kind mykey;
-	if (List.length(!unresolved_list)==0) then let reslist = ref [] in begin
-		scan out_chan mykey expt;
-		Hashtbl.iter (fun key contents ->
-contents.Globals.unresolved <- List.filter(fun item -> item <> mykey) contents.Globals.unresolved;
-if contents.Globals.unresolved == [] then (
-			Printf.fprintf out_chan "module %s: resumed " key;
-			scan out_chan key contents; reslist := key :: !reslist)) pending;
-		if (List.length(!reslist) > 0) then Printf.fprintf out_chan "no longer pending: ";
-		List.iter (fun key -> Printf.fprintf out_chan " %s" key;
-			Hashtbl.remove pending key) !reslist;
-		output_char out_chan '\n';
-		end
-	else begin
-		Printf.fprintf out_chan "pending: not yet encountered: ";
-		List.iter (fun key -> Printf.fprintf out_chan "%s " key) !unresolved_list;
-		output_char out_chan '\n';
-		Hashtbl.add pending mykey expt;
-		unresolved_list := [];
-	end;
-	flush out_chan;
-	end
-	| Closed -> raise Error
-;;
-
 open Vparser
 
 %}
@@ -556,19 +513,17 @@ preproc:        P_CELLDEFINE			        { EMPTY }
 // IEEE: module_declaration:
 moduleDecl:	MODULE ID modParE modPortsE SEMICOLON modItemListE ENDMODULE
 			{
-			prescan "module" $2 { Globals.tree=QUINTUPLE ( MODULE, ID $2, $3, $4, $6 );
+			Semantics.prescan "module" $2 { Globals.tree=QUINTUPLE ( MODULE, ID $2, $3, $4, $6 );
 					  	symbols=Hashtbl.create 256;
-					  	gsyms=Hashtbl.create 256;
-						unresolved=(!unresolved_list)}
+						unresolved=(!Globals.unresolved_list)}
 			}
 	;
 
 // IEEE: primitive_declaration:
 primDecl:	PRIMITIVE ID modParE modPortsE SEMICOLON primItemList ENDPRIMITIVE
 			{
-			prescan "primitive" $2 { Globals.tree=QUINTUPLE ( PRIMITIVE, ID $2, $3, $4, TLIST $6 );
+			Semantics.prescan "primitive" $2 { Globals.tree=QUINTUPLE ( PRIMITIVE, ID $2, $3, $4, TLIST $6 );
 						symbols=Hashtbl.create 256;
-					  	gsyms=Hashtbl.create 256;
 						unresolved=[]}
 			}
 	;
@@ -968,8 +923,8 @@ instDecl:
 		ID instparamListE instnameList SEMICOLON  {
 if (Hashtbl.mem Globals.modprims ($1) == false) then
   begin
-  if (List.mem $1 !unresolved_list == false) then begin
-    unresolved_list := $1 :: !unresolved_list
+  if (List.mem $1 !Globals.unresolved_list == false) then begin
+    Globals.unresolved_list := $1 :: !Globals.unresolved_list
     end
   end;
  QUADRUPLE (MODINST, (ID $1), $2, TLIST $3 )
@@ -978,8 +933,8 @@ if (Hashtbl.mem Globals.modprims ($1) == false) then
 							{
 if (Hashtbl.mem Globals.modprims ($1) == false) then
   begin
-  if (List.mem $1 !unresolved_list == false) then begin
-    unresolved_list := $1 :: !unresolved_list
+  if (List.mem $1 !Globals.unresolved_list == false) then begin
+    Globals.unresolved_list := $1 :: !Globals.unresolved_list
     end
   end;
  QUADRUPLE (PRIMINST, (ID $1), $2, TLIST ($4::$6) )
