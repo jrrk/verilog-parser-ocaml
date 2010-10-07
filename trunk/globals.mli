@@ -1,6 +1,8 @@
 type modtree = {
   tree : Vparser.token;
   symbols : (string, Setup.symtab) Hashtbl.t;
+  mutable unresolved : string list;
+  gsyms : (string, Setup.symtab) Hashtbl.t;
 }
 
 (*val gsyms : (string, Set.Make(Setup.OrdTok).t) Hashtbl.t*)

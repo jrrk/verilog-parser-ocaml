@@ -72,7 +72,7 @@ else begin
 ;;
 
 let iter_ semantics out_chan gsyms (stem:string) syms list =
-  List.iter (fun x -> semantics out_chan gsyms stem ({Globals.tree=x; symbols=syms})) list
+  List.iter (fun x -> semantics out_chan gsyms stem ({Globals.gsyms=gsyms; unresolved=[]; tree=x; symbols=syms})) list
 ;;
 
 let not_found syms w = printf "wire/port %s not found\n" w; enter_a_sym syms w IMPLICIT EMPTY "";;
@@ -198,11 +198,11 @@ end
 | _ -> unhandled out_chan innert
 ;;
 
-let vnmos out_chan gsyms stem syms (x:token) =
-ignore(subexp out_chan gsyms RECEIVER stem syms x);;
+let vnmos out_chan gsyms stem syms x y z =
+iter(fun x -> ignore(subexp out_chan gsyms RECEIVER stem syms x)) [x;y;z];;
 
-let vpmos out_chan gsyms stem syms (x:token) =
-ignore(subexp out_chan gsyms RECEIVER stem syms x);;
+let vpmos out_chan gsyms stem syms x y z =
+iter(fun x -> ignore(subexp out_chan gsyms RECEIVER stem syms x)) [x;y;z];;
 
 let vpullup out_chan gsyms stem syms (x:token) =
 ignore(subexp out_chan gsyms RECEIVER stem syms x);;
@@ -298,9 +298,9 @@ stmtBlock out_chan gsyms stem syms then_clause
     iter (fun inst -> match inst with
       | QUADRUPLE (EMPTY, EMPTY, x, a) -> vbuf out_chan gsyms stem syms x a
       | _ -> unhandled out_chan inst) instances
-| TRIPLE(NOT,EMPTY, TLIST instances) ->
+| TRIPLE(NOT,dly, TLIST instances) ->
     iter (fun inst -> match inst with
-      | QUADRUPLE (EMPTY, EMPTY, x, a) -> vnot out_chan gsyms stem syms x a
+      | QUADRUPLE (nam, EMPTY, x, a) -> vnot out_chan gsyms stem syms x a
       | _ -> unhandled out_chan inst) instances
 | TRIPLE(AND,EMPTY, TLIST instances) ->
     iter (fun inst -> match inst with
@@ -326,7 +326,7 @@ stmtBlock out_chan gsyms stem syms then_clause
     iter (fun inst -> match inst with
       | QUADRUPLE (EMPTY, EMPTY, x, TLIST inlist) -> vxor out_chan gsyms stem syms x inlist
       | _ -> unhandled out_chan inst) instances
-| TRIPLE(BUFIF lev, (EMPTY | TLIST [WEAK "weak0"; WEAK "weak1"]), TLIST instances) ->
+| TRIPLE(BUFIF lev, weaklist, TLIST instances) ->
     iter (fun inst -> match inst with
       | DOUBLE (x, TLIST inlist) -> vbufif out_chan gsyms stem syms x inlist
       | _ -> unhandled out_chan inst) instances
@@ -336,11 +336,11 @@ stmtBlock out_chan gsyms stem syms then_clause
       | _ -> unhandled out_chan inst) instances
 | TRIPLE(NMOS, EMPTY, TLIST instances) ->
     iter (fun inst -> match inst with
-      | TRIPLE(EMPTY, EMPTY, x) -> vnmos out_chan gsyms stem syms x
+      | TRIPLE(pin1, pin2, pin3) -> vnmos out_chan gsyms stem syms pin1 pin2 pin3
       | _ -> unhandled out_chan inst) instances
 | TRIPLE(PMOS, EMPTY, TLIST instances) ->
     iter (fun inst -> match inst with
-      | TRIPLE(EMPTY, EMPTY, x) -> vpmos out_chan gsyms stem syms x
+      | TRIPLE(pin1, pin2, pin3) -> vpmos out_chan gsyms stem syms pin1 pin2 pin3
       | _ -> unhandled out_chan inst) instances
 (* Parse primitive instance *)
 | QUADRUPLE(PRIMINST, ID prim, EMPTY, TLIST inlist) ->
@@ -352,19 +352,12 @@ stmtBlock out_chan gsyms stem syms then_clause
     ( match (Hashtbl.find Globals.modprims prim).Globals.tree with QUINTUPLE(PRIMITIVE,ID arg1, EMPTY, TLIST primargs, TLIST arg4) ->
 iter2 fc primargs inlist | _ -> ())
 (* Parse module instance *)
-| TRIPLE(ID kind,params, TLIST instances) ->
-      if (Hashtbl.mem Globals.modprims kind == false) then
-  begin
-  printf "sub-module %s not found\n" kind;
-  (* Create the module to prevent further errors from appearing *)
-  Hashtbl.add Globals.modprims kind { Globals.tree=UNKNOWN; symbols=Hashtbl.create 256 }
-  end else
-(*    printf "Scanning sub-module %s\n" kind;  *)
+| QUADRUPLE(MODINST, ID kind,params, TLIST instances) ->
     begin
     enter_a_sym syms kind SUBMODULE EMPTY "";
-    let kindhash = Hashtbl.find Globals.modprims kind in if (kindhash.tree <> UNKNOWN) then
+    let kindhash = Hashtbl.find Globals.modprims kind in
     iter (fun inst -> match inst with
-      | TRIPLE (ID subcct, EMPTY, TLIST termlist) -> semantics out_chan gsyms (stem^subcct^".") kindhash;
+      | TRIPLE (ID subcct, EMPTY, TLIST termlist) -> (* semantics out_chan gsyms (stem^subcct^".") kindhash; *)
         enter_a_sym syms subcct SUBCCT EMPTY "";
         ( match kindhash.Globals.tree with QUINTUPLE(MODULE,ID arg1, EMPTY, TLIST primargs, TLIST arg4) ->
         (try iter2 (fun (inner:token) (term:token) -> fiter out_chan gsyms stem syms kind subcct inner term) primargs termlist; with Invalid_argument "List.iter2" -> let ids = ref [] and partlist = ref ([],[])and byposn = ref false in begin
@@ -415,7 +408,7 @@ stmtBlock out_chan gsyms stem syms clause
 (* Parse wire/reg declarations *)
 | QUADRUPLE((WIRE|REG) as kind, arg1, arg2, TLIST arg3) ->
     let width = ref EMPTY in begin
-    semantics out_chan gsyms stem {Globals.tree=arg1; symbols=syms};
+    semantics out_chan gsyms stem {Globals.gsyms=gsyms; unresolved=[]; tree=arg1; symbols=syms};
     (match arg2 with
       | RANGE(hi, lo) as rangehilo -> width := rangehilo
       | TRIPLE(EMPTY,(RANGE(hi, lo) as rangehilo),EMPTY) -> width := rangehilo
@@ -428,7 +421,7 @@ stmtBlock out_chan gsyms stem syms clause
       | DOUBLE(id, EMPTY) -> enter_sym_attrs out_chan gsyms kind stem syms id [kind] !width
       | _ -> unhandled out_chan x) arg3); end
 | QUADRUPLE((REAL|INTEGER|EVENT) as kind, arg1, arg2, TLIST arg3) ->
-    semantics out_chan gsyms stem {Globals.tree=arg1; symbols=syms};
+    semantics out_chan gsyms stem {Globals.gsyms=gsyms; unresolved=[]; tree=arg1; symbols=syms};
     (match arg2 with
       | EMPTY -> ()
       | TRIPLE(EMPTY,EMPTY,EMPTY) -> ()
@@ -437,27 +430,27 @@ stmtBlock out_chan gsyms stem syms clause
       | TRIPLE(id, arg5, arg6) -> enter_sym_attrs out_chan gsyms kind stem syms id [kind] EMPTY
       | _ -> unhandled out_chan x) arg3)
 | QUINTUPLE(NAMED, ID blk_named, TLIST [], TLIST stmts, EMPTY) ->
- iter (fun item -> semantics out_chan gsyms stem {Globals.tree=item; symbols=syms}) stmts
+ iter (fun item -> semantics out_chan gsyms stem {Globals.gsyms=gsyms; unresolved=[]; tree=item; symbols=syms}) stmts
 (* Parse module declarations *)
 | QUINTUPLE(MODULE,ID arg1, arg2, TLIST arg3, TLIST arg4) ->
     enter_a_sym syms arg1 MODULE EMPTY ""; (* print_endline (stem^arg1); *)
-    semantics out_chan gsyms stem {Globals.tree=arg2; symbols=syms};
+    semantics out_chan gsyms stem {Globals.gsyms=gsyms; unresolved=[]; tree=arg2; symbols=syms};
     iter (fun arg -> match arg with
 | ID id -> enter_a_sym syms id IOPORT EMPTY ""
-| _ -> semantics out_chan gsyms stem {Globals.tree=arg; symbols=syms}) arg3;
+| _ -> semantics out_chan gsyms stem {Globals.gsyms=gsyms; unresolved=[]; tree=arg; symbols=syms}) arg3;
     iter_ semantics out_chan gsyms stem syms arg4
 (* Parse primitive declarations *)
 | QUINTUPLE(PRIMITIVE,ID arg1, EMPTY, TLIST arg3, TLIST arg4) ->
-    enter_a_sym syms arg1 (PRIMARGS arg3) EMPTY "";
+    enter_a_sym syms arg1 PRIMITIVE EMPTY "";
     iter (fun arg -> match arg with
 | ID id -> enter_a_sym syms id IOPORT EMPTY ""
-| _ -> semantics out_chan gsyms stem {Globals.tree=arg; symbols=syms}) arg3;
+| _ -> semantics out_chan gsyms stem {Globals.gsyms=gsyms; unresolved=[]; tree=arg; symbols=syms}) arg3;
     iter_ semantics out_chan gsyms stem syms arg4
 (* Parse IO declarations *)
 | QUINTUPLE((INPUT|OUTPUT|INOUT) as dir, arg1, arg2, arg3, arg4) ->
     let width = ref EMPTY in begin
-    semantics out_chan gsyms stem {Globals.tree=arg1; symbols=syms};
-    semantics out_chan gsyms stem {Globals.tree=arg2; symbols=syms};
+    semantics out_chan gsyms stem {Globals.gsyms=gsyms; unresolved=[]; tree=arg1; symbols=syms};
+    semantics out_chan gsyms stem {Globals.gsyms=gsyms; unresolved=[]; tree=arg2; symbols=syms};
     (match arg3 with
       | RANGE(hi,lo) as rangehilo -> width := rangehilo
       | TLIST arg9 ->  List.iter (fun arg -> unhandled out_chan arg) arg9
@@ -479,20 +472,20 @@ stmtBlock out_chan gsyms stem syms clause
 (* Parse function declarations *)
 | OCTUPLE(FUNCTION, EMPTY, EMPTY, ID funcname, EMPTY, TLIST args, TLIST stmts, EMPTY) ->
 enter_a_sym syms funcname FUNCTION EMPTY "";
-iter (fun arg -> semantics out_chan gsyms stem {Globals.tree=arg; symbols=syms}) args;
+iter (fun arg -> semantics out_chan gsyms stem {Globals.gsyms=gsyms; unresolved=[]; tree=arg; symbols=syms}) args;
 iter_ semantics out_chan gsyms stem syms stmts
 (* Parse task declarations *)
 | SEPTUPLE(TASK, EMPTY, ID taskname, EMPTY, TLIST args, TLIST stmts, EMPTY) ->
 let stem2 = stem^taskname^"." in (
 enter_a_sym syms taskname TASK exp "";
-iter (fun arg -> semantics out_chan gsyms stem2 {Globals.tree=arg; symbols=syms}) args;
+iter (fun arg -> semantics out_chan gsyms stem2 {Globals.gsyms=gsyms; unresolved=[]; tree=arg; symbols=syms}) args;
 iter_ semantics out_chan gsyms stem2 syms stmts )
 (* Parse task reference *)
 | TRIPLE (TASKREF, task, args) -> ( match task with
   | ID taskname ->
   let stem2 = stem^taskname^"." in begin
     if (Hashtbl.mem syms taskname) then
-      semantics out_chan gsyms stem2 {Globals.tree=(Hashtbl.find syms taskname).width; symbols=syms} (* scan the task *)
+      semantics out_chan gsyms stem2 {Globals.gsyms=gsyms; unresolved=[]; tree=(Hashtbl.find syms taskname).width; symbols=syms} (* scan the task *)
     else printf "Task %s not found\n" taskname;
 end
   | DOTTED path -> iter (fun name -> match name with ID id -> Printf.printf "%s." id | _ -> ()) path;
@@ -505,17 +498,17 @@ iter (fun pattern -> exprGeneric out_chan gsyms stem syms pattern) thecases;
 stmtBlock out_chan gsyms stem syms stmt
 | QUADRUPLE (CASE, expr, caseAttr, TLIST caseList) ->
 exprGeneric out_chan gsyms stem syms expr;
-iter (fun caseitem -> semantics out_chan gsyms stem {Globals.tree=caseitem; symbols=syms}) caseList
-| QUADRUPLE (P_LTE, dest, EMPTY, exp) ->
-exprGeneric out_chan gsyms stem syms exp
-(* need dest handling here *)
+iter (fun caseitem -> semantics out_chan gsyms stem {Globals.gsyms=gsyms; unresolved=[]; tree=caseitem; symbols=syms}) caseList
+| QUADRUPLE (P_LTE, dest, dly, exp) ->
+exprGeneric out_chan gsyms stem syms exp;
+ignore(subexp out_chan gsyms RECEIVER stem syms dest)
 | QUINTUPLE(MODULE,ID arg1, EMPTY, EMPTY, EMPTY) -> enter_a_sym syms arg1 MODULE EMPTY ""
-| RANGE(arg1, arg2) -> semantics out_chan gsyms stem {Globals.tree=arg1; symbols=syms}; semantics out_chan gsyms stem {Globals.tree=arg2; symbols=syms}
+| RANGE(arg1, arg2) -> semantics out_chan gsyms stem {Globals.gsyms=gsyms; unresolved=[]; tree=arg1; symbols=syms}; semantics out_chan gsyms stem {Globals.gsyms=gsyms; unresolved=[]; tree=arg2; symbols=syms}
 | ID id -> enter_a_sym syms id EMPTY EMPTY ""
 | DOUBLE(SPECIFY,EMPTY) -> ()
 | TRIPLE(D_DISPLAY, ASCNUM msg, args) -> ()
 | DOUBLE (P_MINUSGT, ev) -> ()
-| DOUBLE (DOUBLE (HASH, FLOATNUM dly), stmt) -> semantics out_chan gsyms stem {Globals.tree=stmt; symbols=syms}
+| DOUBLE (DOUBLE (HASH, FLOATNUM dly), stmt) -> semantics out_chan gsyms stem {Globals.gsyms=gsyms; unresolved=[]; tree=stmt; symbols=syms}
 | PREPROC txt -> ()
 | TABLE -> ()
 | EMPTY -> ()
@@ -523,9 +516,9 @@ exprGeneric out_chan gsyms stem syms exp
 
 and stmtBlock out_chan gsyms stem syms block = match block with
 | EMPTY -> ()
-| TLIST stmtList -> iter (fun item -> semantics out_chan gsyms stem {Globals.tree=item; symbols=syms}) stmtList
-| TRIPLE(BEGIN, TLIST stmtList, endLabelE) -> iter (fun item -> semantics out_chan gsyms stem {Globals.tree=item; symbols=syms}) stmtList
-| _ -> semantics out_chan gsyms stem {Globals.tree=block; symbols=syms};
+| TLIST stmtList -> iter (fun item -> semantics out_chan gsyms stem {Globals.gsyms=gsyms; unresolved=[]; tree=item; symbols=syms}) stmtList
+| TRIPLE(BEGIN, TLIST stmtList, endLabelE) -> iter (fun item -> semantics out_chan gsyms stem {Globals.gsyms=gsyms; unresolved=[]; tree=item; symbols=syms}) stmtList
+| _ -> semantics out_chan gsyms stem {Globals.gsyms=gsyms; unresolved=[]; tree=block; symbols=syms};
 
 and exprGeneric out_chan gsyms stem syms expr = match expr with
 | TRIPLE( P_OROR, left, right ) -> ()
@@ -600,7 +593,7 @@ and exprGeneric out_chan gsyms stem syms expr = match expr with
 | QUADRUPLE(P_MINUSCOLON, arg1, arg3, arg5 ) -> ()
 | ASCNUM arg1 -> ()
 | FLOATNUM arg1 -> ()
-| _ -> semantics out_chan gsyms stem {Globals.tree=expr; symbols=syms};
+| _ -> semantics out_chan gsyms stem {Globals.gsyms=gsyms; unresolved=[]; tree=expr; symbols=syms};
 ignore(Stack.pop stk);
 ;;
 

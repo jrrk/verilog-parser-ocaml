@@ -21,14 +21,15 @@
 
 TARGET = vparser
 #YACC = menhir -v --trace # --table
-YACC = ocamlyacc -v
+YACC = ocamlyacc
+#YACCOPTS = -v
 #LEXOPTS = -ml
 
 CMO1 = ord.cmo setup.cmo vlexer.cmo globals.cmo dump.cmo semantics.cmo grammar.cmo
 CMO2 = vparse.cmo main.cmo
 CMX = ord.cmx setup.cmx vlexer.cmx globals.cmx dump.cmx semantics.cmx grammar.cmx vparse.cmx main.cmx
-CML = toplevellib.cma str.cma
-CMLX = str.cmxa
+CML = toplevellib.cma str.cma unix.cma
+CMLX = str.cmxa unix.cmxa
 
 all:
 	@echo "Choose make ocamlyacc or make menhir"
@@ -51,6 +52,7 @@ menhir: grammar.mly
 	make vtop
 
 grammar.mli grammar.ml: grammar.mly
+	@echo "Choose make ocamlyacc or make menhir"; false
 
 $(TARGET): $(CMO1) $(CMO2) mytoploop.cmo
 	ocamlc.opt -g -o $@ $(CML) $(CMO1) mytoploop.cmo $(CMO2)
@@ -59,7 +61,7 @@ depend: grammar.ml vlexer.ml
 	ocamldep *.ml *.mli > .depend
 
 clean:
-	rm -rf *.cmi *.cmo *.cmx vtop $(TARGET)
+	rm -rf *.cmi *.cmo *.cmx *.o vopt vtop $(TARGET)
 	rm -rf grammar.ml grammar.mli vlexer.ml vlexer.mli grammar.mli grammar.ml ord.ml
 
 .SUFFIXES: .ml .mli .mll .mly .cmo .cmi .cmx
