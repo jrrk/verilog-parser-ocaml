@@ -17,7 +17,53 @@
 // Based on verilator parser code by Paul Wasson, Duane Galbi and Wilson Snyder
 //*****************************************************************************
 
-%{ open Vparser exception Error %}
+%{
+exception Error
+
+type logt = Closed | Open of out_channel;;
+
+let pending = Hashtbl.create 256;;
+
+let unresolved_list = ref [];;
+
+let logfile = ref Closed;;
+
+let scan out_chan key contents = let gsyms = contents.Globals.gsyms in begin
+Hashtbl.add Globals.modprims key contents;
+Semantics.semantics out_chan gsyms "" contents;
+Printf.fprintf out_chan "scanned ";
+Semantics.check_glob out_chan gsyms;
+end
+
+let prescan mykey expt =
+	if (!logfile == Closed) then logfile := Open (open_out "report.report");
+	match !logfile with Open out_chan ->
+	if (List.length(!unresolved_list)==0) then let reslist = ref [] in begin
+		Printf.fprintf out_chan "module %s: parsed " mykey;
+		scan out_chan mykey expt;
+		Hashtbl.iter (fun key contents ->
+contents.Globals.unresolved <- List.filter(fun item -> item <> mykey) contents.Globals.unresolved;
+if contents.Globals.unresolved == [] then ( scan out_chan key contents; reslist := key :: !reslist)
+) pending;
+		if (List.length(!reslist) > 0) then Printf.fprintf out_chan "no longer pending: ";
+		List.iter (fun key -> Printf.fprintf out_chan " %s" key;
+			Hashtbl.remove pending key) !reslist;
+		output_char out_chan '\n';
+		end
+	else begin
+		Printf.fprintf out_chan "pending module %s - undeclared: " mykey;
+		List.iter (fun key -> Printf.fprintf out_chan "%s " key) !unresolved_list;
+		output_char out_chan '\n';
+		Hashtbl.add pending mykey expt;
+		unresolved_list := [];
+	end;
+	flush out_chan
+	| Closed -> raise Error
+;;
+
+open Vparser
+
+%}
 
 // Generic void
 %token EMPTY
@@ -37,12 +83,12 @@
 %token<token * token * token * token * token * token * token * token> OCTUPLE
 
 // non-keyword tokens
-%token<token list> PRIMARGS
 %token BITSEL
 %token PARTSEL
 %token IOPORT
 %token SUBMODULE
 %token SUBCCT
+%token MODINST
 %token PRIMINST
 %token<token * token > RANGE
 %token<token list> TLIST
@@ -470,8 +516,6 @@
 identifier:	ID	{ ID $1 }
 
 //**********************************************************************
-// test mode
-// 	|	JunkList				{ Hashtbl.add Globals.modprims "" { Globals.tree=TLIST $1; symbols=Hashtbl.create 256} }
 //
 
 start:		ENDOFFILE				{ raise End_of_file }
@@ -502,18 +546,20 @@ preproc:        P_CELLDEFINE			        { EMPTY }
 // IEEE: module_declaration:
 moduleDecl:	MODULE ID modParE modPortsE SEMICOLON modItemListE ENDMODULE
 			{
-			Hashtbl.add Globals.modprims $2
-				{ Globals.tree=QUINTUPLE ( MODULE, ID $2, $3, $4, $6 );
-				  symbols=Hashtbl.create 256}
+			prescan $2 { Globals.tree=QUINTUPLE ( MODULE, ID $2, $3, $4, $6 );
+					  	symbols=Hashtbl.create 256;
+					  	gsyms=Hashtbl.create 256;
+						unresolved=(!unresolved_list)}
 			}
 	;
 
 // IEEE: primitive_declaration:
 primDecl:	PRIMITIVE ID modParE modPortsE SEMICOLON primItemList ENDPRIMITIVE
 			{
-			Hashtbl.add Globals.modprims $2
-				{ Globals.tree=QUINTUPLE ( PRIMITIVE, ID $2, $3, $4, TLIST $6 );
-				  symbols=Hashtbl.create 256}
+			prescan $2 { Globals.tree=QUINTUPLE ( PRIMITIVE, ID $2, $3, $4, TLIST $6 );
+						symbols=Hashtbl.create 256;
+					  	gsyms=Hashtbl.create 256;
+						unresolved=[]}
 			}
 	;
 
@@ -909,9 +955,27 @@ defpOne:
 // Instances
 
 instDecl:
-		identifier instparamListE instnameList SEMICOLON  { TRIPLE ($1, $2, TLIST $3 ) }
-	| 	identifier instparamListE LPAREN varRefDotBit COMMA gateUdpPinList RPAREN SEMICOLON
-							{ QUADRUPLE (PRIMINST, $1, $2, TLIST ($4::$6) ) }
+		ID instparamListE instnameList SEMICOLON  {
+if (Hashtbl.mem Globals.modprims ($1) == false) then
+  begin
+  if (List.mem $1 !unresolved_list == false) then begin
+    unresolved_list := $1 :: !unresolved_list
+    end
+  end;
+ QUADRUPLE (MODINST, (ID $1), $2, TLIST $3 )
+}
+	| 	ID instparamListE LPAREN varRefDotBit COMMA gateUdpPinList RPAREN SEMICOLON
+							{
+if (Hashtbl.mem Globals.modprims ($1) == false) then
+  begin
+  if (List.mem $1 !unresolved_list == false) then begin
+    unresolved_list := $1 :: !unresolved_list
+    end
+  end;
+ QUADRUPLE (PRIMINST, (ID $1), $2, TLIST ($4::$6) )
+}
+;
+
 instparamListE:
 		/* empty */				{ EMPTY }
 	|	HASH LPAREN cellpinList RPAREN		{ TLIST $3 }
@@ -1506,7 +1570,7 @@ Junk:		identifier 				{ $1 }
 	|	INTNUM 					{ EMPTY }
 	|	FLOATNUM 				{ EMPTY }
 	|	ASSIGNMENT				{ EMPTY }
-	|	PRIMARGS				{ EMPTY }
+	|	MODINST					{ EMPTY }
 	|	PRIMINST				{ EMPTY }
 	|	BITSEL					{ EMPTY }
 	|	EMPTY					{ EMPTY }
