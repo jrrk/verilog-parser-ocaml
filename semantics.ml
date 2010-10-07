@@ -94,27 +94,6 @@ let enter_sym_attrs out_chan gsyms dir stem symbols (tok:token) list width = mat
 | _ -> unhandled out_chan tok;
 ;;
 
-let subexp out_chan gsyms dir stem syms exp = match exp with
-| ID id -> find_ident out_chan gsyms dir stem syms exp
-| TRIPLE (BITSEL, ID id, sel) -> find_ident out_chan gsyms dir stem syms (ID id)
-| INTNUM n -> {symattr=TokSet.singleton exp; width=EMPTY; referrer=Nil; path=""}
-| BINNUM lev -> {Setup.symattr = TokSet.singleton exp; width = EMPTY; referrer=Nil; path=lev}
-| DOTTED dotted -> {symattr=TokSet.singleton exp; width=EMPTY; referrer=Nil; path="dotted"}
-| _ -> unhandled out_chan exp; {symattr=TokSet.singleton exp; width=EMPTY; referrer=Nil; path=""};;
-
-let subexp2 out_chan gsyms dir stem syms exp = {entry=exp; symbol=(subexp out_chan gsyms dir stem syms exp)};;
-
-let expr_dyadic out_chan gsyms dir stem syms op left right = DYADIC(op, subexp2 out_chan gsyms dir stem syms left, subexp2 out_chan gsyms dir stem syms right);;
-
-let expression out_chan gsyms stem syms (tree:token) = match tree with
-| TRIPLE (PLUS as op, left, right) -> expr_dyadic out_chan gsyms DRIVER stem syms op left right
-| _ -> UNHANDLED tree;;
-
-let statement out_chan gsyms stem syms tok var expr = (
-let x = subexp out_chan gsyms RECEIVER stem syms var in
-let r = {entry=var; symbol=x} in
-stmts := ASSIGNS(r, expr) :: !stmts );;
-
 let widthnum expbase (str:string) =
 let base = ref 10
 and width = ref 0
@@ -198,58 +177,6 @@ end
 | _ -> unhandled out_chan innert
 ;;
 
-let vnmos out_chan gsyms stem syms x y z =
-iter(fun x -> ignore(subexp out_chan gsyms RECEIVER stem syms x)) [x;y;z];;
-
-let vpmos out_chan gsyms stem syms x y z =
-iter(fun x -> ignore(subexp out_chan gsyms RECEIVER stem syms x)) [x;y;z];;
-
-let vpullup out_chan gsyms stem syms (x:token) =
-ignore(subexp out_chan gsyms RECEIVER stem syms x);;
-
-let vbuf out_chan gsyms stem syms (x:token) a =
-ignore(subexp out_chan gsyms RECEIVER stem syms x);
-ignore(subexp out_chan gsyms DRIVER stem syms a);;
-
-let vbufif out_chan gsyms stem syms (x:token) (inlist:token list) =
-ignore(subexp out_chan gsyms RECEIVER stem syms x);
-iter (fun t -> match t with ID w -> ( ignore(subexp out_chan gsyms DRIVER stem syms t)
-	  ) | BINNUM lev -> () | _ -> unhandled out_chan t) inlist;;
-
-let vnot out_chan gsyms stem syms (x:token) a =
-ignore(subexp out_chan gsyms RECEIVER stem syms x);
-iter (fun w -> ignore(subexp out_chan gsyms DRIVER stem syms w)) [x;a];;
-
-let vand out_chan gsyms stem syms (x:token) (inlist:token list) =
-ignore(subexp out_chan gsyms RECEIVER stem syms x);
-iter (fun t -> match t with ID w -> ( ignore(subexp out_chan gsyms DRIVER stem syms t)
-	  ) | _ -> unhandled out_chan t) inlist;;
-
-let vor out_chan gsyms stem syms (x:token) (inlist:token list) =
-ignore(subexp out_chan gsyms RECEIVER stem syms x);
-iter (fun t -> match t with ID w -> ( ignore(subexp out_chan gsyms DRIVER stem syms t)
-	  ) | _ -> unhandled out_chan t) inlist;;
-
-let vxor out_chan gsyms stem syms (x:token) (inlist:token list) =
-ignore(subexp out_chan gsyms RECEIVER stem syms x);
-iter (fun t -> match t with ID w -> ( ignore(subexp out_chan gsyms DRIVER stem syms t)
-	  ) | _ -> unhandled out_chan t) inlist;;
-
-let vnand out_chan gsyms stem syms (x:token) (inlist:token list) =
-ignore(subexp out_chan gsyms RECEIVER stem syms x);
-iter (fun t -> match t with ID w -> ( ignore(subexp out_chan gsyms DRIVER stem syms t)
-	  ) | _ -> unhandled out_chan t) inlist;;
-
-let vnor out_chan gsyms stem syms (x:token) (inlist:token list) =
-ignore(subexp out_chan gsyms RECEIVER stem syms x);
-iter (fun t -> match t with ID w -> ( ignore(subexp out_chan gsyms DRIVER stem syms t)
-	  ) | _ -> unhandled out_chan t) inlist;;
-
-let vxnor out_chan gsyms stem syms (x:token) (inlist:token list) =
-ignore(subexp out_chan gsyms RECEIVER stem syms x);
-iter (fun t -> match t with ID w -> ( ignore(subexp out_chan gsyms DRIVER stem syms t)
-	  ) | _ -> unhandled out_chan t) inlist;;
-
 let f2 inner t = show_token(inner);show_token(t);print_char '\n';;
 
 let fiter out_chan gsyms (stem:string) syms (kind:string) (subcct:string) (inner:token) (term:token) = match term with
@@ -261,12 +188,6 @@ let fiter out_chan gsyms (stem:string) syms (kind:string) (subcct:string) (inner
           | QUADRUPLE (PARTSEL, ID net, INTNUM hi, INTNUM lo) -> connect out_chan gsyms stem syms kind subcct inner term
 	  | _ -> unhandled out_chan term
 ;;
-
-let senitem out_chan gsyms stem syms item = match item with
-| DOUBLE(POSEDGE, clk) -> ignore(subexp out_chan gsyms DRIVER stem syms clk)
-| DOUBLE(NEGEDGE, clk) -> ignore(subexp out_chan gsyms DRIVER stem syms clk)
-| ID signal -> ignore(subexp out_chan gsyms DRIVER stem syms item)
-| _ -> unhandled out_chan item;;
 
 let rec semantics out_chan gsyms (stem:string) (tree:Globals.modtree) =
    let exp = tree.Globals.tree and syms = tree.Globals.symbols in Stack.push exp stk; match exp with
@@ -294,59 +215,69 @@ let rec semantics out_chan gsyms (stem:string) (tree:Globals.modtree) =
 exprGeneric out_chan gsyms stem syms expr;
 stmtBlock out_chan gsyms stem syms then_clause
 | TRIPLE(PLUS, TLIST arg1, TLIST arg2) -> iter_ semantics out_chan gsyms stem syms arg1; iter_ semantics out_chan gsyms stem syms arg2
-| TRIPLE(BUF,EMPTY, TLIST instances) ->
+| TRIPLE(BUF, dly, TLIST instances) ->
     iter (fun inst -> match inst with
-      | QUADRUPLE (EMPTY, EMPTY, x, a) -> vbuf out_chan gsyms stem syms x a
+      | QUADRUPLE (nam, EMPTY, x, a) -> vbuf out_chan gsyms stem syms x a
       | _ -> unhandled out_chan inst) instances
 | TRIPLE(NOT,dly, TLIST instances) ->
     iter (fun inst -> match inst with
       | QUADRUPLE (nam, EMPTY, x, a) -> vnot out_chan gsyms stem syms x a
       | _ -> unhandled out_chan inst) instances
-| TRIPLE(AND,EMPTY, TLIST instances) ->
+| TRIPLE(AND, dly, TLIST instances) ->
     iter (fun inst -> match inst with
-      | QUADRUPLE (EMPTY, EMPTY, x, TLIST inlist) -> vand out_chan gsyms stem syms x inlist
+      | QUADRUPLE (nam, EMPTY, x, TLIST inlist) -> vand out_chan gsyms stem syms x inlist
       | _ -> unhandled out_chan inst) instances
-| TRIPLE(OR,EMPTY, TLIST instances) ->
+| TRIPLE(OR, dly, TLIST instances) ->
     iter (fun inst -> match inst with
-      | QUADRUPLE (EMPTY, EMPTY, x, TLIST inlist) -> vor out_chan gsyms stem syms x inlist
+      | QUADRUPLE (nam, EMPTY, x, TLIST inlist) -> vor out_chan gsyms stem syms x inlist
       | _ -> unhandled out_chan inst) instances
-| TRIPLE(XOR,EMPTY, TLIST instances) ->
+| TRIPLE(XOR, dly, TLIST instances) ->
     iter (fun inst -> match inst with
-      | QUADRUPLE (EMPTY, EMPTY, x, TLIST inlist) -> vxor out_chan gsyms stem syms x inlist
+      | QUADRUPLE (nam, EMPTY, x, TLIST inlist) -> vxor out_chan gsyms stem syms x inlist
       | _ -> unhandled out_chan inst) instances
-| TRIPLE(NAND,EMPTY, TLIST instances) ->
+| TRIPLE(NAND, dly, TLIST instances) ->
     iter (fun inst -> match inst with
-      | QUADRUPLE (EMPTY, EMPTY, x, TLIST inlist) -> vand out_chan gsyms stem syms x inlist
+      | QUADRUPLE (nam, EMPTY, x, TLIST inlist) -> vand out_chan gsyms stem syms x inlist
       | _ -> unhandled out_chan inst) instances
-| TRIPLE(NOR,EMPTY, TLIST instances) ->
+| TRIPLE(NOR, dly, TLIST instances) ->
     iter (fun inst -> match inst with
-      | QUADRUPLE (EMPTY, EMPTY, x, TLIST inlist) -> vor out_chan gsyms stem syms x inlist
+      | QUADRUPLE (nam, EMPTY, x, TLIST inlist) -> vor out_chan gsyms stem syms x inlist
       | _ -> unhandled out_chan inst) instances
-| TRIPLE(XNOR,EMPTY, TLIST instances) ->
+| TRIPLE(XNOR, dly, TLIST instances) ->
     iter (fun inst -> match inst with
-      | QUADRUPLE (EMPTY, EMPTY, x, TLIST inlist) -> vxor out_chan gsyms stem syms x inlist
+      | QUADRUPLE (nam, EMPTY, x, TLIST inlist) -> vxor out_chan gsyms stem syms x inlist
       | _ -> unhandled out_chan inst) instances
 | TRIPLE(BUFIF lev, weaklist, TLIST instances) ->
     iter (fun inst -> match inst with
       | DOUBLE (x, TLIST inlist) -> vbufif out_chan gsyms stem syms x inlist
       | _ -> unhandled out_chan inst) instances
-| TRIPLE(PULLUP, EMPTY, TLIST instances) ->
+| TRIPLE(PULLUP, dly, TLIST instances) ->
     iter (fun inst -> match inst with
       | TRIPLE(EMPTY, EMPTY, x) -> vpullup out_chan gsyms stem syms x
       | _ -> unhandled out_chan inst) instances
-| TRIPLE(NMOS, EMPTY, TLIST instances) ->
+| TRIPLE(NMOS, dly, TLIST instances) ->
     iter (fun inst -> match inst with
       | TRIPLE(pin1, pin2, pin3) -> vnmos out_chan gsyms stem syms pin1 pin2 pin3
       | _ -> unhandled out_chan inst) instances
-| TRIPLE(PMOS, EMPTY, TLIST instances) ->
+| TRIPLE(PMOS, dly, TLIST instances) ->
     iter (fun inst -> match inst with
       | TRIPLE(pin1, pin2, pin3) -> vpmos out_chan gsyms stem syms pin1 pin2 pin3
       | _ -> unhandled out_chan inst) instances
+| TRIPLE(TRANIF lev, weaklist, TLIST instances) ->
+    iter (fun inst -> match inst with
+      | TRIPLE(pin1, pin2, pin3) -> vtranif out_chan gsyms stem syms pin1 pin2 pin3
+      | _ -> unhandled out_chan inst) instances
+| TRIPLE(TRAN, weaklist, TLIST instances) ->
+    iter (fun inst -> match inst with
+      | DOUBLE(pin1, pin2) -> vtran out_chan gsyms stem syms pin1 pin2
+      | _ -> unhandled out_chan inst) instances
 (* Parse primitive instance *)
 | QUADRUPLE(PRIMINST, ID prim, EMPTY, TLIST inlist) ->
+(*
     if (Hashtbl.mem Globals.modprims prim) then
       semantics out_chan gsyms (stem^prim^".") (Hashtbl.find Globals.modprims prim) (* scan the inner primitive *)
     else printf "Primitive %s not found\n" prim;
+*)
     enter_a_sym syms prim PRIMITIVE EMPTY "";
     let fc inner t = connect out_chan gsyms stem syms prim prim inner t in 
     ( match (Hashtbl.find Globals.modprims prim).Globals.tree with QUINTUPLE(PRIMITIVE,ID arg1, EMPTY, TLIST primargs, TLIST arg4) ->
@@ -359,7 +290,7 @@ iter2 fc primargs inlist | _ -> ())
     iter (fun inst -> match inst with
       | TRIPLE (ID subcct, EMPTY, TLIST termlist) -> (* semantics out_chan gsyms (stem^subcct^".") kindhash; *)
         enter_a_sym syms subcct SUBCCT EMPTY "";
-        ( match kindhash.Globals.tree with QUINTUPLE(MODULE,ID arg1, EMPTY, TLIST primargs, TLIST arg4) ->
+        ( match kindhash.Globals.tree with QUINTUPLE((MODULE|PRIMITIVE),ID arg1, EMPTY, TLIST primargs, TLIST arg4) ->
         (try iter2 (fun (inner:token) (term:token) -> fiter out_chan gsyms stem syms kind subcct inner term) primargs termlist; with Invalid_argument "List.iter2" -> let ids = ref [] and partlist = ref ([],[])and byposn = ref false in begin
 iter (fun (inner:token) -> (match inner with
 | ID id -> ids := (!ids @ [id])
@@ -440,11 +371,11 @@ stmtBlock out_chan gsyms stem syms clause
 | _ -> semantics out_chan gsyms stem {Globals.gsyms=gsyms; unresolved=[]; tree=arg; symbols=syms}) arg3;
     iter_ semantics out_chan gsyms stem syms arg4
 (* Parse primitive declarations *)
-| QUINTUPLE(PRIMITIVE,ID arg1, EMPTY, TLIST arg3, TLIST arg4) ->
+| QUINTUPLE(PRIMITIVE,ID arg1, EMPTY, TLIST primargs, TLIST arg4) ->
     enter_a_sym syms arg1 PRIMITIVE EMPTY "";
     iter (fun arg -> match arg with
 | ID id -> enter_a_sym syms id IOPORT EMPTY ""
-| _ -> semantics out_chan gsyms stem {Globals.gsyms=gsyms; unresolved=[]; tree=arg; symbols=syms}) arg3;
+| _ -> semantics out_chan gsyms stem {Globals.gsyms=gsyms; unresolved=[]; tree=arg; symbols=syms}) primargs;
     iter_ semantics out_chan gsyms stem syms arg4
 (* Parse IO declarations *)
 | QUINTUPLE((INPUT|OUTPUT|INOUT) as dir, arg1, arg2, arg3, arg4) ->
@@ -510,7 +441,12 @@ ignore(subexp out_chan gsyms RECEIVER stem syms dest)
 | DOUBLE (P_MINUSGT, ev) -> ()
 | DOUBLE (DOUBLE (HASH, FLOATNUM dly), stmt) -> semantics out_chan gsyms stem {Globals.gsyms=gsyms; unresolved=[]; tree=stmt; symbols=syms}
 | PREPROC txt -> ()
-| TABLE -> ()
+| DOUBLE(TABLE, TLIST trows) ->
+iter (fun row -> match row with
+| DOUBLE(TLIST tin,TLIST tout) -> ()
+| TRIPLE(TLIST tin,TLIST treg,TLIST tout) -> ()
+| _ -> unhandled out_chan row
+) trows;
 | EMPTY -> ()
 | _ -> unhandled out_chan exp
 
@@ -595,6 +531,84 @@ and exprGeneric out_chan gsyms stem syms expr = match expr with
 | FLOATNUM arg1 -> ()
 | _ -> semantics out_chan gsyms stem {Globals.gsyms=gsyms; unresolved=[]; tree=expr; symbols=syms};
 ignore(Stack.pop stk);
+
+and subexp out_chan gsyms dir stem syms exp = match exp with
+| ID id -> find_ident out_chan gsyms dir stem syms exp
+| TRIPLE (BITSEL, ID id, sel) -> find_ident out_chan gsyms dir stem syms (ID id)
+| INTNUM n -> {symattr=TokSet.singleton exp; width=EMPTY; referrer=Nil; path=""}
+| BINNUM lev -> {Setup.symattr = TokSet.singleton exp; width = EMPTY; referrer=Nil; path=lev}
+| DOTTED dotted -> {symattr=TokSet.singleton exp; width=EMPTY; referrer=Nil; path="dotted"}
+| _ -> exprGeneric out_chan gsyms stem syms exp; {symattr=TokSet.singleton exp; width=EMPTY; referrer=Nil; path=""}
+
+and subexp2 out_chan gsyms dir stem syms exp = {entry=exp; symbol=(subexp out_chan gsyms dir stem syms exp)}
+
+and expr_dyadic out_chan gsyms dir stem syms op left right = DYADIC(op, subexp2 out_chan gsyms dir stem syms left, subexp2 out_chan gsyms dir stem syms right)
+
+and expression out_chan gsyms stem syms (tree:token) = match tree with
+| TRIPLE (PLUS as op, left, right) -> expr_dyadic out_chan gsyms DRIVER stem syms op left right
+| _ -> UNHANDLED tree
+
+and statement out_chan gsyms stem syms tok var expr = (
+let x = subexp out_chan gsyms RECEIVER stem syms var in
+let r = {entry=var; symbol=x} in
+stmts := ASSIGNS(r, expr) :: !stmts )
+
+and vtran out_chan gsyms stem syms x y =
+iter(fun x -> ignore(subexp out_chan gsyms RECEIVER stem syms x)) [x;y]
+
+and vtranif out_chan gsyms stem syms x y z =
+iter(fun x -> ignore(subexp out_chan gsyms RECEIVER stem syms x)) [x;y;z]
+
+and vnmos out_chan gsyms stem syms x y z =
+iter(fun x -> ignore(subexp out_chan gsyms RECEIVER stem syms x)) [x;y;z]
+
+and vpmos out_chan gsyms stem syms x y z =
+iter(fun x -> ignore(subexp out_chan gsyms RECEIVER stem syms x)) [x;y;z]
+
+and vpullup out_chan gsyms stem syms (x:token) =
+ignore(subexp out_chan gsyms RECEIVER stem syms x)
+
+and vbuf out_chan gsyms stem syms (x:token) a =
+ignore(subexp out_chan gsyms RECEIVER stem syms x);
+ignore(subexp out_chan gsyms DRIVER stem syms a)
+
+and vbufif out_chan gsyms stem syms (x:token) (inlist:token list) =
+ignore(subexp out_chan gsyms RECEIVER stem syms x);
+iter (fun t -> ignore(subexp out_chan gsyms DRIVER stem syms t)) inlist
+
+and vnot out_chan gsyms stem syms (x:token) a =
+ignore(subexp out_chan gsyms RECEIVER stem syms x);
+iter (fun w -> ignore(subexp out_chan gsyms DRIVER stem syms w)) [x;a]
+
+and vand out_chan gsyms stem syms (x:token) (inlist:token list) =
+ignore(subexp out_chan gsyms RECEIVER stem syms x);
+iter (fun t -> ignore(subexp out_chan gsyms DRIVER stem syms t)) inlist
+
+and vor out_chan gsyms stem syms (x:token) (inlist:token list) =
+ignore(subexp out_chan gsyms RECEIVER stem syms x);
+iter (fun t -> ignore(subexp out_chan gsyms DRIVER stem syms t)) inlist
+
+and vxor out_chan gsyms stem syms (x:token) (inlist:token list) =
+ignore(subexp out_chan gsyms RECEIVER stem syms x);
+iter (fun t -> ignore(subexp out_chan gsyms DRIVER stem syms t)) inlist
+
+and vnand out_chan gsyms stem syms (x:token) (inlist:token list) =
+ignore(subexp out_chan gsyms RECEIVER stem syms x);
+iter (fun t -> ignore(subexp out_chan gsyms DRIVER stem syms t)) inlist
+
+and vnor out_chan gsyms stem syms (x:token) (inlist:token list) =
+ignore(subexp out_chan gsyms RECEIVER stem syms x);
+iter (fun t -> ignore(subexp out_chan gsyms DRIVER stem syms t)) inlist
+
+and vxnor out_chan gsyms stem syms (x:token) (inlist:token list) =
+ignore(subexp out_chan gsyms RECEIVER stem syms x);
+iter (fun t -> ignore(subexp out_chan gsyms DRIVER stem syms t)) inlist
+
+and senitem out_chan gsyms stem syms item = match item with
+| DOUBLE(POSEDGE, clk) -> ignore(subexp out_chan gsyms DRIVER stem syms clk)
+| DOUBLE(NEGEDGE, clk) -> ignore(subexp out_chan gsyms DRIVER stem syms clk)
+| ID signal -> ignore(subexp out_chan gsyms DRIVER stem syms item)
+| _ -> unhandled out_chan item
 ;;
 
 (* let moditer k (x:Globals.modtree) = semantics out_chan gsyms k x;; *)
