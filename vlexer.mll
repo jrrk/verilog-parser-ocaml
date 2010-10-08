@@ -115,9 +115,11 @@ let _ = List.iter (fun (str,key) -> enter_keyword str key)
 (  "nor",		NOR ) ;
 (  "not",		NOT ) ;
 (  "$onehot0",		D_ONEHOT0 ) ;
-(  "onehot0",		D_ONEHOT0 ) ;
 (  "$onehot",		D_ONEHOT ) ;
+(*
+(  "onehot0",		D_ONEHOT0 ) ;
 (  "onehot",		D_ONEHOT ) ;
+*)
 (  "or",		OR ) ;
 (  "output",		OUTPUT ) ;
 (  "parameter",		PARAMETER ) ;

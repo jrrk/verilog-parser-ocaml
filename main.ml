@@ -39,23 +39,13 @@ let dump_all_syms syms = Hashtbl.iter Setup.show_sym syms;;
 
 let vparser args = begin
   Setup.psuccess := true;
-  for i = 1 to ( Array.length args - 2 ) do
+  for i = 1 to ( Array.length args - 1 ) do
     (*Printexc.print*) Vparse.parse args.( i )
   done;
   if (!Setup.psuccess == false) then
-    Printf.printf "Not continuing due to parse errors\n"
-  else if ( Array.length args > 2 ) then let nam = args.( Array.length args - 1 ) in
-    begin
-    Semantics.endscan 0 nam;
-    if (Hashtbl.mem Globals.modprims nam) then
-      let out_chan = open_out (nam ^ ".report") in
-	begin
-	Semantics.prescan "module" nam (Hashtbl.find Globals.modprims nam);
-	close_out out_chan
-	end
-    else Printf.printf "Toplevel %s is not found\n" args.( Array.length args - 1 );
-    end
-  else
+    Printf.printf "Not continuing due to parse errors\n";
+  Semantics.endscan 0;
+  if (Array.length args < 2) then
     Printf.printf "Usage %s verilog_files TOPLEVEL\n" args.(0);
   end
 

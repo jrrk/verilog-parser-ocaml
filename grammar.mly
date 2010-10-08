@@ -156,7 +156,8 @@ open Vparser
 %token AND		// "and"
 %token ASSERT		// "assert"
 %token ASSIGN		// "assign"
-%token ASSIGNMENT	// "assignment"
+%token ASSIGNMENT	// "= assignment"
+%token DLYASSIGNMENT	// "<= assignment"
 %token AUTOMATIC	// "automatic"
 %token BEGIN		// "begin"
 %token BUF		// "buf"
@@ -802,8 +803,8 @@ AssignList:
 	;
 
 AssignOne:
-		varRefDotBit EQUALS expr			{ TRIPLE (EQUALS, $1, $3 ) }
-	|	LCURLY concIdList RCURLY EQUALS expr		{ TRIPLE (EQUALS, TLIST $2, $5) }
+		varRefDotBit EQUALS expr			{ TRIPLE (ASSIGNMENT, $1, $3 ) }
+	|	LCURLY concIdList RCURLY EQUALS expr		{ TRIPLE (ASSIGNMENT, DOUBLE(CONCAT,TLIST $2), $5) }
 	;
 
 delayE:		/* empty */				{ EMPTY }
@@ -1058,9 +1059,9 @@ stmt:
 	|	ASSIGN varRefDotBit EQUALS delayStrength expr SEMICOLON
 			{ QUADRUPLE (ASSIGN, $2, $4, $5 ) }
 	|	LCURLY concIdList RCURLY P_LTE delayE expr SEMICOLON
-			{ QUADRUPLE (P_LTE, TLIST $2, $5, $6 ) }
+			{ QUADRUPLE (DLYASSIGNMENT, DOUBLE(CONCAT,TLIST $2), $5, $6 ) }
 	|	LCURLY concIdList RCURLY EQUALS delayE expr SEMICOLON
-			{ QUADRUPLE (EQUALS, TLIST $2, $5, $6 ) }
+			{ QUADRUPLE (ASSIGNMENT, DOUBLE(CONCAT,TLIST $2), $5, $6 ) }
 	|	D_C LPAREN cStrList RPAREN SEMICOLON
 			{ TLIST $3 }
 	|	D_FCLOSE LPAREN varRefDotBit RPAREN SEMICOLON
@@ -1123,7 +1124,7 @@ stmt:
 			{ DOUBLE ( DISABLE, $2 ) }	
 	|	D_MONITOR  LPAREN monList RPAREN SEMICOLON
 			{ DOUBLE (D_MONITOR, TLIST $3); }
-	|	REPEAT LPAREN INTNUM RPAREN stmtBlock	{ TRIPLE ( REPEAT, INTNUM $3, $5 ) }
+	|	REPEAT LPAREN expr RPAREN stmtBlock	{ TRIPLE ( REPEAT, $3, $5 ) }
 	|	FOREVER stmtBlock	    		{ DOUBLE ( FOREVER, $2 ) }
 	|	preproc					{ (* Printf.fprintf Pervasives.stderr "%s\n" $1 *) $1 }
 
@@ -1300,7 +1301,7 @@ exprNoStr:
 	|	LPAREN expr RPAREN			{ $2 }
 	|	LCURLY cateList RCURLY			{ DOUBLE (CONCAT, TLIST $2) }
 	|	LCURLY constExpr LCURLY cateList RCURLY RCURLY
-							{ TRIPLE (LCURLY, $2, TLIST $4) }
+							{ TRIPLE (CONCAT, $2, TLIST $4) }
 	|	D_BITS LPAREN expr RPAREN		{ DOUBLE (D_BITS, $3 ) }
 	|	D_C LPAREN cStrList RPAREN		{ DOUBLE (D_C, TLIST $3 ) }
 	|	D_CLOG2 LPAREN expr RPAREN		{ DOUBLE (D_CLOG2, $3 ) }

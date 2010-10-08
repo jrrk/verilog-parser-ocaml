@@ -35,7 +35,10 @@ all:
 	@echo "Choose make ocamlyacc or make menhir"
 
 vtop: $(TARGET)
-	ocamlmktop -g -o vtop $(CML) $(CMO1) $(CMO2)
+	ocamlmktop -g -o $@ $(CML) $(CMO1) $(CMO2)
+
+vdebug: $(TARGET)
+	ocamlc -g -o $@ $(CML) $(CMO1) $(CMO2)
 
 ocamlyacc: grammar.mly
 	ocamlyacc -v $<
