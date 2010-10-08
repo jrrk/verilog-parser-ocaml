@@ -41,7 +41,7 @@ val find_referrer : (string, Setup.symtab) Hashtbl.t -> string -> unit
 *)
 val check_syms : out_channel -> (string, Setup.symtab) Hashtbl.t -> unit
 val prescan : string -> string -> Globals.modtree -> unit
-val endscan : int -> string -> unit
+val endscan : int -> unit
 val subexp :
   out_channel ->
   Setup.TokSet.elt ->
