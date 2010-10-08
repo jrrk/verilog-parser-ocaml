@@ -1,0 +1,118 @@
+####################
+#
+# Main test script
+#
+####################
+
+There are a group of tests that are meant to exercise the compiler
+and the run time. To run them just type:
+
+./regress
+
+or
+
+perl vvp_reg.pl
+
+or if perl is located in /usr/bin
+
+./vvp_reg.pl
+
+The output from these tests are displayed on the screen
+and are also placed in the regression_report.txt file.
+The expected output for the current development release
+is located in the regression_report-devel.txt file. The
+expected output for stable (released) versions can be
+found in files named regression_report-v<version>.txt.
+
+The results from individual tests can be found in the
+log directory and gold files, when needed, are in the
+gold directory. The source files can be found in the
+ivltests and contrib directories. The list of tests
+and how they are run is in the regress.list file.
+
+To check a specific suffixed version of Icarus Verilog
+use the --suffix=<suffix> flag to tell the script which
+version to run e.g.(--suffix=-0.9 will test iverilog-0.9,
+etc.). You can also run the test with valgrind (very very
+slow) by giving the script the --with-valgrind flag.
+
+
+####################
+#
+# VPI test script
+#
+####################
+
+To test the VPI interface type:
+
+perl vpi_reg.pl
+
+or if perl is located in /usr/bin
+
+./vpi_reg.pl
+
+All these tests should pass for V0.10.devel and V0.9.?.
+V0.8.? is expected to fail for realtime (64 bit time
+issue) and memmon (no full array call backs).
+
+The individual test results are found in the vpi_log
+directory and the gold files are in the vpi_gold
+directory. The source files are in the vpi directory.
+The vpi_regress.list file has the tests to perform.
+
+This script also takes the --suffix=<suffix> and the
+--with-valgrind flags described above.
+
+
+####################
+#
+# VHDL test script
+#
+####################
+
+This test script require that ghdl be installed in your
+path and is used to test the Verilog to VHDL translation.
+
+perl vhdl_reg.pl
+
+or if perl is located in /usr/bin
+
+./vhdl_reg.pl
+
+The expected output for V0.10.devel and V0.9 is located
+in the vhdl_regression_report-devel.txt file. V0.8 does
+not support converting Verilog to VHDL.
+
+This script also takes the --suffix=<suffix> and the
+--with-valgrind flags described above.
+
+
+####################
+#
+# MinGW test issues
+#
+####################
+
+Running under MinGW (3.14+ runtime) the following tests are
+expected to fail:
+
+pr1699519  - MinGW has three digit exponents.
+pr1703120  - integer infinity and infinity display
+pr1752823a  - missing -0
+pr1752823b  - infinity display and missing -0
+swrite  - MinGW has three digit exponents
+pr1864115  - %#g of 0.0 gives six decimal digits
+ca_mult  - %#g of 0.0 gives six decimal digits
+pr1873372  - MinGW has three digit exponents
+test_va_math  - infinity and NaN display, missing -0
+test_vams_math  - infinity and NaN display, missing -0
+ca_time  - %#g of 0.0 gives six decimal digits
+pr2509349a  - MinGW can not find /tmp
+pr2590274a  - MinGW has three digit exponents
+pr2590274b  - MinGW has three digit exponents
+pr2590274c  - MinGW has three digit exponents
+
+pr723  - MinGW has some fd problems that need to be investigated.
+
+All of these issues produce something that humans should recognize
+as correct results (-0 == 0, extra digits, out of order text, etc.).

@@ -47,27 +47,23 @@ let unhandled_ptr = ref (UPTR unhandled_dflt);;
 
 let unhandled out_chan arg = match !unhandled_ptr with UPTR fn -> fn out_chan arg | UNIL -> ();;
 
-let stmts = ref [];;
-let nullsym = {Setup.symattr = TokSet.empty; width = EMPTY; referrer=Nil; path = ""};;
+let nullsym = {Setup.symattr = TokSet.empty; width = EMPTY; path = ""};;
 
-let enter_a_sym symbols id attr w refer = 
-let refsym = if (refer <> "") then
-  begin
-  if Hashtbl.mem symbols refer then Referrer (Hashtbl.find symbols refer) else Nil
-  end
-else Nil in
+let enter_a_sym out_chan symbols id attr w = 
 if Hashtbl.mem symbols id then begin
 (*  printf "Update %s: %s\n" id (Ord.getstr attr); *)
-  let newset = (Hashtbl.find symbols id).symattr and oldw = (Hashtbl.find symbols id).width and oldr = (Hashtbl.find symbols id).referrer in
+  let newset = (Hashtbl.find symbols id).symattr and oldw = (Hashtbl.find symbols id).width in
+  if (oldw<>UNKNOWN)&&(oldw<>w)&&(w<>UNKNOWN) then
+    Printf.fprintf out_chan "Addition of attribute %s to signal %s changed width from %s to %s\n"
+      (str_token attr) id (str_token oldw) (str_token w);
   Hashtbl.replace symbols id
     {Setup.symattr = (TokSet.add attr newset);
-    width = (if oldw==EMPTY then w else oldw);
-    referrer=(if oldr==Nil then refsym else oldr);
+    width = if (w<>UNKNOWN) then w else oldw;
     path=id};
     end
 else begin
 (*  printf "Enter %s: %s\n" id (Ord.getstr attr); *)
-  Hashtbl.add symbols id {Setup.symattr = (TokSet.singleton attr); width = w; referrer=refsym; path=id}
+  Hashtbl.add symbols id {Setup.symattr = (TokSet.singleton attr); width = w; path=id}
   end
 ;;
 
@@ -75,20 +71,25 @@ let iter_ semantics out_chan (stem:string) syms list =
   List.iter (fun x -> semantics out_chan stem ({Globals.unresolved=[]; tree=x; symbols=syms})) list
 ;;
 
-let not_found syms w = printf "wire/port %s not found\n" w; enter_a_sym syms w IMPLICIT EMPTY "";;
+let not_found out_chan syms w = printf "wire/port %s not found\n" w; enter_a_sym out_chan syms w IMPLICIT EMPTY;;
 
 let find_ident out_chan dir stem syms tok = match tok with ID id -> begin
 if Hashtbl.mem syms id == false then begin
 (*  fprintf out_chan "Creating implicit wire %s\n" id;  *)
-  Hashtbl.add syms id {Setup.symattr = TokSet.singleton IMPLICIT; width = EMPTY; referrer=Nil; path=id}
+  Hashtbl.add syms id {Setup.symattr = TokSet.singleton IMPLICIT; width = SCALAR; path=id}
   end;
 Hashtbl.find syms id
 end
-| _ -> unhandled out_chan tok; ({Setup.symattr = TokSet.singleton tok; width = EMPTY; referrer=Nil; path=""})
+| _ -> unhandled out_chan tok; ({Setup.symattr = TokSet.singleton tok; width = EMPTY; path=""})
 ;;
 
-let enter_sym_attrs out_chan dir stem symbols (tok:token) list width = match tok with
-| ID id -> iter (fun x -> enter_a_sym symbols id x width "") list
+let enter_sym_attrs out_chan stem symbols (tok:token) list width = match tok with
+| ID id -> iter (fun x -> enter_a_sym out_chan symbols id x width) list;
+  let newset = (Hashtbl.find symbols id).symattr in
+    begin
+     if (TokSet.mem INPUT newset) && (TokSet.mem REG newset) then 
+       Printf.fprintf out_chan "Signal %s cannot be input and reg\n" id;
+    end
 | _ -> unhandled out_chan tok;
 ;;
 
@@ -126,7 +127,7 @@ if (!base <> expbase) then printf "Expected base %d, actual base %d\n" expbase !
 (!width, !value);;
 
 let inner_chk out_chan stem syms sym subcct inner wireport wid = begin
-  let hier = (stem^wireport) and hier2 = (stem^subcct^"."^inner) and compat=ref false in 
+  let hier = (stem^wireport) and compat=ref false in 
   begin
   if (sym.width <> wid) then
     begin
@@ -137,14 +138,14 @@ let inner_chk out_chan stem syms sym subcct inner wireport wid = begin
     | RANGE(INTNUM x, INTNUM y) -> if ((x==y) && (wid == EMPTY)) then compat := true;
     | _ -> ();
     if (!compat == false) then begin
-      printf "Width mismatch stem=%s subcct=%s inner=%s %s wireport=%s %s\n"
+      fprintf out_chan "Width mismatch stem=%s subcct=%s inner=%s %s wireport=%s %s\n"
           stem subcct inner (Setup.str_token sym.width) wireport (str_token(wid)); 
       end
     end;
   if (TokSet.mem IOPORT sym.symattr == false) then printf "Instance port %s not an ioport\n" inner
-  else if (TokSet.mem INPUT sym.symattr) then ( enter_a_sym syms hier DRIVER wid "")
-  else if (TokSet.mem OUTPUT sym.symattr) then ( enter_a_sym syms hier RECEIVER wid "")
-  else if (TokSet.mem INOUT sym.symattr) then ( enter_a_sym syms hier BIDIR wid "")
+  else if (TokSet.mem INPUT sym.symattr) then ( enter_a_sym out_chan syms hier DRIVER wid)
+  else if (TokSet.mem OUTPUT sym.symattr) then ( enter_a_sym out_chan syms hier RECEIVER wid)
+  else if (TokSet.mem INOUT sym.symattr) then ( enter_a_sym out_chan syms hier BIDIR wid)
   end
 end
 
@@ -158,15 +159,15 @@ let innersym = (Hashtbl.find Globals.modprims kind).symbols in match innert with
 if (Hashtbl.mem innersym inner) then
 let isym=Hashtbl.find innersym inner in match tok with
 | ID wireport -> inner_chk out_chan stem syms isym subcct inner wireport (find_ident out_chan WIRE stem syms tok).width
-| TRIPLE(BITSEL, ID wireport, INTNUM sel) -> if (Hashtbl.mem syms wireport) then inner_chk out_chan stem syms isym subcct inner wireport (RANGE (INTNUM sel, INTNUM sel)) else not_found syms wireport
-| QUADRUPLE(PARTSEL, ID wireport, INTNUM hi, INTNUM lo) -> if (Hashtbl.mem syms wireport) then inner_chk out_chan stem syms isym subcct inner wireport (RANGE(INTNUM hi, INTNUM lo)) else not_found syms wireport
+| TRIPLE(BITSEL, ID wireport, INTNUM sel) -> if (Hashtbl.mem syms wireport) then inner_chk out_chan stem syms isym subcct inner wireport (RANGE (INTNUM sel, INTNUM sel)) else not_found out_chan syms wireport
+| QUADRUPLE(PARTSEL, ID wireport, INTNUM hi, INTNUM lo) -> if (Hashtbl.mem syms wireport) then inner_chk out_chan stem syms isym subcct inner wireport (RANGE(INTNUM hi, INTNUM lo)) else not_found out_chan syms wireport
 | INTNUM lev -> inner_chk out_chan stem syms isym subcct inner (string_of_int lev) (RANGE(INTNUM 31, INTNUM 0))
 | BINNUM lev -> inner_chk out_chan stem syms isym subcct inner lev (RANGE(INTNUM (fst(widthnum 2 lev)-1), INTNUM 0))
 | DOUBLE (CONCAT, TLIST concat) -> let idx = ref (fst(iwidth out_chan isym.width)) in iter (fun (item:token) -> 
 (match item with
-| ID id -> let wid = (find_ident out_chan WIRE stem syms item).width in begin inner_chk out_chan stem syms {symattr=isym.symattr; width=RANGE(INTNUM !idx, INTNUM !idx); referrer=Nil; path=id} subcct inner id wid; idx := !idx + snd(iwidth out_chan wid) - fst(iwidth out_chan wid); end
-| TRIPLE (BITSEL, ID id, INTNUM sel) -> inner_chk out_chan stem syms {symattr=isym.symattr; width=RANGE(INTNUM !idx, INTNUM !idx); referrer=Nil; path=id} subcct inner id (RANGE(INTNUM sel, INTNUM sel)); idx := !idx-1
-| QUADRUPLE (PARTSEL, ID id, INTNUM hi, INTNUM lo) -> inner_chk out_chan stem syms {symattr=isym.symattr; width=RANGE(INTNUM !idx, INTNUM (!idx+lo-hi)); referrer=Nil; path=id} subcct inner id (RANGE(INTNUM hi, INTNUM lo)); idx := !idx+lo-hi-1
+| ID id -> let wid = (find_ident out_chan WIRE stem syms item).width in begin inner_chk out_chan stem syms {symattr=isym.symattr; width=RANGE(INTNUM !idx, INTNUM !idx); path=id} subcct inner id wid; idx := !idx + snd(iwidth out_chan wid) - fst(iwidth out_chan wid); end
+| TRIPLE (BITSEL, ID id, INTNUM sel) -> inner_chk out_chan stem syms {symattr=isym.symattr; width=RANGE(INTNUM !idx, INTNUM !idx); path=id} subcct inner id (RANGE(INTNUM sel, INTNUM sel)); idx := !idx-1
+| QUADRUPLE (PARTSEL, ID id, INTNUM hi, INTNUM lo) -> inner_chk out_chan stem syms {symattr=isym.symattr; width=RANGE(INTNUM !idx, INTNUM (!idx+lo-hi)); path=id} subcct inner id (RANGE(INTNUM hi, INTNUM lo)); idx := !idx+lo-hi-1
 | _ -> unhandled out_chan item)
 ) concat
 | _ -> unhandled out_chan tok
@@ -187,6 +188,85 @@ let fiter out_chan (stem:string) syms (kind:string) (subcct:string) (inner:token
 	  | _ -> unhandled out_chan term
 ;;
 
+let rec exprGeneric out_chan stem syms expr = match expr with
+| TRIPLE( P_OROR, left, right ) -> exprGeneric out_chan stem syms left; exprGeneric out_chan stem syms right
+| TRIPLE( P_ANDAND, left, right ) -> exprGeneric out_chan stem syms left; exprGeneric out_chan stem syms right
+| TRIPLE( AMPERSAND, left, right ) -> exprGeneric out_chan stem syms left; exprGeneric out_chan stem syms right
+| TRIPLE( VBAR, left, right ) -> exprGeneric out_chan stem syms left; exprGeneric out_chan stem syms right
+| TRIPLE( P_NAND, left, right ) -> exprGeneric out_chan stem syms left; exprGeneric out_chan stem syms right
+| TRIPLE( P_NOR, left, right ) -> exprGeneric out_chan stem syms left; exprGeneric out_chan stem syms right
+| TRIPLE( CARET, left, right ) -> exprGeneric out_chan stem syms left; exprGeneric out_chan stem syms right
+| TRIPLE( P_XNOR, left, right ) -> exprGeneric out_chan stem syms left; exprGeneric out_chan stem syms right
+| TRIPLE( P_EQUAL, left, right ) -> exprGeneric out_chan stem syms left; exprGeneric out_chan stem syms right
+| TRIPLE( P_NOTEQUAL, left, right ) -> exprGeneric out_chan stem syms left; exprGeneric out_chan stem syms right
+| TRIPLE( P_CASEEQUAL, left, right ) -> exprGeneric out_chan stem syms left; exprGeneric out_chan stem syms right
+| TRIPLE( P_CASENOTEQUAL, left, right ) -> exprGeneric out_chan stem syms left; exprGeneric out_chan stem syms right
+| TRIPLE( P_WILDEQUAL, left, right ) -> exprGeneric out_chan stem syms left; exprGeneric out_chan stem syms right
+| TRIPLE( P_WILDNOTEQUAL, left, right ) -> exprGeneric out_chan stem syms left; exprGeneric out_chan stem syms right
+| TRIPLE( GREATER, left, right ) -> exprGeneric out_chan stem syms left; exprGeneric out_chan stem syms right
+| TRIPLE( LESS, left, right ) -> exprGeneric out_chan stem syms left; exprGeneric out_chan stem syms right
+| TRIPLE( P_GTE, left, right ) -> exprGeneric out_chan stem syms left; exprGeneric out_chan stem syms right
+| TRIPLE( P_LTE, left, right ) -> exprGeneric out_chan stem syms left; exprGeneric out_chan stem syms right
+| TRIPLE( P_SLEFT, left, right ) -> exprGeneric out_chan stem syms left; exprGeneric out_chan stem syms right
+| TRIPLE( P_SRIGHT, left, right ) -> exprGeneric out_chan stem syms left; exprGeneric out_chan stem syms right
+| TRIPLE( P_SSRIGHT, left, right ) -> exprGeneric out_chan stem syms left; exprGeneric out_chan stem syms right
+| TRIPLE( PLUS, left, right ) -> exprGeneric out_chan stem syms left; exprGeneric out_chan stem syms right
+| TRIPLE( MINUS, left, right ) -> exprGeneric out_chan stem syms left; exprGeneric out_chan stem syms right
+| TRIPLE( TIMES, left, right ) -> exprGeneric out_chan stem syms left; exprGeneric out_chan stem syms right
+| TRIPLE( DIVIDE, left, right ) -> exprGeneric out_chan stem syms left; exprGeneric out_chan stem syms right
+| TRIPLE( MODULO, left, right ) -> exprGeneric out_chan stem syms left; exprGeneric out_chan stem syms right
+| TRIPLE( P_POW, left, right ) -> exprGeneric out_chan stem syms left; exprGeneric out_chan stem syms right
+| DOUBLE (MINUS, arg2) -> exprGeneric out_chan stem syms arg2
+| DOUBLE (PLUS, arg2) -> exprGeneric out_chan stem syms arg2
+| DOUBLE (AMPERSAND, arg2) -> exprGeneric out_chan stem syms arg2
+| DOUBLE (VBAR, arg2) -> exprGeneric out_chan stem syms arg2
+| DOUBLE (CARET, arg2) -> exprGeneric out_chan stem syms arg2
+| DOUBLE (P_XNOR, arg2) -> exprGeneric out_chan stem syms arg2
+| DOUBLE (P_NAND, arg2) -> exprGeneric out_chan stem syms arg2
+| DOUBLE (P_NOR, arg2) -> exprGeneric out_chan stem syms arg2
+| DOUBLE (PLING, arg2) -> exprGeneric out_chan stem syms arg2
+| DOUBLE (TILDE, arg2) -> exprGeneric out_chan stem syms arg2
+| QUADRUPLE (QUERY, expr, then_clause, else_clause ) ->
+    exprGeneric out_chan stem syms expr;
+    exprGeneric out_chan stem syms then_clause;
+    exprGeneric out_chan stem syms else_clause
+| DOUBLE (CONCAT, TLIST concat) -> iter (fun arg -> exprGeneric out_chan stem syms arg) concat
+| TRIPLE (LCURLY, arg2, TLIST arg4) -> iter (fun arg -> exprGeneric out_chan stem syms arg) arg4
+| DOUBLE (D_BITS, right ) -> exprGeneric out_chan stem syms right
+| DOUBLE (D_C, TLIST right ) -> iter(fun arg -> exprGeneric out_chan stem syms arg) right
+| DOUBLE (D_CLOG2, right ) -> exprGeneric out_chan stem syms right
+| DOUBLE (D_COUNTDRIVERS, right ) -> exprGeneric out_chan stem syms right
+| DOUBLE (D_COUNTONES, right ) -> exprGeneric out_chan stem syms right
+| DOUBLE (D_FEOF, right ) -> exprGeneric out_chan stem syms right
+| DOUBLE (D_FGETC, right ) -> exprGeneric out_chan stem syms right
+| TRIPLE (D_FGETS, right, arg5) -> exprGeneric out_chan stem syms right
+| TRIPLE (D_FSCANF, right, arg6) -> exprGeneric out_chan stem syms right
+| TRIPLE (D_SSCANF, right, arg6) -> exprGeneric out_chan stem syms right
+| DOUBLE (D_ISUNKNOWN, right ) -> exprGeneric out_chan stem syms right
+| DOUBLE (D_ONEHOT, right ) -> exprGeneric out_chan stem syms right
+| DOUBLE (D_ONEHOT0, right ) -> exprGeneric out_chan stem syms right
+| DOUBLE (D_RANDOM, right ) -> exprGeneric out_chan stem syms right
+| D_RANDOM -> ()
+| DOUBLE (D_SIGNED, right ) -> exprGeneric out_chan stem syms right
+| D_STIME -> ()
+| D_TIME -> ()
+| DOUBLE (D_TEST_PLUSARGS, right ) -> exprGeneric out_chan stem syms right
+| DOUBLE (D_UNSIGNED, right ) -> exprGeneric out_chan stem syms right
+| TRIPLE (FUNCREF, arg1, TLIST arg3) -> ()
+| INTNUM left -> ()
+| BINNUM left -> ()
+| DECNUM left -> ()
+| HEXNUM left -> ()
+| ID arg1 -> enter_sym_attrs out_chan stem syms expr [DRIVER] UNKNOWN
+| TRIPLE(BITSEL, arg1, arg3) -> ()
+| QUADRUPLE(PARTSEL, arg1 , arg3 , arg5 ) -> ()
+| QUADRUPLE(P_PLUSCOLON, arg1 , arg3 , arg5 ) -> ()
+| QUADRUPLE(P_MINUSCOLON, arg1, arg3, arg5 ) -> ()
+| ASCNUM arg1 -> ()
+| FLOATNUM arg1 -> ()
+| _ -> ignore(unhandled out_chan expr);
+ignore(Stack.pop stk);;
+
 let rec semantics out_chan (stem:string) (tree:Globals.modtree) =
    let exp = tree.Globals.tree and syms = tree.Globals.symbols in Stack.push exp stk; match exp with
 (* These patterns are temporary till we decide on the proper general form *)
@@ -205,9 +285,32 @@ let rec semantics out_chan (stem:string) (tree:Globals.modtree) =
   | TLIST stmts
     -> iter_ semantics out_chan stem syms stmts
   | _ -> stmtBlock out_chan stem syms stmt )
-| DOUBLE(SPECIFY, TLIST speclist) -> iter (fun item -> match item with ID id -> enter_a_sym syms (stem^id) SPECIFY EMPTY ""| _ -> ()) speclist
+| DOUBLE(FOREVER, stmt)
+-> ( match stmt with
+  | TRIPLE (BEGIN, TLIST stmts, EMPTY)
+    -> iter_ semantics out_chan stem syms stmts
+  | TLIST stmts
+    -> iter_ semantics out_chan stem syms stmts
+  | _ -> stmtBlock out_chan stem syms stmt )
+| TRIPLE(REPEAT, INTNUM iter, stmt)
+-> ( match stmt with
+  | TRIPLE (BEGIN, TLIST stmts, EMPTY)
+    -> iter_ semantics out_chan stem syms stmts
+  | TLIST stmts
+    -> iter_ semantics out_chan stem syms stmts
+  | _ -> stmtBlock out_chan stem syms stmt )
+| TRIPLE(WHILE, expr, stmt)
+-> ignore(exprGeneric out_chan stem syms expr); ( match stmt with
+  | TRIPLE (BEGIN, TLIST stmts, EMPTY)
+    -> iter_ semantics out_chan stem syms stmts
+  | TLIST stmts
+    -> iter_ semantics out_chan stem syms stmts
+  | _ -> stmtBlock out_chan stem syms stmt )
+| DOUBLE(SPECIFY, TLIST speclist) -> iter (fun item -> match item with ID id -> enter_a_sym out_chan syms (stem^id) SPECIFY EMPTY| _ -> ()) speclist
 | TRIPLE(ASSIGN, EMPTY, TLIST assignlist)
--> iter (fun a -> match a with TRIPLE (EQUALS, var1, expr) -> statement out_chan stem syms ASSIGN var1 (expression out_chan stem syms expr) | _ -> unhandled out_chan a) assignlist
+-> iter (fun a -> match a with TRIPLE (EQUALS, var1, expr) ->
+    ignore(subexp out_chan RECEIVER stem syms var1);
+    ignore(exprGeneric out_chan stem syms expr) | _ -> unhandled out_chan a) assignlist
 | TRIPLE(EQUALS, TLIST arg1, TLIST arg2) -> iter_ semantics out_chan stem syms arg1; iter_ semantics out_chan stem syms arg2
 | TRIPLE(IF, expr, then_clause) ->
 exprGeneric out_chan stem syms expr;
@@ -276,18 +379,18 @@ stmtBlock out_chan stem syms then_clause
       semantics out_chan (stem^prim^".") (Hashtbl.find Globals.modprims prim) (* scan the inner primitive *)
     else printf "Primitive %s not found\n" prim;
 *)
-    enter_a_sym syms prim PRIMITIVE EMPTY "";
+    enter_a_sym out_chan syms prim PRIMITIVE EMPTY;
     let fc inner t = connect out_chan stem syms prim prim inner t in 
     ( match (Hashtbl.find Globals.modprims prim).Globals.tree with QUINTUPLE(PRIMITIVE,ID arg1, EMPTY, TLIST primargs, TLIST arg4) ->
 iter2 fc primargs inlist | _ -> ())
 (* Parse module instance *)
 | QUADRUPLE(MODINST, ID kind,params, TLIST instances) ->
     begin
-    enter_a_sym syms kind SUBMODULE EMPTY "";
+    enter_a_sym out_chan syms kind SUBMODULE EMPTY;
     let kindhash = Hashtbl.find Globals.modprims kind in
     iter (fun inst -> match inst with
-      | TRIPLE (ID subcct, EMPTY, TLIST termlist) -> (* semantics out_chan (stem^subcct^".") kindhash; *)
-        enter_a_sym syms subcct SUBCCT EMPTY "";
+      | TRIPLE (ID subcct, SCALAR, TLIST termlist) -> (* semantics out_chan (stem^subcct^".") kindhash; *)
+        enter_a_sym out_chan syms subcct SUBCCT EMPTY;
         ( match kindhash.Globals.tree with QUINTUPLE((MODULE|PRIMITIVE),ID arg1, EMPTY, TLIST primargs, TLIST arg4) ->
         (try iter2 (fun (inner:token) (term:token) -> fiter out_chan stem syms kind subcct inner term) primargs termlist; with Invalid_argument "List.iter2" -> let ids = ref [] and partlist = ref ([],[])and byposn = ref false in begin
 iter (fun (inner:token) -> (match inner with
@@ -321,9 +424,16 @@ end)
     | TLIST parmlist -> iter (fun param -> match param with ID id -> () | _ -> unhandled out_chan param) parmlist
     | _ -> unhandled out_chan params
     end
+| QUADRUPLE(ASSIGN, var1, EMPTY, expr)
+-> ignore(subexp out_chan RECEIVER stem syms var1);
+   ignore(exprGeneric out_chan stem syms expr)
 | QUADRUPLE(ASSIGNMENT, var1, EMPTY, expr)
--> statement out_chan stem syms ASSIGNMENT var1 (expression out_chan stem syms expr)
-| QUADRUPLE(EQUALS, TLIST arg1, TLIST arg2, TLIST arg3) -> iter_ semantics out_chan stem syms arg1; iter_ semantics out_chan stem syms arg2; iter_ semantics out_chan stem syms arg3
+-> ignore(subexp out_chan RECEIVER stem syms var1);
+   ignore(exprGeneric out_chan stem syms expr)
+| QUADRUPLE(EQUALS, TLIST arg1, TLIST arg2, TLIST arg3) ->
+  iter_ semantics out_chan stem syms arg1;
+  iter_ semantics out_chan stem syms arg2;
+  iter_ semantics out_chan stem syms arg3
 | QUADRUPLE(IF, expr, then_clause, else_clause) ->
 exprGeneric out_chan stem syms expr;
 stmtBlock out_chan stem syms then_clause;
@@ -336,7 +446,7 @@ exprGeneric out_chan stem syms inc;
 stmtBlock out_chan stem syms clause
 (* Parse wire/reg declarations *)
 | QUADRUPLE((WIRE|REG) as kind, arg1, arg2, TLIST arg3) ->
-    let width = ref EMPTY in begin
+    let width = ref SCALAR in begin
     semantics out_chan stem {Globals.unresolved=[]; tree=arg1; symbols=syms};
     (match arg2 with
       | RANGE(hi, lo) as rangehilo -> width := rangehilo
@@ -346,8 +456,9 @@ stmtBlock out_chan stem syms clause
       | TRIPLE(EMPTY,EMPTY,EMPTY) -> ()
       | _ ->  unhandled out_chan arg2);
     ( List.iter (fun x -> match x with
-      | TRIPLE(id, arg5, arg6) -> enter_sym_attrs out_chan kind stem syms id [kind] !width
-      | DOUBLE(id, EMPTY) -> enter_sym_attrs out_chan kind stem syms id [kind] !width
+      | TRIPLE(id, arg5, arg6) -> enter_sym_attrs out_chan stem syms id [kind;RECEIVER] !width;
+          exprGeneric out_chan stem syms arg6;
+      | DOUBLE(id, EMPTY) -> enter_sym_attrs out_chan stem syms id [kind] !width
       | _ -> unhandled out_chan x) arg3); end
 | QUADRUPLE((REAL|INTEGER|EVENT) as kind, arg1, arg2, TLIST arg3) ->
     semantics out_chan stem {Globals.unresolved=[]; tree=arg1; symbols=syms};
@@ -356,28 +467,28 @@ stmtBlock out_chan stem syms clause
       | TRIPLE(EMPTY,EMPTY,EMPTY) -> ()
       | _ ->  unhandled out_chan arg2);
     ( List.iter (fun x -> match x with
-      | TRIPLE(id, arg5, arg6) -> enter_sym_attrs out_chan kind stem syms id [kind] EMPTY
+      | TRIPLE(id, arg5, arg6) -> enter_sym_attrs out_chan stem syms id [kind] EMPTY
       | _ -> unhandled out_chan x) arg3)
 | QUINTUPLE(NAMED, ID blk_named, TLIST [], TLIST stmts, EMPTY) ->
  iter (fun item -> semantics out_chan stem {Globals.unresolved=[]; tree=item; symbols=syms}) stmts
 (* Parse module declarations *)
 | QUINTUPLE(MODULE,ID arg1, arg2, TLIST arg3, TLIST arg4) ->
-    enter_a_sym syms arg1 MODULE EMPTY ""; (* print_endline (stem^arg1); *)
+    enter_a_sym out_chan syms arg1 MODULE SCALAR; (* print_endline (stem^arg1); *)
     semantics out_chan stem {Globals.unresolved=[]; tree=arg2; symbols=syms};
     iter (fun arg -> match arg with
-| ID id -> enter_a_sym syms id IOPORT EMPTY ""
+| ID id -> enter_a_sym out_chan syms id IOPORT UNKNOWN
 | _ -> semantics out_chan stem {Globals.unresolved=[]; tree=arg; symbols=syms}) arg3;
     iter_ semantics out_chan stem syms arg4
 (* Parse primitive declarations *)
 | QUINTUPLE(PRIMITIVE,ID arg1, EMPTY, TLIST primargs, TLIST arg4) ->
-    enter_a_sym syms arg1 PRIMITIVE EMPTY "";
+    enter_a_sym out_chan syms arg1 PRIMITIVE EMPTY;
     iter (fun arg -> match arg with
-| ID id -> enter_a_sym syms id IOPORT EMPTY ""
+| ID id -> enter_a_sym out_chan syms id IOPORT UNKNOWN
 | _ -> semantics out_chan stem {Globals.unresolved=[]; tree=arg; symbols=syms}) primargs;
     iter_ semantics out_chan stem syms arg4
 (* Parse IO declarations *)
 | QUINTUPLE((INPUT|OUTPUT|INOUT) as dir, arg1, arg2, arg3, arg4) ->
-    let width = ref EMPTY in begin
+    let width = ref SCALAR in begin
     semantics out_chan stem {Globals.unresolved=[]; tree=arg1; symbols=syms};
     semantics out_chan stem {Globals.unresolved=[]; tree=arg2; symbols=syms};
     (match arg3 with
@@ -386,27 +497,27 @@ stmtBlock out_chan stem syms clause
       | EMPTY -> ()
       | _ -> unhandled out_chan arg3);
     ( match arg4 with
-      | DOUBLE(id, arg5) -> enter_sym_attrs out_chan dir stem syms id [IOPORT;dir] !width
-      | TRIPLE(id, TLIST arg5, TLIST arg6) -> enter_sym_attrs out_chan dir stem syms id [IOPORT;dir] !width
-      | TLIST arg9 ->  List.iter (fun x -> match x with TRIPLE(id, arg5, arg6) -> enter_sym_attrs out_chan dir stem syms id [IOPORT;dir] !width | _ -> unhandled out_chan x) arg9
+      | DOUBLE(id, arg5) -> enter_sym_attrs out_chan stem syms id [IOPORT;dir] !width
+      | TRIPLE(id, TLIST arg5, TLIST arg6) -> enter_sym_attrs out_chan stem syms id [IOPORT;dir] !width
+      | TLIST arg9 ->  List.iter (fun x -> match x with TRIPLE(id, arg5, arg6) -> enter_sym_attrs out_chan stem syms id [IOPORT;dir] !width | _ -> unhandled out_chan x) arg9
       | EMPTY -> ()
       | _ -> unhandled out_chan arg4); end
 (* Parse parameter declarations *)
 | QUADRUPLE(PARAMETER, EMPTY, EMPTY, decls) ->
     let width = ref EMPTY in begin
     ( match decls with
-      | TLIST arg9 ->  List.iter (fun x -> match x with TRIPLE(id, arg5, arg6) -> enter_sym_attrs out_chan PARAMETER stem syms id [PARAMETER] !width | _ -> unhandled out_chan x) arg9
+      | TLIST arg9 ->  List.iter (fun x -> match x with TRIPLE(id, arg5, arg6) -> enter_sym_attrs out_chan stem syms id [PARAMETER] !width | _ -> unhandled out_chan x) arg9
       | EMPTY -> ()
       | _ -> unhandled out_chan decls); end
 (* Parse function declarations *)
 | OCTUPLE(FUNCTION, EMPTY, EMPTY, ID funcname, EMPTY, TLIST args, TLIST stmts, EMPTY) ->
-enter_a_sym syms funcname FUNCTION EMPTY "";
+enter_a_sym out_chan syms funcname FUNCTION EMPTY;
 iter (fun arg -> semantics out_chan stem {Globals.unresolved=[]; tree=arg; symbols=syms}) args;
 iter_ semantics out_chan stem syms stmts
 (* Parse task declarations *)
 | SEPTUPLE(TASK, EMPTY, ID taskname, EMPTY, TLIST args, TLIST stmts, EMPTY) ->
 let stem2 = stem^taskname^"." in (
-enter_a_sym syms taskname TASK exp "";
+enter_a_sym out_chan syms taskname TASK exp;
 iter (fun arg -> semantics out_chan stem2 {Globals.unresolved=[]; tree=arg; symbols=syms}) args;
 iter_ semantics out_chan stem2 syms stmts )
 (* Parse task reference *)
@@ -431,11 +542,13 @@ iter (fun caseitem -> semantics out_chan stem {Globals.unresolved=[]; tree=casei
 | QUADRUPLE (P_LTE, dest, dly, exp) ->
 exprGeneric out_chan stem syms exp;
 ignore(subexp out_chan RECEIVER stem syms dest)
-| QUINTUPLE(MODULE,ID arg1, EMPTY, EMPTY, EMPTY) -> enter_a_sym syms arg1 MODULE EMPTY ""
+| QUINTUPLE(MODULE,ID arg1, EMPTY, EMPTY, EMPTY) -> enter_a_sym out_chan syms arg1 MODULE EMPTY
 | RANGE(arg1, arg2) -> semantics out_chan stem {Globals.unresolved=[]; tree=arg1; symbols=syms}; semantics out_chan stem {Globals.unresolved=[]; tree=arg2; symbols=syms}
-| ID id -> enter_a_sym syms id EMPTY EMPTY ""
+| ID id -> enter_a_sym out_chan syms id EMPTY EMPTY
 | DOUBLE(SPECIFY,EMPTY) -> ()
 | TRIPLE(D_DISPLAY, ASCNUM msg, args) -> ()
+| DOUBLE(D_MONITOR, TLIST args) -> ()
+| DOUBLE(D_FINISH, EMPTY) -> ()
 | DOUBLE (P_MINUSGT, ev) -> ()
 | DOUBLE (DOUBLE (HASH, FLOATNUM dly), stmt) -> semantics out_chan stem {Globals.unresolved=[]; tree=stmt; symbols=syms}
 | PREPROC txt -> ()
@@ -454,103 +567,15 @@ and stmtBlock out_chan stem syms block = match block with
 | TRIPLE(BEGIN, TLIST stmtList, endLabelE) -> iter (fun item -> semantics out_chan stem {Globals.unresolved=[]; tree=item; symbols=syms}) stmtList
 | _ -> semantics out_chan stem {Globals.unresolved=[]; tree=block; symbols=syms};
 
-and exprGeneric out_chan stem syms expr = match expr with
-| TRIPLE( P_OROR, left, right ) -> ()
-| TRIPLE( P_ANDAND, left, right ) -> ()
-| TRIPLE( AMPERSAND, left, right ) -> ()
-| TRIPLE( VBAR, left, right ) -> ()
-| TRIPLE( P_NAND, left, right ) -> ()
-| TRIPLE( P_NOR, left, right ) -> ()
-| TRIPLE( CARET, left, right ) -> ()
-| TRIPLE( P_XNOR, left, right ) -> ()
-| TRIPLE( P_EQUAL, left, right ) -> ()
-| TRIPLE( P_NOTEQUAL, left, right ) -> ()
-| TRIPLE( P_CASEEQUAL, left, right ) -> ()
-| TRIPLE( P_CASENOTEQUAL, left, right ) -> ()
-| TRIPLE( P_WILDEQUAL, left, right ) -> ()
-| TRIPLE( P_WILDNOTEQUAL, left, right ) -> ()
-| TRIPLE( GREATER, left, right ) -> ()
-| TRIPLE( LESS, left, right ) -> ()
-| TRIPLE( P_GTE, left, right ) -> ()
-| TRIPLE( P_LTE, left, right ) -> ()
-| TRIPLE( P_SLEFT, left, right ) -> ()
-| TRIPLE( P_SRIGHT, left, right ) -> ()
-| TRIPLE( P_SSRIGHT, left, right ) -> ()
-| TRIPLE( PLUS, left, right ) -> ()
-| TRIPLE( MINUS, left, right ) -> ()
-| TRIPLE( TIMES, left, right ) -> ()
-| TRIPLE( DIVIDE, left, right ) -> ()
-| TRIPLE( MODULO, left, right ) -> ()
-| TRIPLE( P_POW, left, right ) -> ()
-| DOUBLE (MINUS, arg2) -> ()
-| DOUBLE (PLUS, arg2) -> ()
-| DOUBLE (AMPERSAND, arg2) -> ()
-| DOUBLE (VBAR, arg2) -> ()
-| DOUBLE (CARET, arg2) -> ()
-| DOUBLE (P_XNOR, arg2) -> ()
-| DOUBLE (P_NAND, arg2) -> ()
-| DOUBLE (P_NOR, arg2) -> ()
-| DOUBLE (PLING, arg2) -> ()
-| DOUBLE (TILDE, arg2) -> ()
-| QUADRUPLE (QUERY, expr, then_clause, else_clause ) -> ()
-| DOUBLE (CONCAT, TLIST concat) -> ()
-| TRIPLE (LCURLY, arg2, TLIST arg4) -> ()
-| DOUBLE (D_BITS, right ) -> ()
-| DOUBLE (D_C, TLIST right ) -> ()
-| DOUBLE (D_CLOG2, right ) -> ()
-| DOUBLE (D_COUNTDRIVERS, right ) -> ()
-| DOUBLE (D_COUNTONES, right ) -> ()
-| DOUBLE (D_FEOF, right ) -> ()
-| DOUBLE (D_FGETC, right ) -> ()
-| TRIPLE (D_FGETS, right, arg5) -> ()
-| TRIPLE (D_FSCANF, right, arg6) -> ()
-| TRIPLE (D_SSCANF, right, arg6) -> ()
-| DOUBLE (D_ISUNKNOWN, right ) -> ()
-| DOUBLE (D_ONEHOT, right ) -> ()
-| DOUBLE (D_ONEHOT0, right ) -> ()
-| DOUBLE (D_RANDOM, right ) -> ()
-| D_RANDOM -> ()
-| DOUBLE (D_SIGNED, right ) -> ()
-| D_STIME -> ()
-| D_TIME -> ()
-| DOUBLE (D_TEST_PLUSARGS, right ) -> ()
-| DOUBLE (D_UNSIGNED, right ) -> ()
-| TRIPLE (FUNCREF, arg1, TLIST arg3) -> ()
-| INTNUM left -> ()
-| BINNUM left -> ()
-| DECNUM left -> ()
-| HEXNUM left -> ()
-| ID arg1 -> ()
-| TRIPLE(BITSEL, arg1, arg3) -> ()
-| QUADRUPLE(PARTSEL, arg1 , arg3 , arg5 ) -> ()
-| QUADRUPLE(P_PLUSCOLON, arg1 , arg3 , arg5 ) -> ()
-| QUADRUPLE(P_MINUSCOLON, arg1, arg3, arg5 ) -> ()
-| ASCNUM arg1 -> ()
-| FLOATNUM arg1 -> ()
-| _ -> semantics out_chan stem {Globals.unresolved=[]; tree=expr; symbols=syms};
-ignore(Stack.pop stk);
-
 and subexp out_chan dir stem syms exp = match exp with
-| ID id -> find_ident out_chan dir stem syms exp
-| TRIPLE (BITSEL, ID id, sel) -> find_ident out_chan dir stem syms (ID id)
-| INTNUM n -> {symattr=TokSet.singleton exp; width=EMPTY; referrer=Nil; path=""}
-| BINNUM lev -> {Setup.symattr = TokSet.singleton exp; width = EMPTY; referrer=Nil; path=lev}
-| DOTTED dotted -> {symattr=TokSet.singleton exp; width=EMPTY; referrer=Nil; path="dotted"}
-| _ -> exprGeneric out_chan stem syms exp; {symattr=TokSet.singleton exp; width=EMPTY; referrer=Nil; path=""}
+| ID id -> enter_sym_attrs out_chan stem syms exp [dir] UNKNOWN
+| TRIPLE (BITSEL, ID id, sel) -> enter_sym_attrs out_chan stem syms (ID id) [dir] UNKNOWN
+| _ -> exprGeneric out_chan stem syms exp
 
-and subexp2 out_chan dir stem syms exp = {entry=exp; symbol=(subexp out_chan dir stem syms exp)}
+(*and subexp2 out_chan dir stem syms exp = {entry=exp; symbol=(subexp out_chan dir stem syms exp)}
 
 and expr_dyadic out_chan dir stem syms op left right = DYADIC(op, subexp2 out_chan dir stem syms left, subexp2 out_chan dir stem syms right)
-
-and expression out_chan stem syms (tree:token) = match tree with
-| TRIPLE (PLUS as op, left, right) -> expr_dyadic out_chan DRIVER stem syms op left right
-| _ -> UNHANDLED tree
-
-and statement out_chan stem syms tok var expr = (
-let x = subexp out_chan RECEIVER stem syms var in
-let r = {entry=var; symbol=x} in
-stmts := ASSIGNS(r, expr) :: !stmts )
-
+*)
 and vtran out_chan stem syms x y =
 iter(fun x -> ignore(subexp out_chan RECEIVER stem syms x)) [x;y]
 
@@ -610,19 +635,17 @@ and senitem out_chan stem syms item = match item with
 
 let dotted s = try String.index s '.' > 0 ; with Not_found -> false;;
 
-let erc_chk out_chan nam s = let sym = s.symattr and link = (match s.referrer with Referrer lk -> lk | Nil -> nullsym) in
+let erc_chk out_chan nam s = let sym = s.symattr in
   begin
 	begin
-	  if (TokSet.mem WIRE sym) && not ((TokSet.mem RECEIVER sym) || (TokSet.mem SPECIFY sym)) then
-	    Printf.fprintf out_chan "%s is a dangling wire\n" nam
-	  else if (dotted nam) && (TokSet.mem INPUT sym) && not (TokSet.mem RECEIVER sym) then
+	  if (TokSet.mem INPUT sym) && not (TokSet.mem DRIVER sym) then
 	    Printf.fprintf out_chan "%s is a dangling input\n" nam
-	  else if (dotted nam) && (TokSet.mem OUTPUT sym) && not (TokSet.mem DRIVER sym) then
+	  else if (TokSet.mem OUTPUT sym) && not (TokSet.mem RECEIVER sym) then
 	    Printf.fprintf out_chan "%s is a dangling output\n" nam
-	  else if (dotted nam) && (TokSet.mem INOUT sym) then
+	  else if (TokSet.mem INOUT sym) then
 	    Printf.fprintf out_chan "%s is a inout\n" nam
-	  else if (dotted nam) && (TokSet.mem INPUT sym) && not (TokSet.mem RECEIVER link.symattr) then
-	    Printf.fprintf out_chan "%s is an input unconnected at level %s\n" nam link.path
+	  else if (TokSet.mem WIRE sym) && not ((TokSet.mem RECEIVER sym) || (TokSet.mem SPECIFY sym)) then
+	    Printf.fprintf out_chan "%s is a dangling wire\n" nam
 	end
   end
 ;;
@@ -688,11 +711,12 @@ let rec endscan indent (mykey:string) =
 	| Closed -> raise Error
 ;;
 
-(* let moditer k (x:Globals.modtree) = semantics out_chan k x;; *)
 (*
+let moditer k (x:Globals.modtree) = semantics out_chan k x
+
 let find_glob s = Setup.show_sym s ( Hashtbl.find s);;
 
-let find_glob_substr s = let reg = Str.regexp s in Hashtbl.iter (fun k x -> try Printf.printf "%s posn %d\n" k (Str.search_forward reg k 0); with Not_found -> ()) gsyms;;
+let find_glob_substr s = let reg = Str.regexp s in Hashtbl.iter (fun k x -> try Printf.printf "%s posn %d\n" k (Str.search_forward reg k 0); with not_found out_chan -> ()) gsyms;;
 
 let find_referrer s = Setup.show_sym s (match (Hashtbl.find s).referrer with Referrer lk -> lk | Nil -> nullsym);;
 *)

@@ -36,12 +36,9 @@ module OrdTok : Ordered with type t = token =
 
 type tset = Set.Make(OrdTok).t
 
-type refer = Nil | Referrer of symtab
-
 and symtab = {
   symattr : tset;
   width : token;
-  referrer : refer;
   path : string;
 }
 
@@ -71,6 +68,9 @@ let rec str_token (e:token) = match e with
 | BINNUM arg -> "BINNUM "^arg
 | ASCNUM arg -> "ASCNUM "^arg
 | EDGE arg  -> "EDGE "^arg
+| SCALAR -> "scalar"
+| WIRE -> "wire"
+| REG -> "reg"
 | _ -> (Ord.getstr e);;
 
 let show_token (e:token) = Printf.printf "%s " (str_token e)

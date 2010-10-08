@@ -12,12 +12,9 @@ module OrdTok :
 
 type tset = Set.Make(OrdTok).t
 
-type refer = Nil | Referrer of symtab
-
 and symtab = {
   symattr : tset;
   width : Vparser.token;
-  referrer : refer;
   path : string;
 }
 
