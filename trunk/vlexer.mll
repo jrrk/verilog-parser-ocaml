@@ -91,6 +91,7 @@ let _ = List.iter (fun (str,key) -> enter_keyword str key)
 (  "for",		FOR ) ;
 (  "$fscanf",		D_FSCANF ) ;
 (  "function",		FUNCTION ) ;
+(  "forever",		FOREVER ) ;
 (  "$fwrite",		D_FWRITE ) ;
 (  "generate",		GENERATE ) ;
 (  "genvar",		GENVAR ) ;
@@ -107,6 +108,7 @@ let _ = List.iter (fun (str,key) -> enter_keyword str key)
 (  "isunknown",		D_ISUNKNOWN ) ;
 (  "localparam",	LOCALPARAM ) ;
 (  "module",		MODULE ) ;
+(  "$monitor",		D_MONITOR ) ;
 (  "nand",		NAND ) ;
 (  "negedge",		NEGEDGE ) ;
 (  "nmos",		NMOS ) ;
@@ -132,6 +134,7 @@ let _ = List.iter (fun (str,key) -> enter_keyword str key)
 (  "$recrem",		TIMINGSPEC ) ;
 (  "real",		REAL ) ;
 (  "reg",		REG ) ;
+(  "repeat",		REPEAT ) ;
 (  "$removal",		TIMINGSPEC ) ;
 (  "$setuphold",	TIMINGSPEC ) ;
 (  "$setup",		TIMINGSPEC ) ;

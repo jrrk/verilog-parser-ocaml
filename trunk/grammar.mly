@@ -76,6 +76,8 @@ open Vparser
 %token NAMED
 // for unknown modules/primitives
 %token UNKNOWN
+// for scalar nets
+%token SCALAR
 // for transistor level
 %token NMOS
 %token PMOS
@@ -182,6 +184,7 @@ open Vparser
 %token EVENT		// "event"
 %token FINAL		// "final"
 %token FOR		// "for"
+%token FOREVER		// "forever"
 %token FUNCTION	// "function"
 %token GENERATE	// "generate"
 %token GENVAR		// "genvar"
@@ -206,6 +209,7 @@ open Vparser
 %token PULLUP	// "pullup"
 %token REAL		// "real"
 %token REG		// "reg"
+%token REPEAT		// "repeat"
 %token SCALARED	// "scalared"
 %token SIGNED		// "signed"
 %token SPECIFY	// "specify"
@@ -245,6 +249,7 @@ open Vparser
 %token D_FWRITE	// "$fwrite"
 %token D_INFO		// "$info"
 %token D_ISUNKNOWN	// "$isunknown"
+%token D_MONITOR	// "$monitor"
 %token D_ONEHOT	// "$onehot"
 %token D_ONEHOT0	// "$onehot0"
 %token D_RANDOM	// "$random"
@@ -562,8 +567,8 @@ modParSecond:
 	;
 
 modPortsE:
-		/* empty */				{ EMPTY }
-	|	LPAREN RPAREN				{ EMPTY }
+		/* empty */				{ TLIST [] }
+	|	LPAREN RPAREN				{ TLIST [] }
 	|	LPAREN PortList RPAREN			{ TLIST $2 }
 	|	LPAREN PortV2kArgs RPAREN		{ TLIST $2 }
 	;
@@ -889,8 +894,8 @@ delayrange:
 	;
 
 PortRangeE:
-		/* empty */	                   	{ EMPTY }
-	|	LBRACK constExpr RBRACK              	{ $2 }
+		/* empty */	                   	{ SCALAR }
+	|	LBRACK constExpr RBRACK              	{ RANGE ($2, $2) }
 	|	LBRACK constExpr COLON constExpr RBRACK	{ RANGE ($2, $4) }
 	;
 
@@ -958,7 +963,7 @@ instnameParen:
 	;
 
 instRangeE:
-		/* empty */				{ EMPTY }
+		/* empty */				{ SCALAR }
 	|	LBRACK constExpr COLON constExpr RBRACK	{ RANGE ($2, $4) }
 	;
 
@@ -1116,6 +1121,10 @@ stmt:
 			{ DOUBLE ( P_MINUSGT, $2 ) }	
 	|	DISABLE varRefDotBit SEMICOLON
 			{ DOUBLE ( DISABLE, $2 ) }	
+	|	D_MONITOR  LPAREN monList RPAREN SEMICOLON
+			{ DOUBLE (D_MONITOR, TLIST $3); }
+	|	REPEAT LPAREN INTNUM RPAREN stmtBlock	{ TRIPLE ( REPEAT, INTNUM $3, $5 ) }
+	|	FOREVER stmtBlock	    		{ DOUBLE ( FOREVER, $2 ) }
 	|	preproc					{ (* Printf.fprintf Pervasives.stderr "%s\n" $1 *) $1 }
 
 ;
@@ -1210,7 +1219,7 @@ taskArgs:
 	;
 
 funcTypeE:
-		/* empty */				{ EMPTY }
+		/* empty */				{ SCALAR }
 	|	REAL					{ REAL }
 	|	INTEGER					{ INTEGER }
 	|	LBRACK constExpr COLON constExpr RBRACK	{ RANGE ( $2, $4 ) }
@@ -1368,6 +1377,19 @@ vrdList:
 commaVRDListE:
 		/* empty */				{ EMPTY }
 	|	COMMA vrdList				{ DOUBLE (COMMA, TLIST $2 ) }
+	;
+
+monList:
+		monText					{ [ $1 ] }
+	|	monList COMMA monText			{ $1 @ [ $3 ] }
+	;
+
+monText:
+		/* empty */				{ EMPTY }
+	|	exprNoStr				{ $1 }
+	|	D_TIME					{ D_TIME }
+	|	strAsText				{ $1 }
+	|	varRefDotBit	  			{ $1 }
 	;
 
 attrDecl:
