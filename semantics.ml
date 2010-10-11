@@ -22,7 +22,6 @@ open Printf
 open Vparser
 open Globals
 open Setup
-open Mytoploop (* for unhandled syntax *)
 
 type exprtree = { entry: token; symbol: symtab };;
 
