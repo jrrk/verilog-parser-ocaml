@@ -16,16 +16,16 @@ main.cmi: vparser.cmi globals.cmi
 globals.cmo: globals.cmi
 globals.cmx: vparser.cmi globals.cmi
 globals.cmi: vparser.cmi setup.cmi
-semantics.cmo: semantics.cmi vlexer.cmo dump.cmi mytoploop.cmo vparser.cmi
+semantics.cmo: semantics.cmi vlexer.cmo dump.cmi vparser.cmi
 semantics.cmx: semantics.cmi vlexer.cmx dump.cmi vparser.cmi
-semantics.cmi: vparser.cmi setup.cmi globals.cmi mytoploop.cmi
+semantics.cmi: vparser.cmi setup.cmi globals.cmi
 setup.cmo: setup.cmi
 setup.cmx: setup.cmi vparser.cmi
 setup.cmi: vparser.cmi ord.cmi
 ord.cmo: ord.cmi
 ord.cmx: ord.cmi
 ord.cmi: vparser.cmi
-mytoploop.cmi: vparser.cmi grammar.cmi
+mytoploop.cmi: vparser.cmi grammar.cmi semantics.cmi
 notoploop.cmi: mytoploop.mli vparser.cmi grammar.cmi
 mytoploop.cmo: mytoploop.cmi vparser.cmi
 

@@ -47,7 +47,7 @@ let unhandled_ptr = ref (UPTR unhandled_dflt);;
 
 let unhandled out_chan arg = match !unhandled_ptr with UPTR fn -> fn out_chan arg | UNIL -> ();;
 
-let nullsym = {Setup.symattr = TokSet.empty; width = EMPTY; path = ""};;
+let last_mod = ref "";;
 
 let enter_a_sym out_chan symbols id attr w = 
 if Hashtbl.mem symbols id then begin
@@ -151,6 +151,7 @@ end
 
 let iwidth out_chan wid =  match wid with 
 | RANGE(INTNUM ihi, INTNUM ilo) -> (ihi,ilo)
+| SCALAR -> (0,0)
 | EMPTY -> (0,0)
 | _ -> unhandled out_chan wid; (-1,-1)
 
@@ -695,11 +696,14 @@ let pending = Hashtbl.create 256;;
 
 let logfile = ref Closed;;
 
+let tmpnam = "report."^(string_of_int(Unix.getpid()))^"."^Unix.gethostname()^".report";;
+
 let scan out_chan key contents = begin
 Hashtbl.add Globals.modprims key contents;
 Printf.fprintf out_chan "scanning ..\n";
 moditemlist out_chan contents;
 check_syms out_chan contents.Globals.symbols;
+last_mod := key
 end
 
 let rec remove_from_pending out_chan mykey =  let reslist = ref [] in begin
@@ -712,7 +716,7 @@ if contents.Globals.unresolved == [] then (
 			end
 
 let prescan kind mykey expt =
-	if (!logfile == Closed) then logfile := Open (open_out "report.report");
+	if (!logfile == Closed) then logfile := Open (open_out tmpnam);
 	match !logfile with Open out_chan -> begin
 	Printf.fprintf out_chan "%s %s: parsed " kind mykey;
 	if (List.length(!unresolved_list)==0) then begin
@@ -746,9 +750,17 @@ let rec endscan2 indent mykey =
 	| Closed -> raise Error
 ;;
 
-let endscan indent = Hashtbl.iter (fun key item -> endscan2 0 key) pending;
+let endscan () = let repfile = (!last_mod)^".report" in begin Hashtbl.iter (fun key item -> endscan2 0 key) pending;
+match !logfile with
+| Open out_chan -> close_out out_chan; logfile := Closed;
+Printf.printf "Module %s report %s\n" !last_mod repfile;
+Sys.rename tmpnam repfile
+| Closed -> ()
+end
 
 (*
+let nullsym = {Setup.symattr = TokSet.empty; width = EMPTY; path = ""};;
+
 let moditer k (x:Globals.modtree) = semantics out_chan k x
 
 let find_glob s = Setup.show_sym s ( Hashtbl.find s);;
