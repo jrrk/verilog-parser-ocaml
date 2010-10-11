@@ -55,8 +55,12 @@ let iwidth out_chan wid =  match wid with
 | EMPTY -> (0,0)
 | _ -> unhandled out_chan wid; (-1,-1)
 
+let maxwidth out_chan neww = let w = iwidth out_chan neww in
+1 + (max (fst w) (snd w))
+;;
+
 let create_attr out_chan neww = 
- Sigarray (Array.make (1 + fst(iwidth out_chan neww)) TokSet.empty)
+ Sigarray (Array.make (maxwidth out_chan neww) TokSet.empty)
 
 let enter_a_sym out_chan symbols id attr w = match attr with
 (IOPORT|INPUT|OUTPUT|INOUT|REG|WIRE|MODULE|PRIMITIVE|SUBMODULE|SUBCCT|SPECIFY|SPECIAL) ->
