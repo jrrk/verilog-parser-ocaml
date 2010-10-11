@@ -78,6 +78,8 @@ open Vparser
 %token UNKNOWN
 // for scalar nets
 %token SCALAR
+// for special nets
+%token SPECIAL
 // for transistor level
 %token NMOS
 %token PMOS
@@ -99,7 +101,7 @@ open Vparser
 // for {a,b,c}
 %token CONCAT
 // for tables
-%token<string> EDGE
+%token<char*char> EDGE
 // Generic lexer tokens, for example a number
 // IEEE: real_number
 %token<float>		FLOATNUM	// "FLOATING-POINT NUMBER"
@@ -110,7 +112,8 @@ open Vparser
 %token<string>		ID		// "IDENTIFIER"
 
 // IEEE: integral_number
-%token<int>	INTNUM	// "INTEGER NUMBER"
+%token<int>		INT	// "INTEGER NUMBER as int"
+%token<string>		INTNUM	// "INTEGER NUMBER as string"
 %token<string>		BINNUM	// "BINARY NUMBER"
 %token<string>		DECNUM	// "DECIMAL NUMBER"
 %token<string>		HEXNUM	// "HEXADECIMAL NUMBER"
@@ -343,6 +346,8 @@ open Vparser
 
 %start start
 
+%type <char> edge1
+%type <char*char> edge2
 %type <token list> trowList
 %type <token list> tinList
 %type <token list> tregoutList
@@ -425,15 +430,14 @@ open Vparser
 %type <token> lifetimeE
 %type <token> minTypMax
 %type <token> modItem
-%type <token list> modItemList
-%type <token> modItemListE
+%type <token list> modItemListE
 %type <token> modOrGenItem
 %type <token list> modParArgs
 %type <token> modParDecl
 %type <token> modParE
 %type <token list> modParList
 %type <token> modParSecond
-%type <token> modPortsE
+%type <token list> modPortsE
 %type <unit> moduleDecl
 %type <token> netSig
 %type <token list> netSigList
@@ -517,20 +521,20 @@ preproc:        P_CELLDEFINE			        { EMPTY }
 
 // IEEE: module_declaration:
 moduleDecl:	MODULE ID modParE modPortsE SEMICOLON modItemListE ENDMODULE
-			{
-			Semantics.prescan "module" $2 { Globals.tree=QUINTUPLE ( MODULE, ID $2, $3, $4, $6 );
+		{
+		Semantics.prescan "module" $2 { Globals.tree=QUINTUPLE ( MODULE, ID $2, $3, TLIST $4, TLIST $6 );
 					  	symbols=Hashtbl.create 256;
 						unresolved=(!Globals.unresolved_list)}
-			}
+		}
 	;
 
 // IEEE: primitive_declaration:
 primDecl:	PRIMITIVE ID modParE modPortsE SEMICOLON primItemList ENDPRIMITIVE
-			{
-			Semantics.prescan "primitive" $2 { Globals.tree=QUINTUPLE ( PRIMITIVE, ID $2, $3, $4, TLIST $6 );
+		{
+		Semantics.prescan "primitive" $2 { Globals.tree=QUINTUPLE ( PRIMITIVE, ID $2, $3, TLIST $4, TLIST $6 );
 						symbols=Hashtbl.create 256;
 						unresolved=[]}
-			}
+		}
 	;
 
 primItemList:
@@ -567,10 +571,10 @@ modParSecond:
 	;
 
 modPortsE:
-		/* empty */				{ TLIST [] }
-	|	LPAREN RPAREN				{ TLIST [] }
-	|	LPAREN PortList RPAREN			{ TLIST $2 }
-	|	LPAREN PortV2kArgs RPAREN		{ TLIST $2 }
+		/* empty */				{ [] }
+	|	LPAREN RPAREN				{ [] }
+	|	LPAREN PortList RPAREN			{ $2 }
+	|	LPAREN PortV2kArgs RPAREN		{ $2 }
 	;
 
 PortList:
@@ -702,13 +706,8 @@ v2kVarDeclE:	/*empty*/ 				{ EMPTY }
 // Module Items
 
 modItemListE:
-		/* empty */				{ EMPTY }
-	|	modItemList				{ TLIST $1 }
-	;
-
-modItemList:
-		modItem					{ [ $1 ] }
-	|	modItem modItemList			{ $1 :: $2 }
+		/* empty */				{ [] }
+	|	modItem modItemListE			{ $1 :: $2 }
 	;
 
 modItem:
@@ -832,7 +831,7 @@ delay:
 
 dlyTerm:
 		identifier 				{ $1 }
-	|	INTNUM 					{ FLOATNUM (float_of_int $1) }
+	|	INTNUM 					{ FLOATNUM (float_of_string $1) }
 	|	FLOATNUM 				{ FLOATNUM $1 }
 	;
 
@@ -1326,10 +1325,10 @@ exprNoStr:
 	|	D_TEST_PLUSARGS LPAREN expr RPAREN	{ DOUBLE (D_TEST_PLUSARGS, $3 ) }
 	|	D_UNSIGNED LPAREN expr RPAREN		{ DOUBLE (D_UNSIGNED, $3 ) }
 	|	funcRef					{ $1 }
-	|	INTNUM				{ INTNUM $1 }
-	|	BINNUM				{ BINNUM $1 }
-	|	DECNUM				{ DECNUM $1 }
-	|	HEXNUM				{ HEXNUM $1 }
+	|	INTNUM					{ INT (int_of_string $1) }
+	|	BINNUM					{ BINNUM $1 }
+	|	DECNUM					{ DECNUM $1 }
+	|	HEXNUM					{ HEXNUM $1 }
 	|	varRefDotBit	  			{ $1 }
 	;
 
@@ -1574,11 +1573,22 @@ tinList:	tin					{ [ $1 ] }
 	|	tin tinList				{ $1 :: $2 }
 	;
 
-tin:		INTNUM					{ BINNUM (string_of_int $1) }
+tin:		INTNUM					{ BINNUM $1 }
 	|	TIMES					{ TIMES }
 	|	QUERY					{ QUERY }
-	|	EDGE					{ EDGE $1 }
+	|	LPAREN edge2 RPAREN			{ EDGE((fst $2),(snd $2)) }
+	|	LPAREN edge1 edge1 RPAREN		{ EDGE(($2),($2)) }
 	|	ID					{ BINNUM $1 }
+	;
+
+edge1:		INTNUM					{ $1.[0] }
+	|	ID					{ $1.[0] }
+	|	QUERY					{ '?' }
+	|	ILLEGAL					{ $1 }
+	;
+
+edge2:		INTNUM					{ ($1.[0],$1.[1]) }
+	|	ID					{ ($1.[0],$1.[1]) }
 	;
 
 tregoutList:	tregout					{ [ $1 ] }
@@ -1587,7 +1597,7 @@ tregoutList:	tregout					{ [ $1 ] }
 
 // merged to prevent conflicts
 
-tregout:	INTNUM					{ BINNUM (string_of_int $1) }
+tregout:	INTNUM					{ BINNUM $1 }
 	|	MINUS					{ MINUS }
 	|	QUERY					{ QUERY }
 	|	ID					{ BINNUM $1 }
@@ -1608,11 +1618,13 @@ Junk:		identifier 				{ $1 }
 	|	INTNUM 					{ EMPTY }
 	|	FLOATNUM 				{ EMPTY }
 	|	ASSIGNMENT				{ EMPTY }
+	|	DLYASSIGNMENT				{ EMPTY }
 	|	MODINST					{ EMPTY }
 	|	PRIMINST				{ EMPTY }
 	|	BITSEL					{ EMPTY }
 	|	EMPTY					{ EMPTY }
 	|	EOF					{ EMPTY }
+	|	INT					{ EMPTY }
 	|	ILLEGAL					{ EMPTY }
 	|	PARTSEL					{ EMPTY }
 	|	RANGE					{ EMPTY }
@@ -1623,6 +1635,8 @@ Junk:		identifier 				{ $1 }
 	|	BIDIR					{ EMPTY }
 	|	DRIVER					{ EMPTY }
 	|	RECEIVER				{ EMPTY }
+	|	EDGE					{ EMPTY }
+	|	SCALAR					{ EMPTY }
 	|	DOUBLE					{ EMPTY }
 	|	TRIPLE					{ EMPTY }
 	|	QUADRUPLE				{ EMPTY }

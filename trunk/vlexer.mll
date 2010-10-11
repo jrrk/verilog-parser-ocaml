@@ -199,7 +199,6 @@ rule token = parse
 |  "tri"digit+ as strength	{ hlog lexbuf (TRI strength) }
 |  "(weak"digit+ as strength	{ hlog lexbuf (PWEAK strength ) }
 |  "weak"digit+ as strength	{ hlog lexbuf (WEAK strength ) }
-|  "("state4 state4")" as edge	{ hlog lexbuf (EDGE edge) }
 |  "&&"			{ hlog lexbuf (P_ANDAND) }
 |  "&&&"		{ hlog lexbuf (P_ANDANDAND) }
 |  "&="			{ hlog lexbuf (P_ANDEQ) }
@@ -279,7 +278,7 @@ if Hashtbl.mem ksymbols word then hlog lexbuf (Hashtbl.find ksymbols word) else 
 | digit*'\'''b'['0' '1' 'x' 'X' 'z' 'Z' '?' '_']+ as bnum { hlog lexbuf (BINNUM bnum ) }
 | digit*'\'''d'digit+ as dnum { hlog lexbuf (DECNUM dnum ) }
 | digit*'\'''h'['0'-'9' 'A'-'F' 'a'-'f' 'x' 'X' 'z' 'Z' '?' '_']+ as hnum { hlog lexbuf (HEXNUM hnum ) }
-| digit+ as inum { hlog lexbuf (INTNUM ( int_of_string inum ) ) }
+| digit+ as inum { hlog lexbuf (INTNUM inum ) }
 | '\"'anything_but_quote*'\"' as asciinum { hlog lexbuf (ASCNUM asciinum ) }
 | "`timescale" anything_but_newline+ as preproc { hlog lexbuf (PREPROC preproc) }
 | "`define" anything_but_newline+ as macro_raw {

@@ -55,7 +55,7 @@ let rec dump out_chan exp indent =
 | ILLEGAL c -> fprintf out_chan "ILLEGAL character %c " c
 | INOUT -> fprintf out_chan "inout "
 | INPUT -> fprintf out_chan "input "
-| INTNUM c -> fprintf out_chan "%d " c
+| INTNUM c -> fprintf out_chan "%s " c
 | NEGEDGE -> fprintf out_chan "negedge "
 | OUTPUT -> fprintf out_chan "output "
 | PARTSEL -> fprintf out_chan "PartSelect "
