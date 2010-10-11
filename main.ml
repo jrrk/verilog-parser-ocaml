@@ -44,9 +44,9 @@ let vparser args = begin
   done;
   if (!Setup.psuccess == false) then
     Printf.printf "Not continuing due to parse errors\n";
-  Semantics.endscan 0;
+  Semantics.endscan();
   if (Array.length args < 2) then
-    Printf.printf "Usage %s verilog_files TOPLEVEL\n" args.(0);
+    Printf.printf "Usage %s verilog_file(s)\n" args.(0);
   end
 
 exception MyException of string * int (* exceptions can carry a value *);;

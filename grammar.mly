@@ -345,8 +345,7 @@ open Vparser
 
 %type <token list> trowList
 %type <token list> tinList
-%type <token list> tregList
-%type <token list> toutList
+%type <token list> tregoutList
 %type <token> Anyrange
 %type <token> AssertStmt
 %type <token list> AssignList
@@ -1388,9 +1387,7 @@ monList:
 monText:
 		/* empty */				{ EMPTY }
 	|	exprNoStr				{ $1 }
-	|	D_TIME					{ D_TIME }
 	|	strAsText				{ $1 }
-	|	varRefDotBit	  			{ $1 }
 	;
 
 attrDecl:
@@ -1570,8 +1567,8 @@ trowList:
 	|	trow SEMICOLON trowList			{ $1 :: $3 }
 	;
 
-trow:		tinList COLON toutList			{ DOUBLE(TLIST $1,TLIST $3) }
-	|	tinList COLON tregList COLON toutList	{ TRIPLE(TLIST $1,TLIST $3,TLIST $5) }
+trow:		tinList COLON tregoutList			{ DOUBLE(TLIST $1,TLIST $3) }
+	|	tinList COLON tregoutList COLON tregoutList	{ TRIPLE(TLIST $1,TLIST $3,TLIST $5) }
 
 tinList:	tin					{ [ $1 ] }
 	|	tin tinList				{ $1 :: $2 }
@@ -1584,22 +1581,15 @@ tin:		INTNUM					{ BINNUM (string_of_int $1) }
 	|	ID					{ BINNUM $1 }
 	;
 
-tregList:	treg					{ [ $1 ] }
-	|	treg tregList				{ $1 :: $2 }
+tregoutList:	tregout					{ [ $1 ] }
+	|	tregout tregoutList			{ $1 :: $2 }
 	;
 
-treg:		INTNUM					{ BINNUM (string_of_int $1) }
-	|	QUERY					{ QUERY }
-	|	ID					{ BINNUM $1 }
-	;
+// merged to prevent conflicts
 
-toutList:	tout					{ [ $1 ] }
-	|	tout toutList				{ $1 :: $2 }
-	;
-
-tout:		INTNUM					{ BINNUM (string_of_int $1) }
-	|	QUERY					{ QUERY }
+tregout:	INTNUM					{ BINNUM (string_of_int $1) }
 	|	MINUS					{ MINUS }
+	|	QUERY					{ QUERY }
 	|	ID					{ BINNUM $1 }
 	;
 
