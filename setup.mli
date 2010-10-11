@@ -12,10 +12,13 @@ module OrdTok :
 
 type tset = Set.Make(OrdTok).t
 
+type tsigattr = Sigundef | Sigarray of tset array 
+
 and symtab = {
   symattr : tset;
   width : Vparser.token;
   path : string;
+  sigattr : tsigattr;
 }
 
 module TokSet :

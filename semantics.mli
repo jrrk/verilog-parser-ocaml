@@ -39,7 +39,7 @@ val find_glob : (string, Setup.symtab) Hashtbl.t -> string -> unit
 val find_glob_substr : (string, 'a) Hashtbl.t -> string -> unit
 val find_referrer : (string, Setup.symtab) Hashtbl.t -> string -> unit
 *)
-val enter_sym_attrs : out_channel -> string -> (string, Setup.symtab) Hashtbl.t ->
+val enter_sym_attrs : out_channel -> (string, Setup.symtab) Hashtbl.t ->
   Vparser.token -> Setup.TokSet.elt list -> Vparser.token -> unit
 val check_syms : out_channel -> (string, Setup.symtab) Hashtbl.t -> unit
 val prescan : string -> string -> Globals.modtree -> unit
