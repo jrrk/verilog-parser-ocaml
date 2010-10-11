@@ -47,12 +47,12 @@ ocamlyacc: grammar.mly
 	cat grammar.mli | grep -v : | grep -v \> >vparser.mli
 	echo exception Error >> grammar.mli
 	rm -f vparser.ml
-	make vtop
+	make vparser vdebug vtop vopt
 
 menhir: grammar.mly
 	menhir --trace --only-tokens --base vparser $<
 	menhir --trace --external-tokens Vparser --base grammar $<
-	make vtop
+	make vparser vdebug vtop vopt
 
 grammar.mli grammar.ml: grammar.mly
 	@echo "Choose make ocamlyacc or make menhir"; false
