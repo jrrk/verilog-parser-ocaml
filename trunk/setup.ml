@@ -36,10 +36,13 @@ module OrdTok : Ordered with type t = token =
 
 type tset = Set.Make(OrdTok).t
 
+type tsigattr = Sigundef | Sigarray of tset array 
+
 and symtab = {
   symattr : tset;
   width : token;
   path : string;
+  sigattr : tsigattr;
 }
 
 module TokSet = Set.Make (OrdTok)

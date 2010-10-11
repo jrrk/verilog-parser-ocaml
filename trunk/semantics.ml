@@ -48,50 +48,73 @@ let unhandled out_chan arg = match !unhandled_ptr with UPTR fn -> fn out_chan ar
 
 let last_mod = ref "";;
 
-let enter_a_sym out_chan symbols id attr w = 
+let iwidth out_chan wid =  match wid with 
+| RANGE(INT ihi, INT ilo) -> (ihi,ilo)
+| UNKNOWN -> (0,0)
+| SCALAR -> (0,0)
+| EMPTY -> (0,0)
+| _ -> unhandled out_chan wid; (-1,-1)
+
+let create_attr out_chan neww = 
+ Sigarray (Array.make (1 + fst(iwidth out_chan neww)) TokSet.empty)
+
+let enter_a_sym out_chan symbols id attr w = match attr with
+(IOPORT|INPUT|OUTPUT|INOUT|REG|WIRE|MODULE|PRIMITIVE|SUBMODULE|SUBCCT|SPECIFY|SPECIAL) ->
 if Hashtbl.mem symbols id then begin
 (*  printf "Update %s: %s\n" id (Ord.getstr attr); *)
   let newset = (Hashtbl.find symbols id).symattr and oldw = (Hashtbl.find symbols id).width in
   if (oldw<>UNKNOWN)&&(oldw<>w)&&(w<>UNKNOWN) then
     Printf.fprintf out_chan "Addition of attribute %s to signal %s changed width from %s to %s\n"
       (str_token attr) id (str_token oldw) (str_token w);
-  Hashtbl.replace symbols id
+  let neww = if (w<>UNKNOWN) then w else oldw in Hashtbl.replace symbols id
     {Setup.symattr = (TokSet.add attr newset);
-    width = if (w<>UNKNOWN) then w else oldw;
+    width = neww;
+    sigattr = create_attr out_chan neww;
     path=id};
     end
 else begin
 (*  printf "Enter %s: %s\n" id (Ord.getstr attr); *)
-  Hashtbl.add symbols id {Setup.symattr = (TokSet.singleton attr); width = w; path=id}
+  Hashtbl.add symbols id {Setup.symattr = (TokSet.singleton attr);
+     width = w;
+     sigattr = create_attr out_chan w;
+     path=id}
   end
+| _ -> unhandled out_chan attr
 ;;
 
-let enter_a_sig_attr out_chan symbols id attr w = 
-  let newset = (Hashtbl.find symbols id).symattr and oldw = (Hashtbl.find symbols id).width in
-
-  Hashtbl.replace symbols id
-    {Setup.symattr = (TokSet.add attr newset);
-    width = oldw;
-    path=id};
+let enter_a_sig_attr out_chan symbols id attr w = match (Hashtbl.find symbols id).sigattr with
+| Sigarray attrs -> (
+match w with
+| RANGE (INT hi, INT lo) ->
+  for i = hi downto lo do
+    attrs.(i) <- TokSet.add attr attrs.(i);
+    done
+| SCALAR ->
+    attrs.(0) <- TokSet.add attr attrs.(0);
+| _ -> unhandled out_chan w)
+| Sigundef -> printf "Internal error - Signal %s has no width\n" id
 ;;
 
 let iter_ semantics out_chan (stem:string) syms list =
   List.iter (fun x -> semantics out_chan stem ({Globals.unresolved=[]; tree=x; symbols=syms})) list
 ;;
 
-let not_found out_chan syms w = printf "wire/port %s not found\n" w; enter_a_sym out_chan syms w IMPLICIT EMPTY;;
+let not_found out_chan syms w = printf "wire/port %s not found\n" w; enter_a_sym out_chan syms w IMPLICIT SCALAR;;
 
 let find_ident out_chan dir stem syms tok = match tok with ID id -> begin
 if Hashtbl.mem syms id == false then begin
 (*  fprintf out_chan "Creating implicit wire %s\n" id;  *)
-  Hashtbl.add syms id {Setup.symattr = TokSet.singleton IMPLICIT; width = SCALAR; path=id}
+  Hashtbl.add syms id {Setup.symattr = TokSet.singleton IMPLICIT;
+                       width = SCALAR;
+		       sigattr = create_attr out_chan SCALAR;
+		       path=id}
   end;
 Hashtbl.find syms id
 end
-| _ -> unhandled out_chan tok; ({Setup.symattr = TokSet.singleton tok; width = EMPTY; path=""})
+| _ -> unhandled out_chan tok; ({Setup.symattr = TokSet.singleton tok; width = EMPTY; sigattr = Sigundef; path=""})
 ;;
 
-let enter_sym_attrs out_chan stem symbols (tok:token) list width = match tok with
+let enter_sym_attrs out_chan symbols (tok:token) list width = match tok with
 | ID id -> iter (fun x -> enter_a_sym out_chan symbols id x width) list;
   let newset = (Hashtbl.find symbols id).symattr in
     begin
@@ -157,12 +180,6 @@ let inner_chk out_chan stem syms sym subcct inner wireport wid = begin
   end
 end
 
-let iwidth out_chan wid =  match wid with 
-| RANGE(INT ihi, INT ilo) -> (ihi,ilo)
-| SCALAR -> (0,0)
-| EMPTY -> (0,0)
-| _ -> unhandled out_chan wid; (-1,-1)
-
 let rec connect out_chan stem syms kind subcct (innert:token) tok = 
 let innersym = (Hashtbl.find Globals.modprims kind).symbols in match innert with ID inner -> begin
 if (Hashtbl.mem innersym inner) then
@@ -174,9 +191,9 @@ let isym=Hashtbl.find innersym inner in match tok with
 | BINNUM lev -> inner_chk out_chan stem syms isym subcct inner lev (RANGE(INT (fst(widthnum 2 lev)-1), INT 0))
 | DOUBLE (CONCAT, TLIST concat) -> let idx = ref (fst(iwidth out_chan isym.width)) in iter (fun (item:token) -> 
 (match item with
-| ID id -> let wid = (find_ident out_chan WIRE stem syms item).width in begin inner_chk out_chan stem syms {symattr=isym.symattr; width=RANGE(INT !idx, INT !idx); path=id} subcct inner id wid; idx := !idx + snd(iwidth out_chan wid) - fst(iwidth out_chan wid); end
-| TRIPLE (BITSEL, ID id, INT sel) -> inner_chk out_chan stem syms {symattr=isym.symattr; width=RANGE(INT !idx, INT !idx); path=id} subcct inner id (RANGE(INT sel, INT sel)); idx := !idx-1
-| QUADRUPLE (PARTSEL, ID id, INT hi, INT lo) -> inner_chk out_chan stem syms {symattr=isym.symattr; width=RANGE(INT !idx, INT (!idx+lo-hi)); path=id} subcct inner id (RANGE(INT hi, INT lo)); idx := !idx+lo-hi-1
+| ID id -> let wid = (find_ident out_chan WIRE stem syms item).width in begin inner_chk out_chan stem syms {symattr=isym.symattr; width=RANGE(INT !idx, INT !idx); sigattr = Sigundef; path=id} subcct inner id wid; idx := !idx + snd(iwidth out_chan wid) - fst(iwidth out_chan wid); end
+| TRIPLE (BITSEL, ID id, INT sel) -> inner_chk out_chan stem syms {symattr=isym.symattr; width=RANGE(INT !idx, INT !idx); sigattr = Sigundef; path=id} subcct inner id (RANGE(INT sel, INT sel)); idx := !idx-1
+| QUADRUPLE (PARTSEL, ID id, INT hi, INT lo) -> inner_chk out_chan stem syms {symattr=isym.symattr; width=RANGE(INT !idx, INT (!idx+lo-hi)); sigattr = Sigundef; path=id} subcct inner id (RANGE(INT hi, INT lo)); idx := !idx+lo-hi-1
 | _ -> unhandled out_chan item)
 ) concat
 | _ -> unhandled out_chan tok
@@ -266,7 +283,7 @@ let rec exprGeneric out_chan stem syms expr = Stack.push expr stk; match expr wi
 | BINNUM left -> ()
 | DECNUM left -> ()
 | HEXNUM left -> ()
-| ID arg1 -> enter_sym_attrs out_chan stem syms expr [DRIVER] UNKNOWN
+| ID arg1 -> enter_a_sig_attr out_chan syms arg1 DRIVER SCALAR
 | TRIPLE(BITSEL, arg1, arg3) -> ()
 | QUADRUPLE(PARTSEL, arg1 , arg3 , arg5 ) -> ()
 | QUADRUPLE(P_PLUSCOLON, arg1 , arg3 , arg5 ) -> ()
@@ -380,8 +397,8 @@ and stmtBlock out_chan stem syms block = match block with
 | _ -> semantics out_chan stem {Globals.unresolved=[]; tree=block; symbols=syms};
 
 and subexp out_chan dir stem syms exp = match exp with
-| ID id -> enter_sym_attrs out_chan stem syms exp [dir] UNKNOWN
-| TRIPLE (BITSEL, ID id, sel) -> enter_sym_attrs out_chan stem syms (ID id) [dir] UNKNOWN
+| ID id -> enter_a_sig_attr out_chan syms id dir SCALAR
+| TRIPLE (BITSEL, ID id, sel) -> enter_a_sig_attr out_chan syms id dir (RANGE (sel, sel))
 | _ -> exprGeneric out_chan stem syms exp
 
 (*and subexp2 out_chan dir stem syms exp = {entry=exp; symbol=(subexp out_chan dir stem syms exp)}
@@ -451,7 +468,7 @@ and decls out_chan stem tree =
 | QUADRUPLE(PARAMETER, EMPTY, EMPTY, decls) ->
     let width = ref EMPTY in begin
     ( match decls with
-      | TLIST arg9 ->  List.iter (fun x -> match x with TRIPLE(id, arg5, arg6) -> enter_sym_attrs out_chan "" syms id [PARAMETER] !width | _ -> unhandled out_chan x) arg9
+      | TLIST arg9 ->  List.iter (fun x -> match x with TRIPLE(id, arg5, arg6) -> enter_sym_attrs out_chan syms id [PARAMETER] !width | _ -> unhandled out_chan x) arg9
       | EMPTY -> ()
       | _ -> unhandled out_chan decls); end
 (* Parse IO declarations *)
@@ -465,9 +482,9 @@ and decls out_chan stem tree =
       | EMPTY -> ()
       | _ -> unhandled out_chan arg3);
     ( match arg4 with
-      | DOUBLE(id, arg5) -> enter_sym_attrs out_chan stem syms id [IOPORT;dir] !width
-      | TRIPLE(id, TLIST arg5, TLIST arg6) -> enter_sym_attrs out_chan stem syms id [IOPORT;dir] !width
-      | TLIST arg9 ->  List.iter (fun x -> match x with TRIPLE(id, arg5, arg6) -> enter_sym_attrs out_chan stem syms id [IOPORT;dir] !width | _ -> unhandled out_chan x) arg9
+      | DOUBLE(id, arg5) -> enter_sym_attrs out_chan syms id [IOPORT;dir] !width
+      | TRIPLE(id, TLIST arg5, TLIST arg6) -> enter_sym_attrs out_chan syms id [IOPORT;dir] !width
+      | TLIST arg9 ->  List.iter (fun x -> match x with TRIPLE(id, arg5, arg6) -> enter_sym_attrs out_chan syms id [IOPORT;dir] !width | _ -> unhandled out_chan x) arg9
       | EMPTY -> ()
       | _ -> unhandled out_chan arg4); end
 (* Parse wire/reg declarations *)
@@ -482,9 +499,11 @@ and decls out_chan stem tree =
       | TRIPLE(EMPTY,EMPTY,EMPTY) -> ()
       | _ ->  unhandled out_chan arg2);
     ( List.iter (fun x -> match x with
-      | TRIPLE(id, arg5, arg6) -> enter_sym_attrs out_chan stem syms id [kind;RECEIVER] !width;
+      | TRIPLE(ID id, arg5, arg6) ->
+          enter_sym_attrs out_chan syms (ID id) [kind] !width;
+          enter_a_sig_attr out_chan syms id RECEIVER !width;
           if (arg6 <> EMPTY) then exprGeneric out_chan stem syms arg6;
-      | DOUBLE(id, EMPTY) -> enter_sym_attrs out_chan stem syms id [kind] !width
+      | DOUBLE(id, EMPTY) -> enter_sym_attrs out_chan syms id [kind] !width
       | _ -> unhandled out_chan x) arg3); end
 (* Parse real/integer/event decls *)
 | QUADRUPLE((REAL|INTEGER|EVENT) as kind, arg1, arg2, TLIST arg3) ->
@@ -494,7 +513,7 @@ and decls out_chan stem tree =
       | TRIPLE(EMPTY,EMPTY,EMPTY) -> ()
       | _ ->  unhandled out_chan arg2);
     ( List.iter (fun x -> match x with
-      | TRIPLE(id, arg5, arg6) -> enter_sym_attrs out_chan stem syms id [kind] EMPTY
+      | TRIPLE(id, arg5, arg6) -> enter_sym_attrs out_chan syms id [kind] EMPTY
       | _ -> unhandled out_chan x) arg3)
 | _ -> unhandled out_chan expr;
 ignore(Stack.pop stk)
@@ -679,19 +698,32 @@ ignore(Stack.pop stk)
 
 let dotted s = try String.index s '.' > 0 ; with Not_found -> false;;
 
-let erc_chk out_chan nam s = let sym = s.symattr in
+let erc_chk_sig out_chan nam syma siga =
   begin
 	begin
-	  if (TokSet.mem INPUT sym) && not ((TokSet.mem DRIVER sym) || (TokSet.mem SPECIAL sym)) then
+	  if (TokSet.mem INPUT syma) && not ((TokSet.mem DRIVER siga) || (TokSet.mem SPECIAL syma)) then
 	    Printf.fprintf out_chan "%s is a dangling input\n" nam
-	  else if (TokSet.mem OUTPUT sym) && not ((TokSet.mem RECEIVER sym) || (TokSet.mem SPECIAL sym)) then
+	  else if (TokSet.mem OUTPUT syma) && not ((TokSet.mem RECEIVER siga) || (TokSet.mem SPECIAL syma)) then
 	    Printf.fprintf out_chan "%s is a dangling output\n" nam
-	  else if (TokSet.mem INOUT sym) then
+	  else if (TokSet.mem INOUT syma) then
 	    Printf.fprintf out_chan "%s is a inout\n" nam
-	  else if (TokSet.mem WIRE sym) && not ((TokSet.mem RECEIVER sym) || (TokSet.mem SPECIFY sym)) then
+	  else if (TokSet.mem WIRE syma) && not ((TokSet.mem RECEIVER siga) || (TokSet.mem SPECIFY syma)) then
 	    Printf.fprintf out_chan "%s is a dangling wire\n" nam
 	end
   end
+;;
+
+let erc_chk out_chan id s = match s.sigattr with
+| Sigarray attrs -> (
+match s.width with
+| RANGE (INT hi, INT lo) ->
+  for i = hi downto lo do
+    erc_chk_sig out_chan (id^"["^(string_of_int i)^"]") s.symattr attrs.(i)
+    done
+| SCALAR | EMPTY ->
+    erc_chk_sig out_chan id s.symattr attrs.(0)
+| _ -> unhandled out_chan s.width)
+| Sigundef -> printf "Internal error - Signal %s has no width\n" id
 ;;
 
 let check_syms out_chan syms = Hashtbl.iter (fun nam s -> erc_chk out_chan nam s) syms;;
@@ -773,7 +805,7 @@ let moditer k (x:Globals.modtree) = semantics out_chan k x
 
 let find_glob s = Setup.show_sym s ( Hashtbl.find s);;
 
-let find_glob_substr s = let reg = Str.regexp s in Hashtbl.iter (fun k x -> try Printf.printf "%s posn %d\n" k (Str.search_forward reg k 0); with not_found out_chan -> ()) gsyms;;
+let find_glob_substr s = let reg = Str.regexp s in Hashtbl.iter (fun k x -> try Printf.printf "%s posn %d\n" k (Str.search_forward reg k 0); with Not_found out_chan -> ()) gsyms;;
 
 let find_referrer s = Setup.show_sym s (match (Hashtbl.find s).referrer with Referrer lk -> lk | Nil -> nullsym);;
 *)
