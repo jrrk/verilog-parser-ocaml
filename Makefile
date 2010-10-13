@@ -41,7 +41,7 @@ vdebug: $(TARGET)
 	ocamlc -g -o $@ $(CML) $(CMO1) $(CMO2)
 
 ocamlyacc: grammar.mly
-	ocamlyacc -v $<
+	ocamlyacc $(YACCOPTS) $<
 	mv -f grammar.mli grammar.mli.old
 	sed 's=\(> \)\(token\)=\1Vparser.\2=' < grammar.mli.old > grammar.mli
 	cat grammar.mli | grep -v : | grep -v \> >vparser.mli
