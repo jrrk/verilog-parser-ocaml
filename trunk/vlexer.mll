@@ -37,6 +37,13 @@ ignore(histcnt := (!histcnt+1)mod hsiz);
 ktok
 end
 
+let ifstk = Stack.create();;
+
+let push_ifdef macro_raw =
+let blank1 = String.index macro_raw ' ' in
+let name = "`" ^ (String.sub macro_raw (blank1+1) ((String.length macro_raw)-blank1-1)) in
+Stack.push (Hashtbl.mem ksymbols name) ifstk
+
 let _ = List.iter (fun (str,key) -> enter_keyword str key)
 [
 (  "always_comb",	ALWAYS ) ;
@@ -172,8 +179,11 @@ let _ = List.iter (fun (str,key) -> enter_keyword str key)
 ("`disable_portfaults", P_DISABLE_PORTFAULTS );
 ("`enable_portfaults", P_ENABLE_PORTFAULTS );
 ("`endcelldefine", P_ENDCELLDEFINE );
-("`ifdef", P_IFDEF );
+("`else", P_ELSE );
+("`endif", P_ENDIF );
 ("`nosuppress_faults", P_NOSUPPRESS_FAULTS );
+("`protect", P_PROTECT );
+("`endprotect", P_ENDPROTECT );
 ("`resetall", P_RESETALL );
 ("`suppress_faults", P_SUPPRESS_FAULTS ) ];;
 
@@ -292,10 +302,17 @@ let idx = ref 0 in begin
 while (!idx < String.length defn) && (defn.[!idx] == ' ') do idx := !idx+1; done;
 Hashtbl.add ksymbols name (token (Lexing.from_string (String.sub (defn) (!idx) (String.length(defn)-(!idx)))))
 end; token lexbuf }
-| "`ifdef" anything_but_newline+ as macro
-    { ifdef (Lexing.lexeme_start lexbuf) lexbuf; token lexbuf }
+| "`ifdef" anything_but_newline+ as macro_raw
+    {	push_ifdef macro_raw;
+	if Stack.top ifstk == false then (ifdef (Lexing.lexeme_start lexbuf) lexbuf); token lexbuf }
 | '`'ident ident_num* as presym {if Hashtbl.mem ksymbols presym then
-hlog lexbuf (Hashtbl.find ksymbols presym) else
+let prek = Hashtbl.find ksymbols presym in (match prek with
+(* if the `ifdef condition was true, we must skip the else clause *)
+| P_ELSE -> if Stack.top ifstk then (ifdef (Lexing.lexeme_start lexbuf) lexbuf); token lexbuf
+(* this is the end of the else clause, pop the stack *)
+| P_ENDIF -> ignore(Stack.pop ifstk); token lexbuf
+| _ -> hlog lexbuf prek)
+else
 hlog lexbuf (PREPROC presym) }
 | ident ident_num* as word {
 if Hashtbl.mem ksymbols word then hlog lexbuf (Hashtbl.find ksymbols word) else hlog lexbuf (ID word)
@@ -331,7 +348,7 @@ and ifdef start = parse
 | "`else"
     { () }
 | "`endif"
-    { () }
+    { ignore(Stack.pop ifstk); }
 | eof
     { failwith (Printf.sprintf "Unterminated ifdef at offset %d." start) }
 | _
