@@ -88,6 +88,8 @@ open Vparser
 %token PARAMUSED
 // for tasks
 %token TASKUSED
+// for memories
+%token MEMORY
 // for transistor level
 %token NMOS
 %token PMOS
@@ -1073,17 +1075,17 @@ stmt:
 	|	D_C LPAREN cStrList RPAREN SEMICOLON
 			{ TLIST $3 }
 	|	D_FCLOSE LPAREN varRefDotBit RPAREN SEMICOLON
-			{ $3 }
+			{ DOUBLE (D_FCLOSE, $3) }
 	|	D_FFLUSH SEMICOLON
 			{ D_FFLUSH }
 	|	D_FFLUSH LPAREN RPAREN SEMICOLON
 			{ D_FFLUSH }
 	|	D_FFLUSH LPAREN varRefDotBit RPAREN SEMICOLON
-			{ $3 }
+			{ DOUBLE (D_FFLUSH, $3) }
 	|	D_FINISH parenE SEMICOLON
-			{ DOUBLE (D_FINISH,$2 ) }
+			{ DOUBLE (D_FINISH, $2) }
 	|	D_FINISH LPAREN expr RPAREN SEMICOLON
-			{ $3 }
+			{ DOUBLE (D_FINISH, $3) }
 	|	D_STOP parenE SEMICOLON
 			{ DOUBLE (D_STOP, $2 ) }
 	|	D_STOP LPAREN expr RPAREN SEMICOLON
@@ -1103,21 +1105,21 @@ stmt:
 	|	D_FWRITE   LPAREN varRefDotBit COMMA ASCNUM commaEListE RPAREN SEMICOLON
 			{ TRIPLE ( D_FWRITE, $3, $6 ) }
 	|	D_INFO	    parenE SEMICOLON
-			{ $2 }
+			{ DOUBLE (D_INFO, $2) }
 	|	D_INFO	    LPAREN ASCNUM commaEListE RPAREN SEMICOLON
-			{ $4 }
+			{ DOUBLE (D_INFO, $4) }
 	|	D_WARNING  parenE SEMICOLON
-			{ $2 }
+			{ DOUBLE (D_WARNING, $2) }
 	|	D_WARNING  LPAREN ASCNUM commaEListE RPAREN SEMICOLON
-			{ $4 }
+			{ DOUBLE (D_WARNING, $4) }
 	|	D_ERROR    parenE SEMICOLON
-			{ $2 }
+			{ DOUBLE (D_ERROR, $2) }
 	|	D_ERROR    LPAREN ASCNUM commaEListE RPAREN SEMICOLON
-			{ $4 }
+			{ DOUBLE (D_ERROR, $4) }
 	|	D_FATAL    parenE SEMICOLON
-			{ $2 }
+			{ DOUBLE (D_FATAL, $2) }
 	|	D_FATAL    LPAREN expr RPAREN SEMICOLON
-			{ $3 }
+			{ DOUBLE (D_FATAL, $3) }
 	|	D_FATAL    LPAREN expr COMMA ASCNUM commaEListE RPAREN SEMICOLON
 			{ TRIPLE ( D_FATAL, $3, $6 ) }
 	|	readmem LPAREN expr COMMA varRefMem RPAREN SEMICOLON
