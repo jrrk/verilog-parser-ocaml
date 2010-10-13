@@ -36,7 +36,7 @@ module OrdTok : Ordered with type t = token =
 
 type tset = Set.Make(OrdTok).t
 
-type tsigattr = Sigundef | Sigarray of tset array 
+type tsigattr = Sigundef | Sigarray of tset array | Sigparam of Vparser.token | Sigtask of Vparser.token
 
 and symtab = {
   symattr : tset;

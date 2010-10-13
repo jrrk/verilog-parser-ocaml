@@ -68,6 +68,8 @@ open Vparser
 %token P_ENDIF
 %token P_IFDEF
 %token P_NOSUPPRESS_FAULTS
+%token P_PROTECT
+%token P_ENDPROTECT
 %token P_RESETALL
 %token P_SUPPRESS_FAULTS
 %token<string> P_TIMESCALE
@@ -78,8 +80,14 @@ open Vparser
 %token UNKNOWN
 // for scalar nets
 %token SCALAR
+// for empty types
+%token VOID
 // for special nets
 %token SPECIAL
+// for parameters
+%token PARAMUSED
+// for tasks
+%token TASKUSED
 // for transistor level
 %token NMOS
 %token PMOS
@@ -511,6 +519,8 @@ preproc:        P_CELLDEFINE			        { EMPTY }
         |       P_ENDIF        				{ EMPTY }
         |       P_IFDEF        				{ EMPTY }
         |       P_NOSUPPRESS_FAULTS        		{ EMPTY }
+        |       P_PROTECT        			{ EMPTY }
+        |       P_ENDPROTECT        			{ EMPTY }
         |       P_RESETALL        			{ EMPTY }
         |       P_SUPPRESS_FAULTS        		{ EMPTY }
         |       P_TIMESCALE        			{ EMPTY }
@@ -707,6 +717,7 @@ v2kVarDeclE:	/*empty*/ 				{ EMPTY }
 
 modItemListE:
 		/* empty */				{ [] }
+	|	preproc	modItemListE			{ $2 }
 	|	modItem modItemListE			{ $1 :: $2 }
 	;
 
@@ -714,7 +725,6 @@ modItem:
 		modOrGenItem 				{ $1 }
 	|	generateRegion				{ $1 }
 	|	SPECIFY JunkListE ENDSPECIFY	{ DOUBLE (SPECIFY, TLIST $2 ) }
-	|	PREPROC					{ (* Printf.fprintf Pervasives.stderr "%s\n" $1 *) PREPROC $1 }
 	;
 
 // IEEE: generate_region
@@ -1049,7 +1059,7 @@ stmt:
 	|	eventControl stmtBlock			{ DOUBLE ($1, $2 ) }
 
 	|	varRefDotBit P_LTE delayE expr SEMICOLON
-			{ QUADRUPLE (P_LTE, $1, $3, $4 ) }
+			{ QUADRUPLE (DLYASSIGNMENT, $1, $3, $4 ) }
 	|	varRefDotBit EQUALS delayE expr SEMICOLON
 			{ QUADRUPLE ( ASSIGNMENT, $1, $3, $4 ) }
 	|	varRefDotBit EQUALS D_FOPEN LPAREN expr RPAREN SEMICOLON
@@ -1636,6 +1646,10 @@ Junk:		identifier 				{ $1 }
 	|	DRIVER					{ EMPTY }
 	|	RECEIVER				{ EMPTY }
 	|	EDGE					{ EMPTY }
+	|	SPECIAL					{ EMPTY }
+	|	PARAMUSED				{ EMPTY }
+	|	TASKUSED				{ EMPTY }
+	|	VOID					{ EMPTY }
 	|	SCALAR					{ EMPTY }
 	|	DOUBLE					{ EMPTY }
 	|	TRIPLE					{ EMPTY }

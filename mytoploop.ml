@@ -104,9 +104,8 @@ let loop ppf =
 
 (* variables to be debugged *)
 
-let unhand_list = ref [Vparser.EMPTY];;
-
-let unhandled_dbg out_chan arg = if (List.mem arg !unhand_list == false) then unhand_list := arg :: !unhand_list;
+let unhandled_dbg out_chan ln argt = let arg = (ln,argt) in if (List.mem arg !Semantics.unhand_list == false)
+    then Semantics.unhand_list := arg :: !Semantics.unhand_list;
 Printexc.print_backtrace out_chan;
 loop Format.std_formatter;;
 

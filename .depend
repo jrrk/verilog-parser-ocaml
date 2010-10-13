@@ -1,7 +1,7 @@
 grammar.cmo: vparser.cmi globals.cmo semantics.cmo grammar.cmi grammar.ml
 grammar.cmx: vparser.cmx vlexer.cmx semantics.cmx globals.cmx grammar.cmi 
-vlexer.cmo: vparser.cmi
-vlexer.cmx: vparser.cmi
+vlexer.cmo: vparser.cmi setup.cmi
+vlexer.cmx: vparser.cmi setup.cmi
 vparser.cmo: vparser.cmi 
 vparser.cmx: vparser.cmi
 grammar.cmi: vparser.cmi 
