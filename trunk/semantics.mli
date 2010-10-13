@@ -15,7 +15,7 @@ type uptr = UPTR of (out_channel -> int -> Vparser.token -> unit) | UNIL
    val unhandled_ptr : uptr ref
    val unhandled : out_channel -> int -> Vparser.token -> unit
 
-val stk : (int * Vparser.token) Stack.t
+val stk : (string * int * Vparser.token) Stack.t
 
    val semantics : out_channel -> string -> Globals.modtree -> unit
    val enter_a_sym : out_channel -> string -> (string, Setup.symtab) Hashtbl.t -> string -> Vparser.token -> Vparser.token -> unit
@@ -55,3 +55,25 @@ val enter_parameter :
   string ->
   (string, Setup.symtab) Hashtbl.t ->
   string -> Vparser.token -> Vparser.token -> Vparser.token -> unit
+val exprConst :
+  out_channel ->
+  string -> (string, Setup.symtab) Hashtbl.t -> Vparser.token -> int
+val iwidth :
+  out_channel ->
+  string -> (string, Setup.symtab) Hashtbl.t -> Vparser.token -> int * int
+val maxwidth :
+  out_channel ->
+  string -> (string, Setup.symtab) Hashtbl.t -> Vparser.token -> int
+val create_attr :
+  out_channel ->
+  string ->
+  (string, Setup.symtab) Hashtbl.t -> Vparser.token -> Setup.tsigattr
+val stmtBlock :out_channel ->
+           string ->
+           (string, Setup.symtab) Hashtbl.t -> Setup.TokSet.elt -> unit
+val for_stmt : out_channel ->
+           string ->
+           (string, Setup.symtab) Hashtbl.t ->
+           string ->
+           Vparser.token ->
+           Vparser.token -> Vparser.token -> Setup.TokSet.elt -> unit
