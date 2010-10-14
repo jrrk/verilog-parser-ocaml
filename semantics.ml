@@ -101,9 +101,11 @@ if shash_mem syms pth == false then begin
 else
   match (shash_find syms pth).sigattr with
   | Sigparam pexpr -> exprConst out_chan stem syms pexpr
-(*  | Sigarray x -> fprintf out_chan "%s not a constant or for variable, value 1 assumed\n" pth; 1  *)
+  | Sigarray x -> fprintf out_chan "%s not a constant or for variable, value 1 assumed\n" pth; 1
   | _ -> unhandled out_chan 95 expr; 1
 end
+| TRIPLE(FUNCREF, ID id, TLIST args) -> fprintf out_chan "%s is a function, value 1 assumed\n" id; 1
+| QUADRUPLE(PARTSEL, arg, INT hi, INT lo) -> (exprConst out_chan stem syms arg) lsr lo
 | _ -> unhandled out_chan 97 expr; 1 ) in
 ignore(Stack.pop stk);
 rslt
@@ -410,17 +412,7 @@ let rec exprGeneric out_chan stem syms expr = Stack.push (stem, 288, expr) stk; 
 | _ -> unhandled out_chan 321 expr );
 ignore(Stack.pop stk);;
 
-let rec semantics out_chan (stem:string) (tree:Globals.modtree) =
-   let expr = tree.Globals.tree and syms = tree.Globals.symbols in Stack.push (stem, 369, expr) stk; ( match expr with
-| TRIPLE(EQUALS, TLIST arg1, TLIST arg2) -> iter_ semantics out_chan stem syms arg1; iter_ semantics out_chan stem syms arg2
-| TRIPLE(PLUS, TLIST arg1, TLIST arg2) -> iter_ semantics out_chan stem syms arg1; iter_ semantics out_chan stem syms arg2
-| QUADRUPLE(ASSIGN, var1, EMPTY, expr)
--> ignore(subexp out_chan RECEIVER stem syms var1);
-   ignore(exprGeneric out_chan stem syms expr)
-| QUADRUPLE(EQUALS, TLIST arg1, TLIST arg2, TLIST arg3) ->
-  iter_ semantics out_chan stem syms arg1;
-  iter_ semantics out_chan stem syms arg2;
-  iter_ semantics out_chan stem syms arg3
+let rec caseitems out_chan stem syms expr = Stack.push (stem, 369, expr) stk; ( match expr with
 (* Parse case statement *)
 | TRIPLE (CASECOND, TLIST thecases, stmt) ->
 iter (fun pattern -> exprGeneric out_chan stem syms pattern) thecases;
@@ -430,7 +422,6 @@ stmtBlock out_chan stem syms stmt
 | QUADRUPLE (P_LTE, dest, dly, exp) ->
 exprGeneric out_chan stem syms exp;
 ignore(subexp out_chan RECEIVER stem syms dest)
-| RANGE(arg1, arg2) -> semantics out_chan stem {Globals.unresolved=[]; tree=arg1; symbols=syms}; semantics out_chan stem {Globals.unresolved=[]; tree=arg2; symbols=syms}
 | ID id -> enter_a_sym out_chan stem syms id EMPTY EMPTY
 | PREPROC txt -> ()
 | EMPTY -> ()
@@ -442,7 +433,7 @@ and for_stmt out_chan stem syms id start test inc clause = let pth = stem^id and
      width = wid;
      sigattr = Sigparam !crnt;
      path=pth};
-let loops = ref 0 in while 0 <> exprConst out_chan stem syms test do
+let loops = ref 0 and unrolling = ref true in while (!unrolling) && (0 <> exprConst out_chan stem syms test) do
     stmtBlock out_chan stem syms clause;
     crnt := INT (exprConst out_chan stem syms inc);
     shash_replace syms pth
@@ -451,10 +442,23 @@ let loops = ref 0 in while 0 <> exprConst out_chan stem syms test do
       sigattr = Sigparam !crnt;
       path=pth};
     loops := 1 + !loops;
-    if (!loops > 1000) then failwith "Loop unrolling failed with > 1000 iterations"
+    if (!loops > 1000) then (unrolling := false; fprintf out_chan "Loop %s unrolling stopped after 1000 iterations\n" id)
 done;
 shash_remove syms pth ;
 end 
+
+(*
+| TRIPLE(EQUALS, TLIST arg1, TLIST arg2) -> iter_ semantics out_chan stem syms arg1; iter_ semantics out_chan stem syms arg2
+| TRIPLE(PLUS, TLIST arg1, TLIST arg2) -> iter_ semantics out_chan stem syms arg1; iter_ semantics out_chan stem syms arg2
+| QUADRUPLE(ASSIGN, var1, EMPTY, expr)
+-> ignore(subexp out_chan RECEIVER stem syms var1);
+   ignore(exprGeneric out_chan stem syms expr)
+| QUADRUPLE(EQUALS, TLIST arg1, TLIST arg2, TLIST arg3) ->
+  iter_ semantics out_chan stem syms arg1;
+  iter_ semantics out_chan stem syms arg2;
+  iter_ semantics out_chan stem syms arg3
+| RANGE(arg1, arg2) -> semantics out_chan stem {Globals.unresolved=[]; tree=arg1; symbols=syms}; semantics out_chan stem {Globals.unresolved=[]; tree=arg2; symbols=syms}
+*)
 
 and stmtBlock out_chan stem syms block = Stack.push (stem, 465, block) stk; ( match block with
 | EMPTY -> ()
@@ -463,10 +467,7 @@ and stmtBlock out_chan stem syms block = Stack.push (stem, 465, block) stk; ( ma
 | DOUBLE (DOUBLE (HASH, FLOATNUM dly), stmt) -> stmtBlock out_chan stem syms stmt
 | QUINTUPLE(NAMED, ID blk_named, TLIST [], TLIST stmts, EMPTY) ->
  iter (fun item -> stmtBlock out_chan stem syms item) stmts
-| TLIST stmtList -> let idx = ref 0 in iter (fun item ->
-(*    idx := !idx + 1; fprintf out_chan "\n\n**** Statement %d ****\n" !idx;
-    Dump.dump out_chan item 0; flush out_chan;
-*)
+| TLIST stmtList -> iter (fun item ->
     stmtBlock out_chan stem syms item) stmtList
 | TRIPLE(BEGIN, TLIST stmtList, endLabelE) -> iter (fun item -> stmtBlock out_chan stem syms item) stmtList
 |  DOUBLE
@@ -499,7 +500,7 @@ if idstart <> idinc then fprintf out_chan "For variable not consistent %s vs. %s
 else for_stmt out_chan stem syms idstart start test inc clause
 | QUADRUPLE ((CASE|CASEX|CASEZ), expr, caseAttr, TLIST caseList) ->
 exprGeneric out_chan stem syms expr;
-iter (fun caseitem -> semantics out_chan stem {Globals.unresolved=[]; tree=caseitem; symbols=syms}) caseList
+iter (fun caseitem -> caseitems out_chan stem syms caseitem) caseList
 (* Parse task reference *)
 | TRIPLE (TASKREF, task, args) -> ( match task with
   | ID taskname ->
@@ -509,8 +510,8 @@ iter (fun caseitem -> semantics out_chan stem {Globals.unresolved=[]; tree=casei
       | _ -> fprintf out_chan "Trying to call non task %s\n" taskname
     else printf "Task %s not found\n" taskname;
 end
-  | DOTTED path -> iter (fun name -> match name with ID id -> Printf.printf "%s." id | _ -> ()) path;
-    Printf.printf "\n"
+  | DOTTED path -> iter (fun name -> match name with ID id -> Printf.fprintf out_chan "%s." id | _ -> ()) path;
+    Printf.fprintf out_chan " - hierarchical task etc. not (yet) supported\n"
   | _ -> ()
  )
 | TRIPLE((D_READMEMB|D_READMEMH), (ASCNUM file|ID file), args) -> ()
@@ -531,9 +532,7 @@ and subexp out_chan dir stem syms exp = Stack.push (stem, 475, exp) stk; match e
 | TRIPLE (BITSEL, ID id, sel) -> enter_a_sig_attr out_chan stem syms (ID id) dir (RANGE (sel, sel))
 | _ -> exprGeneric out_chan stem syms exp;
 ignore(Stack.pop stk)
-
-(*and subexp2 out_chan dir stem syms exp = {entry=exp; symbol=(subexp out_chan dir stem syms exp)}
-
+(*
 and expr_dyadic out_chan dir stem syms op left right = DYADIC(op, subexp2 out_chan dir stem syms left, subexp2 out_chan dir stem syms right)
 *)
 and vtran out_chan stem syms x y =
@@ -593,6 +592,11 @@ and senitem out_chan stem syms item = match item with
 | ID signal -> ignore(subexp out_chan DRIVER stem syms item)
 | _ -> unhandled out_chan 490 item
 
+and misc_syntax out_chan stem syms expr = Stack.push (stem, 539, expr) stk; ( match expr with
+| EMPTY -> ()
+| _ -> unhandled out_chan 597 expr);
+ignore(Stack.pop stk)
+
 and decls out_chan stem tree =
    let expr = tree.Globals.tree and syms = tree.Globals.symbols in Stack.push (stem, 539, expr) stk; ( match expr with
 (* Parse parameter declarations *)
@@ -609,7 +613,7 @@ and decls out_chan stem tree =
       | EMPTY -> ()
       | REG -> attr := REG::!attr
       | _ -> unhandled out_chan 558 arg1);
-    semantics out_chan stem {Globals.unresolved=[]; tree=arg2; symbols=syms};
+    misc_syntax out_chan stem syms arg2;
     (match arg3 with
       | RANGE(hi,lo) as rangehilo -> width := rangehilo
       | TLIST arg9 ->  List.iter (fun arg -> unhandled out_chan 508 arg) arg9
@@ -624,7 +628,7 @@ and decls out_chan stem tree =
 (* Parse wire/reg declarations *)
 | QUADRUPLE((WIRE|REG) as kind, arg1, arg2, TLIST arg3) ->
     let width = ref SCALAR in begin
-    semantics out_chan stem {Globals.unresolved=[]; tree=arg1; symbols=syms};
+    misc_syntax out_chan stem syms arg1;
     (match arg2 with
       | RANGE(hi, lo) as rangehilo -> width := rangehilo
       | TRIPLE(EMPTY,(RANGE(hi, lo) as rangehilo),EMPTY) -> width := rangehilo
@@ -645,13 +649,13 @@ and decls out_chan stem tree =
       | _ -> unhandled out_chan 534 x) arg3); end
 (* Parse real/integer/event decls *)
 | QUADRUPLE((REAL|INTEGER|EVENT) as kind, arg1, arg2, TLIST arg3) ->
-    semantics out_chan stem {Globals.unresolved=[]; tree=arg1; symbols=syms};
+    misc_syntax out_chan stem syms arg1;
     (match arg2 with
       | EMPTY -> ()
       | TRIPLE(EMPTY,EMPTY,EMPTY) -> ()
       | _ ->  unhandled out_chan 541 arg2);
     ( List.iter (fun x -> match x with
-      | TRIPLE(id, arg5, arg6) -> enter_sym_attrs out_chan stem syms id [kind] EMPTY
+      | TRIPLE(id, arg5, arg6) -> enter_sym_attrs out_chan stem syms id [kind] SCALAR
       | _ -> unhandled out_chan 544 x) arg3)
 | _ -> unhandled out_chan 545 expr );
 ignore(Stack.pop stk)
@@ -730,7 +734,7 @@ and toplevelitems out_chan stem tree =
 | QUADRUPLE(PRIMINST, ID prim, EMPTY, TLIST inlist) ->
 (*
     if (shash_mem Globals.modprims prim) then
-      semantics out_chan (stem^prim^".") (shash_find Globals.modprims prim) (* scan the inner primitive *)
+      moditemlist out_chan (stem^prim^".") (shash_find Globals.modprims prim) (* scan the inner primitive *)
     else printf "Primitive %s not found\n" prim;
 *)
     enter_a_sym out_chan stem syms prim PRIMITIVE EMPTY;
@@ -815,7 +819,7 @@ and moditemlist out_chan stem tree =
 (* Parse module declarations *)
 | QUINTUPLE(MODULE,ID arg1, arg2, TLIST arg3, TLIST arg4) ->
     enter_a_sym out_chan stem syms arg1 MODULE SCALAR; (* print_endline (stem^arg1); *)
-    semantics out_chan "" {Globals.unresolved=[]; tree=arg2; symbols=syms};
+    misc_syntax out_chan "" syms arg2;
     iter (fun arg -> match arg with
 | ID id -> enter_a_sym out_chan stem syms id IOPORT UNKNOWN
 | _ -> decls out_chan "" {Globals.unresolved=[]; tree=arg; symbols=syms}) arg3;
@@ -826,7 +830,7 @@ and moditemlist out_chan stem tree =
     enter_a_sym out_chan stem syms arg1 PRIMITIVE EMPTY;
     iter (fun arg -> match arg with
       | ID id -> iter (fun x -> enter_a_sym out_chan stem syms id x UNKNOWN) [IOPORT;SPECIAL]; 
-      | _ -> semantics out_chan "" {Globals.unresolved=[]; tree=arg; symbols=syms}) primargs;
+      | _ -> misc_syntax out_chan "" syms arg) primargs;
     iter (fun item -> dispatch out_chan "" {Globals.unresolved=[]; tree=item; symbols=syms} true) arg4;
 | _ -> unhandled out_chan 723 expr );
 ignore(Stack.pop stk)
@@ -874,7 +878,7 @@ exception Error
 type logt = Closed | Open of out_channel;;
 
 let pending = shash_create 256;;
-
+let black_box = ref [];;
 let logfile = ref Closed;;
 
 let tmpnam = "report."^(string_of_int(Unix.getpid()))^"."^Unix.gethostname()^".report";;
@@ -896,10 +900,17 @@ if contents.Globals.unresolved == [] then (
 			List.iter (fun key -> shash_remove pending key; remove_from_pending out_chan key) !reslist;
 			end
 
-let prescan kind mykey expt =
+let read_pragma nam1 nam2 =
+if (nam1 = nam2) then begin
+(*Printf.fprintf out_chan "Pragma %s is black-boxed\n" nam1;*)
+if (List.mem nam1 !black_box == false) then black_box := nam1 :: !black_box
+end
+
+let prescan decl = let expt = { Globals.tree=decl; symbols=Hashtbl.create 256; unresolved=[]} in
 	if (!logfile == Closed) then logfile := Open (open_out tmpnam);
-	match !logfile with Open out_chan -> begin
-	Printf.fprintf out_chan "%s %s: parsed " kind mykey;
+	match !logfile with Open out_chan -> begin match decl with
+| QUINTUPLE(kind, ID mykey, _, _, _) ->
+	Printf.fprintf out_chan "%s %s: parsed " (str_token kind) mykey;
 	if (List.length(!unresolved_list)==0) then begin
 		scan out_chan mykey expt;
 		remove_from_pending out_chan mykey;
@@ -911,7 +922,10 @@ let prescan kind mykey expt =
 		Hashtbl.add pending mykey expt;
 		unresolved_list := [];
 	end;
-	flush out_chan;
+	flush out_chan
+| PREPROC str -> Printf.fprintf out_chan "Encountered %s\n" str
+| PRAGMATIC str -> Scanf.sscanf str "//Verilog HDL for \"%s@\", \"%s@\" \"functional\"" read_pragma
+| _ -> unhandled out_chan 919 decl
 	end
 	| Closed -> raise Error
 ;;

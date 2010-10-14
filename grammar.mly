@@ -74,6 +74,8 @@ open Vparser
 %token P_SUPPRESS_FAULTS
 %token<string> P_TIMESCALE
 %token<string> PREPROC	// some other token, not (yet) recognized
+// for pragmatic comments e.g. black box models
+%token<string> PRAGMATIC
 // for named blocks
 %token NAMED
 // for unknown modules/primitives
@@ -448,7 +450,6 @@ open Vparser
 %type <token list> modParList
 %type <token> modParSecond
 %type <token list> modPortsE
-%type <unit> moduleDecl
 %type <token> netSig
 %type <token list> netSigList
 %type <token> param
@@ -505,50 +506,45 @@ identifier:	ID	{ ID $1 }
 //
 
 start:		ENDOFFILE				{ raise End_of_file }
-	|	primDecl start				{ }
-	|	preproc					{ }
-	|	moduleDecl start			{ }
+	|	modprimDecl start			{ }
+	;
+
+modprimDecl:	moduleDecl				{ Semantics.prescan $1 }
+	|	primDecl				{ Semantics.prescan $1 }
+	|	preproc					{ Semantics.prescan $1 }
 	;
 
 // Pre-proc
 
-preproc:        P_CELLDEFINE			        { EMPTY }
-        |       P_DEFINE       				{ EMPTY }
+preproc:	P_CELLDEFINE			        { EMPTY }
         |       P_DISABLE_PORTFAULTS        		{ EMPTY }
-        |       P_ELSE        				{ EMPTY }
         |       P_ENABLE_PORTFAULTS        		{ EMPTY }
-        |       P_ENDCELLDEFINE        			{ EMPTY }
-        |       P_ENDIF        				{ EMPTY }
-        |       P_IFDEF        				{ EMPTY }
-        |       P_NOSUPPRESS_FAULTS        		{ EMPTY }
-        |       P_PROTECT        			{ EMPTY }
-        |       P_ENDPROTECT        			{ EMPTY }
-        |       P_RESETALL        			{ EMPTY }
         |       P_SUPPRESS_FAULTS        		{ EMPTY }
+        |       P_PROTECT        			{ EMPTY }
+        |       P_RESETALL        			{ EMPTY }
         |       P_TIMESCALE        			{ EMPTY }
 	|	PREPROC					{ PREPROC $1 }
+	|	PRAGMATIC				{ PRAGMATIC $1 }
+	|	P_ENDCELLDEFINE        			{ EMPTY }
+        |       P_NOSUPPRESS_FAULTS        		{ EMPTY }
+        |       P_ENDPROTECT        			{ EMPTY }
+			
 
 //**********************************************************************
 // Module headers
 
 // IEEE: module_declaration:
-moduleDecl:	MODULE ID modParE modPortsE SEMICOLON modItemListE ENDMODULE
-		{
-		Semantics.prescan "module" $2 { Globals.tree=QUINTUPLE ( MODULE, ID $2, $3, TLIST $4, TLIST $6 );
-					  	symbols=Hashtbl.create 256;
-						unresolved=(!Globals.unresolved_list)}
+moduleDecl:     MODULE ID modParE modPortsE SEMICOLON modItemListE ENDMODULE
+                {
+		QUINTUPLE ( MODULE, ID $2, $3, TLIST $4, TLIST $6 )
 		}
-	;
 
 // IEEE: primitive_declaration:
-primDecl:	PRIMITIVE ID modParE modPortsE SEMICOLON primItemList ENDPRIMITIVE
-		{
-		Semantics.prescan "primitive" $2 { Globals.tree=QUINTUPLE ( PRIMITIVE, ID $2, $3, TLIST $4, TLIST $6 );
-						symbols=Hashtbl.create 256;
-						unresolved=[]}
+primDecl:       PRIMITIVE ID modParE modPortsE SEMICOLON primItemList ENDPRIMITIVE
+                {
+		QUINTUPLE ( PRIMITIVE, ID $2, $3, TLIST $4, TLIST $6 )
 		}
-	;
-
+				
 primItemList:
 		primItem				{ [ $1 ] }
 	|	primItem primItemList			{ $1 :: $2 }
@@ -1633,6 +1629,7 @@ Junk:		identifier 				{ $1 }
 	|	DLYASSIGNMENT				{ EMPTY }
 	|	MODINST					{ EMPTY }
 	|	PRIMINST				{ EMPTY }
+	|	MEMORY					{ EMPTY }
 	|	BITSEL					{ EMPTY }
 	|	EMPTY					{ EMPTY }
 	|	EOF					{ EMPTY }
@@ -1745,6 +1742,10 @@ Junk:		identifier 				{ $1 }
 	|	P_SRIGHTEQ				{ EMPTY }
 	|	P_SSRIGHTEQ				{ EMPTY }
 	|	P_MINUSGT				{ EMPTY }
+	|	P_DEFINE				{ EMPTY }
+	|	P_IFDEF					{ EMPTY }
+	|	P_ELSE					{ EMPTY }
+	|	P_ENDIF					{ EMPTY }
 	|	error 					{ EMPTY }
 	;
 

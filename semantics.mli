@@ -17,7 +17,6 @@ type uptr = UPTR of (out_channel -> int -> Vparser.token -> unit) | UNIL
 
 val stk : (string * int * Vparser.token) Stack.t
 
-   val semantics : out_channel -> string -> Globals.modtree -> unit
    val enter_a_sym : out_channel -> string -> (string, Setup.symtab) Hashtbl.t -> string -> Vparser.token -> Vparser.token -> unit
 (*   val iter_ :
   (string -> Globals.modtree -> unit) -> string ->
@@ -42,7 +41,7 @@ val find_referrer : (string, Setup.symtab) Hashtbl.t -> string -> unit
 val enter_sym_attrs : out_channel -> string -> (string, Setup.symtab) Hashtbl.t ->
   Vparser.token -> Setup.TokSet.elt list -> Vparser.token -> unit
 val check_syms : out_channel -> (string, Setup.symtab) Hashtbl.t -> unit
-val prescan : string -> string -> Globals.modtree -> unit
+val prescan : Vparser.token -> unit
 val endscan : unit -> unit
 val subexp :
   out_channel ->
@@ -89,3 +88,6 @@ val enter_a_sig_attr :
   string ->
   (string, Setup.symtab) Hashtbl.t ->
   Vparser.token -> Setup.TokSet.elt -> Vparser.token -> unit
+
+val read_pragma : string -> string -> unit
+val black_box : string list ref
