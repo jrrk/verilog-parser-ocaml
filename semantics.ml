@@ -49,22 +49,32 @@ let unhandled out_chan ln arg = match !unhandled_ptr with UPTR fn -> fn out_chan
 
 let last_mod = ref "";;
 
+(* these functions are for debugging symbol hash related issues *)
+
+let shash_add syms (key:string) (sym:symtab) = Hashtbl.add syms key sym;;
+let shash_create (siz:int) = Hashtbl.create siz;;
+let shash_find syms (key:string) = Hashtbl.find syms key;;
+let shash_iter (f:string -> Setup.symtab -> unit) syms = Hashtbl.iter f syms;;
+let shash_mem syms (key:string) = Hashtbl.mem syms key;;
+let shash_remove syms (key:string) = Hashtbl.remove syms key;;
+let shash_replace syms (key:string) (sym:symtab) = Hashtbl.replace syms key sym;;
+
 let find_param out_chan syms pth = begin
-if Hashtbl.mem syms pth == false then begin
+if shash_mem syms pth == false then begin
 (*  fprintf out_chan "Creating implicit param %s\n" (stem^id);  *)
-  Hashtbl.add syms pth {Setup.symattr = TokSet.singleton PARAMETER;
+  shash_add syms pth {Setup.symattr = TokSet.singleton PARAMETER;
                        width = SCALAR;
 		       sigattr = Sigparam (INT 1);
 		       path=pth}
   end;
-Hashtbl.find syms pth
+shash_find syms pth
 end
 ;;
 
 let rec exprBoolean out_chan stem syms op expr1 expr2 =
 op (exprConst out_chan stem syms expr1) (exprConst out_chan stem syms expr2)
 
-and exprConst out_chan stem syms expr = match expr with
+and exprConst out_chan stem syms expr = Stack.push (stem, 67, expr) stk; let rslt = ( match expr with
 | INT n -> n
 | TRIPLE(TIMES, expr1, expr2) -> (exprConst out_chan stem syms expr1) * (exprConst out_chan stem syms expr2)
 | TRIPLE(PLUS, expr1, expr2) -> (exprConst out_chan stem syms expr1) + (exprConst out_chan stem syms expr2)
@@ -76,19 +86,27 @@ and exprConst out_chan stem syms expr = match expr with
 | TRIPLE(P_LTE, expr1, expr2) -> if (exprBoolean out_chan stem syms (<=)) expr1 expr2 then 1 else 0
 | TRIPLE(P_GTE, expr1, expr2) -> if (exprBoolean out_chan stem syms (>=)) expr1 expr2 then 1 else 0
 | ID id -> let pth = stem^id in begin
-if Hashtbl.mem syms pth == false then begin
-  unhandled out_chan 71 expr;
-  fprintf out_chan "constant %s not declared, value 1 assumed\n" pth;
-  1  
+if shash_mem syms pth == false then begin
+  if shash_mem syms id == false then begin
+    unhandled out_chan 81 expr;
+    fprintf out_chan "constant %s not declared, value 1 assumed\n" pth;
+    1
+    end
+  else
+    match (shash_find syms id).sigattr with
+    | Sigparam pexpr -> exprConst out_chan stem syms pexpr
+    | Sigarray x -> fprintf out_chan "%s not a constant or for variable, value 1 assumed\n" id; 1
+    | _ -> unhandled out_chan 89 expr; 1
   end
 else
-  match (find_param out_chan syms pth).sigattr with
-  | Sigparam pexpr -> if (pexpr <> expr) then exprConst out_chan stem syms pexpr else 1
-  | Sigarray x -> fprintf out_chan "%s not a constant or for variable, value 1 assumed\n" pth; 1
-  | _ -> unhandled out_chan 79 expr; 1
+  match (shash_find syms pth).sigattr with
+  | Sigparam pexpr -> exprConst out_chan stem syms pexpr
+(*  | Sigarray x -> fprintf out_chan "%s not a constant or for variable, value 1 assumed\n" pth; 1  *)
+  | _ -> unhandled out_chan 95 expr; 1
 end
-| _ -> unhandled out_chan 54 expr; 1
-;;
+| _ -> unhandled out_chan 97 expr; 1 ) in
+ignore(Stack.pop stk);
+rslt
 
 let iwidth out_chan stem syms wid =  match wid with 
 | RANGE(expr1, expr2) -> (exprConst out_chan stem syms expr1,exprConst out_chan stem syms expr2)
@@ -108,21 +126,29 @@ let enter_a_sym out_chan stem symbols id attr w = let pth = stem^id in match att
 (IOPORT|INPUT|OUTPUT|INOUT|REG|WIRE|INTEGER|REAL|MEMORY|EVENT
  |MODULE|PRIMITIVE|SUBMODULE|SUBCCT|SPECIFY|SPECIAL|PARAMUSED
  |PARAMETER|TASK|FUNCTION) ->
-if Hashtbl.mem symbols pth then begin
+if shash_mem symbols pth then begin
 (*  printf "Update %s: %s\n" pth (Ord.getstr attr); *)
-  let newset = (Hashtbl.find symbols pth).symattr and oldw = (Hashtbl.find symbols pth).width in
+  let newset = (shash_find symbols pth).symattr
+  and oldw = (shash_find symbols pth).width
+  and oldsattr = (shash_find symbols pth).sigattr in
   if (oldw<>UNKNOWN)&&(oldw<>w)&&(w<>UNKNOWN) then
     Printf.fprintf out_chan "Addition of attribute %s to signal %s changed width from %s to %s\n"
       (str_token attr) pth (str_token oldw) (str_token w);
-  let neww = if (w<>UNKNOWN) then w else oldw in Hashtbl.replace symbols pth
+  if (w<>UNKNOWN) then
+  shash_replace symbols pth
     {Setup.symattr = (TokSet.add attr newset);
-    width = neww;
-    sigattr = create_attr out_chan stem symbols neww;
+    width = w;
+    sigattr = create_attr out_chan stem symbols w;
+    path=pth}
+  else shash_replace symbols pth
+    {Setup.symattr = (TokSet.add attr newset);
+    width = oldw;
+    sigattr = oldsattr;
     path=pth};
     end
 else begin
 (*  printf "Enter %s: %s\n" pth (Ord.getstr attr); *)
-  Hashtbl.add symbols pth {Setup.symattr = (TokSet.singleton attr);
+  shash_add symbols pth {Setup.symattr = (TokSet.singleton attr);
      width = w;
      sigattr = create_attr out_chan stem symbols w;
      path=pth}
@@ -137,14 +163,14 @@ let iter_ semantics out_chan (stem:string) syms list =
 let not_found out_chan stem syms w = printf "wire/port %s not found\n" w; enter_a_sym out_chan stem syms w IMPLICIT SCALAR;;
 
 let find_ident out_chan dir stem syms tok = match tok with ID id -> let pth = stem^id in begin
-if Hashtbl.mem syms pth == false then begin
+if shash_mem syms pth == false then begin
 (*  fprintf out_chan "Creating implicit wire %s\n" (stem^id);  *)
-  Hashtbl.add syms pth {Setup.symattr = TokSet.singleton IMPLICIT;
+  shash_add syms pth {Setup.symattr = TokSet.singleton IMPLICIT;
                        width = SCALAR;
 		       sigattr = create_attr out_chan stem syms SCALAR;
 		       path=pth}
   end;
-Hashtbl.find syms pth
+shash_find syms pth
 end
 | _ -> unhandled out_chan 118 tok; ({Setup.symattr = TokSet.singleton tok; width = EMPTY; sigattr = create_attr out_chan stem syms SCALAR; path=""})
 ;;
@@ -164,7 +190,7 @@ let enter_parameter out_chan stem syms id arg5 arg6 w = let pth = stem^id in
 Dump.dump out_chan arg5 0;
 Dump.dump out_chan arg6 0;
 *)
-  Hashtbl.add syms pth {Setup.symattr = (TokSet.singleton PARAMETER);
+  shash_add syms pth {Setup.symattr = (TokSet.singleton PARAMETER);
      width = w;
      sigattr = Sigparam arg6;
      path=pth}
@@ -271,12 +297,12 @@ let inner_chk_const out_chan stem syms sym subcct inner (tok:token) wid = begin
 end
 
 let rec connect out_chan stem syms kind subcct (innert:token) tok = 
-let innersym = (Hashtbl.find Globals.modprims kind).symbols in match innert with ID inner -> begin
-if (Hashtbl.mem innersym inner) then
-let isym=Hashtbl.find innersym inner in match tok with
+let innersym = (shash_find Globals.modprims kind).symbols in match innert with ID inner -> begin
+if (shash_mem innersym inner) then
+let isym=shash_find innersym inner in match tok with
 | ID wireport -> inner_chk out_chan stem syms isym subcct inner wireport (find_ident out_chan WIRE stem syms tok).width
-| TRIPLE(BITSEL, ID wireport, INT sel) -> if (Hashtbl.mem syms wireport) then inner_chk out_chan stem syms isym subcct inner wireport (RANGE (INT sel, INT sel)) else not_found out_chan stem syms wireport
-| QUADRUPLE(PARTSEL, ID wireport, INT hi, INT lo) -> if (Hashtbl.mem syms wireport) then inner_chk out_chan stem syms isym subcct inner wireport (RANGE(INT hi, INT lo)) else not_found out_chan stem syms wireport
+| TRIPLE(BITSEL, ID wireport, INT sel) -> if (shash_mem syms wireport) then inner_chk out_chan stem syms isym subcct inner wireport (RANGE (INT sel, INT sel)) else not_found out_chan stem syms wireport
+| QUADRUPLE(PARTSEL, ID wireport, INT hi, INT lo) -> if (shash_mem syms wireport) then inner_chk out_chan stem syms isym subcct inner wireport (RANGE(INT hi, INT lo)) else not_found out_chan stem syms wireport
 | INT lev -> inner_chk_const out_chan stem syms isym subcct inner tok (RANGE(INT 31, INT 0))
 | BINNUM lev -> inner_chk_const out_chan stem syms isym subcct inner tok (RANGE(INT (fst(widthnum 2 lev)-1), INT 0))
 | DOUBLE (CONCAT, TLIST concat) -> let idx = ref (fst(iwidth out_chan stem syms isym.width)) in iter (fun (item:token) -> 
@@ -373,7 +399,7 @@ let rec exprGeneric out_chan stem syms expr = Stack.push (stem, 288, expr) stk; 
 | BINNUM left -> ()
 | DECNUM left -> ()
 | HEXNUM left -> ()
-| ID arg1 -> enter_a_sig_attr out_chan stem syms expr DRIVER SCALAR
+| ID arg1 -> enter_a_sig_attr out_chan stem syms expr DRIVER (find_ident out_chan WIRE stem syms expr).width
 | TRIPLE(BITSEL, arg1, arg3) -> enter_a_sig_attr out_chan stem syms arg1 DRIVER (RANGE(arg3,arg3))
 | QUADRUPLE(PARTSEL, arg1 , arg3 , arg5 ) -> ()
 | QUADRUPLE(P_PLUSCOLON, arg1 , arg3 , arg5 ) -> ()
@@ -412,20 +438,22 @@ ignore(subexp out_chan RECEIVER stem syms dest)
 ignore(Stack.pop stk)
 
 and for_stmt out_chan stem syms id start test inc clause = let pth = stem^id and wid = (find_ident out_chan WIRE stem syms (ID id)).width and crnt = ref (INT (exprConst out_chan stem syms start)) in begin
-  Hashtbl.add syms pth {Setup.symattr = (TokSet.singleton PARAMETER);
+  shash_add syms pth {Setup.symattr = (TokSet.singleton PARAMETER);
      width = wid;
      sigattr = Sigparam !crnt;
      path=pth};
-while 0 <> exprConst out_chan stem syms test do
+let loops = ref 0 in while 0 <> exprConst out_chan stem syms test do
     stmtBlock out_chan stem syms clause;
     crnt := INT (exprConst out_chan stem syms inc);
-    Hashtbl.replace syms pth
+    shash_replace syms pth
       {Setup.symattr = (TokSet.singleton PARAMETER);
       width = wid;
       sigattr = Sigparam !crnt;
       path=pth};
+    loops := 1 + !loops;
+    if (!loops > 1000) then failwith "Loop unrolling failed with > 1000 iterations"
 done;
-Hashtbl.remove syms pth ;
+shash_remove syms pth ;
 end 
 
 and stmtBlock out_chan stem syms block = Stack.push (stem, 465, block) stk; ( match block with
@@ -476,7 +504,7 @@ iter (fun caseitem -> semantics out_chan stem {Globals.unresolved=[]; tree=casei
 | TRIPLE (TASKREF, task, args) -> ( match task with
   | ID taskname ->
   let stem2 = stem^taskname^"." in begin
-    if (Hashtbl.mem syms taskname) then match (Hashtbl.find syms taskname).sigattr with
+    if (shash_mem syms taskname) then match (shash_find syms taskname).sigattr with
       | Sigtask tsk -> dispatch out_chan stem2 {Globals.unresolved=[]; tree=tsk; symbols=syms} true (* scan the task *)
       | _ -> fprintf out_chan "Trying to call non task %s\n" taskname
     else printf "Task %s not found\n" taskname;
@@ -701,19 +729,19 @@ and toplevelitems out_chan stem tree =
 (* Parse primitive instance *)
 | QUADRUPLE(PRIMINST, ID prim, EMPTY, TLIST inlist) ->
 (*
-    if (Hashtbl.mem Globals.modprims prim) then
-      semantics out_chan (stem^prim^".") (Hashtbl.find Globals.modprims prim) (* scan the inner primitive *)
+    if (shash_mem Globals.modprims prim) then
+      semantics out_chan (stem^prim^".") (shash_find Globals.modprims prim) (* scan the inner primitive *)
     else printf "Primitive %s not found\n" prim;
 *)
     enter_a_sym out_chan stem syms prim PRIMITIVE EMPTY;
     let fc inner t = connect out_chan stem syms prim prim inner t in 
-    ( match (Hashtbl.find Globals.modprims prim).Globals.tree with QUINTUPLE(PRIMITIVE,ID arg1, EMPTY, TLIST primargs, TLIST arg4) ->
+    ( match (shash_find Globals.modprims prim).Globals.tree with QUINTUPLE(PRIMITIVE,ID arg1, EMPTY, TLIST primargs, TLIST arg4) ->
 iter2 fc primargs inlist | _ -> ())
 (* Parse module instance *)
 | QUADRUPLE(MODINST, ID kind,params, TLIST instances) ->
     begin
     enter_a_sym out_chan stem syms kind SUBMODULE EMPTY;
-    let kindhash = Hashtbl.find Globals.modprims kind in
+    let kindhash = shash_find Globals.modprims kind in
     iter (fun inst -> match inst with
       | TRIPLE (ID subcct, SCALAR, TLIST termlist) -> (* semantics out_chan (stem^subcct^".") kindhash; *)
         enter_a_sym out_chan stem syms subcct SUBCCT EMPTY;
@@ -735,7 +763,7 @@ if (!byposn) then begin
 end;
 (* Find which of the unconnected pins are inputs *)
 partlist := partition (fun inner -> 
-(Hashtbl.mem kindhash.symbols inner) && (TokSet.mem INPUT (Hashtbl.find kindhash.symbols inner).symattr)
+(shash_mem kindhash.symbols inner) && (TokSet.mem INPUT (shash_find kindhash.symbols inner).symattr)
 ) !ids;
 if (length (fst(!partlist)) > 0) then begin
 fprintf out_chan "sub-module %s of kind %s insufficient args - %d unconnected inputs(s): " subcct kind (length (fst(!partlist)));
@@ -766,19 +794,19 @@ and dispatch out_chan stem tree pass2 =
 | TRIPLE((BUFIF lev|TRANIF lev), weaklist, TLIST instances) ->  if (pass2) then toplevelitems out_chan stem tree
 | QUADRUPLE((MODINST|PRIMINST), ID prim, params, TLIST inlist) ->  if (pass2) then toplevelitems out_chan stem tree
 (* Parse function declarations *)
-| OCTUPLE(FUNCTION, EMPTY, range, ID funcname, EMPTY, TLIST args, stmts, EMPTY) -> if (pass2==false) then (
+| OCTUPLE(FUNCTION, EMPTY, range, ID funcname, EMPTY, TLIST args, stmts, EMPTY) -> (
 enter_a_sym out_chan stem syms funcname FUNCTION range;
 iter (fun arg -> decls out_chan stem {Globals.unresolved=[]; tree=arg; symbols=syms}) args;
-stmtBlock out_chan stem syms stmts)
+if (pass2==false) then stmtBlock out_chan stem syms stmts)
 (* Parse task declarations *)
-| SEPTUPLE(TASK, EMPTY, ID taskname, EMPTY, TLIST args, stmts, EMPTY) -> if (pass2==false) then (
+| SEPTUPLE(TASK, EMPTY, ID taskname, EMPTY, TLIST args, stmts, EMPTY) -> (
 let stem = taskname^"." in (
-Hashtbl.add syms taskname {Setup.symattr = TokSet.singleton TASK;
+shash_add syms taskname {Setup.symattr = TokSet.singleton TASK;
                        width = VOID;
 		       sigattr = Sigtask expr;
 		       path=taskname};
 iter (fun arg -> decls out_chan stem {Globals.unresolved=[]; tree=arg; symbols=syms}) args;
-stmtBlock out_chan stem syms stmts))
+if (pass2==true) then stmtBlock out_chan stem syms stmts))
 | _ -> unhandled out_chan 702 expr );
 ignore(Stack.pop stk)
 
@@ -839,13 +867,13 @@ match s.width with
 | _ -> unhandled out_chan 804 s.width
 ;;
 
-let check_syms out_chan syms = Hashtbl.iter (fun nam s -> erc_chk out_chan syms nam s) syms;;
+let check_syms out_chan syms = shash_iter (fun nam s -> erc_chk out_chan syms nam s) syms;;
 
 exception Error
 
 type logt = Closed | Open of out_channel;;
 
-let pending = Hashtbl.create 256;;
+let pending = shash_create 256;;
 
 let logfile = ref Closed;;
 
@@ -865,7 +893,7 @@ contents.Globals.unresolved <- List.filter(fun item -> item <> mykey) contents.G
 if contents.Globals.unresolved == [] then (
 			Printf.fprintf out_chan "module %s: resumed " key;
 			scan out_chan key contents; reslist := key :: !reslist)) pending;
-			List.iter (fun key -> Hashtbl.remove pending key; remove_from_pending out_chan key) !reslist;
+			List.iter (fun key -> shash_remove pending key; remove_from_pending out_chan key) !reslist;
 			end
 
 let prescan kind mykey expt =
@@ -892,11 +920,11 @@ let rec endscan2 indent mykey =
 	match !logfile with Open out_chan -> begin
         for i = 1 to indent do output_char out_chan ' '; done;
 	Printf.fprintf out_chan "Checking %s: " mykey;
-	if (Hashtbl.mem pending mykey) then
+	if (shash_mem pending mykey) then
           begin
 	  Printf.fprintf out_chan "Module %s still postponed\n" mykey;
-	  List.iter (fun key -> if (Hashtbl.mem pending key) then endscan2 (indent+2) key
-          else Printf.fprintf out_chan "%s " key) ((Hashtbl.find pending mykey).Globals.unresolved);
+	  List.iter (fun key -> if (shash_mem pending key) then endscan2 (indent+2) key
+          else Printf.fprintf out_chan "%s " key) ((shash_find pending mykey).Globals.unresolved);
  	  output_char out_chan '\n';
           end
 	end
@@ -916,9 +944,9 @@ let nullsym = {Setup.symattr = TokSet.empty; width = EMPTY; path = ""};;
 
 let moditer k (x:Globals.modtree) = semantics out_chan k x
 
-let find_glob s = Setup.show_sym s ( Hashtbl.find s);;
+let find_glob s = Setup.show_sym s ( shash_find s);;
 
-let find_glob_substr s = let reg = Str.regexp s in Hashtbl.iter (fun k x -> try Printf.printf "%s posn %d\n" k (Str.search_forward reg k 0); with not_found out_chan stem -> ()) gsyms;;
+let find_glob_substr s = let reg = Str.regexp s in shash_iter (fun k x -> try Printf.printf "%s posn %d\n" k (Str.search_forward reg k 0); with not_found out_chan stem -> ()) gsyms;;
 
-let find_referrer s = Setup.show_sym s (match (Hashtbl.find s).referrer with Referrer lk -> lk | Nil -> nullsym);;
+let find_referrer s = Setup.show_sym s (match (shash_find s).referrer with Referrer lk -> lk | Nil -> nullsym);;
 *)
