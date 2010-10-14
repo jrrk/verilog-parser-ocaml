@@ -77,3 +77,15 @@ val for_stmt : out_channel ->
            string ->
            Vparser.token ->
            Vparser.token -> Vparser.token -> Setup.TokSet.elt -> unit
+val shash_create : int -> (string, Setup.symtab) Hashtbl.t 
+val shash_find : (string, Setup.symtab) Hashtbl.t -> string -> Setup.symtab
+val shash_iter : (string -> Setup.symtab -> unit) -> (string, Setup.symtab) Hashtbl.t -> unit 
+val shash_mem : (string, Setup.symtab) Hashtbl.t -> string -> bool 
+val shash_remove : (string, Setup.symtab) Hashtbl.t -> string -> unit 
+val shash_replace : (string, Setup.symtab) Hashtbl.t -> string -> Setup.symtab -> unit 
+
+val enter_a_sig_attr :
+  out_channel ->
+  string ->
+  (string, Setup.symtab) Hashtbl.t ->
+  Vparser.token -> Setup.TokSet.elt -> Vparser.token -> unit
