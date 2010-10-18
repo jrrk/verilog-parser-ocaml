@@ -33,6 +33,8 @@ type exprt =
 
 type uptr = UPTR of (out_channel -> int -> Vparser.token -> unit) | UNIL;;
 
+type dmode = Pundef | PATH;;
+
 let stk = Stack.create();;
 
 let unhand_list = ref [(0,EMPTY)];;
@@ -48,6 +50,11 @@ let unhandled_ptr = ref (UPTR unhandled_dflt);;
 let unhandled out_chan ln arg = match !unhandled_ptr with UPTR fn -> fn out_chan ln arg | UNIL -> ();;
 
 let last_mod = ref "";;
+let timescale = ref "";;
+let delay_mode = ref Pundef;;
+let mod_empty = ref true;;
+
+let celldefine = ref false and portfaults = ref false and suppress_faults = ref false and protect = ref false;;
 
 (* these functions are for debugging symbol hash related issues *)
 
@@ -478,9 +485,13 @@ and stmtBlock out_chan stem syms block = Stack.push (stem, 465, block) stk; ( ma
   | TLIST stmts
     -> stmtBlock out_chan stem syms stmt
   | _ -> stmtBlock out_chan stem syms stmt )
-| QUADRUPLE((ASSIGNMENT|DLYASSIGNMENT), var1, EMPTY, expr)
+| QUADRUPLE((ASSIGNMENT|DLYASSIGNMENT), var1, dly, expr)
 -> ignore(subexp out_chan RECEIVER stem syms var1);
-   ignore(exprGeneric out_chan stem syms expr)
+   ignore(exprGeneric out_chan stem syms expr);
+(match dly with
+  | EMPTY -> ()
+  | DOUBLE (HASH, dlytok) -> enter_sym_attrs out_chan stem syms dlytok [PARAMUSED] UNKNOWN
+  | _ -> unhandled out_chan 493 dly)
 | DOUBLE(FOREVER, stmt) ->
    stmtBlock out_chan stem syms stmt
 | TRIPLE(REPEAT, iter, stmt) ->
@@ -542,10 +553,12 @@ and vtranif out_chan stem syms x y z =
 iter(fun x -> ignore(subexp out_chan RECEIVER stem syms x)) [x;y;z]
 
 and vnmos out_chan stem syms x y z =
-iter(fun x -> ignore(subexp out_chan RECEIVER stem syms x)) [x;y;z]
+ignore(subexp out_chan RECEIVER stem syms x);
+iter(fun x -> ignore(subexp out_chan DRIVER stem syms x)) [y;z]
 
 and vpmos out_chan stem syms x y z =
-iter(fun x -> ignore(subexp out_chan RECEIVER stem syms x)) [x;y;z]
+ignore(subexp out_chan RECEIVER stem syms x);
+iter(fun x -> ignore(subexp out_chan DRIVER stem syms x)) [y;z]
 
 and vpullup out_chan stem syms (x:token) =
 ignore(subexp out_chan RECEIVER stem syms x)
@@ -783,7 +796,8 @@ end)
     | _ -> unhandled out_chan 674 params
     end
 | _ -> unhandled out_chan 676 expr );
-ignore(Stack.pop stk)
+ignore(Stack.pop stk);
+mod_empty := false
 
 and dispatch out_chan stem tree pass2 =
    let expr = tree.Globals.tree and syms = tree.Globals.symbols in Stack.push (stem, 726, expr) stk; ( match expr with
@@ -841,13 +855,13 @@ let erc_chk_sig out_chan nam syma siga =
   begin
 	begin
 	  if (TokSet.mem INPUT syma) && not ((TokSet.mem DRIVER siga) || (TokSet.mem SPECIAL syma)) then
-	    Printf.fprintf out_chan "%s is a dangling input\n" nam
+	    Printf.fprintf out_chan "%s is an unloaded input\n" nam
 	  else if (TokSet.mem OUTPUT syma) && not ((TokSet.mem RECEIVER siga) || (TokSet.mem SPECIAL syma)) then
-	    Printf.fprintf out_chan "%s is a dangling output\n" nam
+	    Printf.fprintf out_chan "%s is an undriven output\n" nam
 	  else if (TokSet.mem INOUT syma) then
-	    Printf.fprintf out_chan "%s is a inout\n" nam
+	    Printf.fprintf out_chan "Note: %s is an inout\n" nam
 	  else if (TokSet.mem WIRE syma) && not ((TokSet.mem RECEIVER siga) || (TokSet.mem SPECIFY syma)) then
-	    Printf.fprintf out_chan "%s is a dangling wire\n" nam
+	    Printf.fprintf out_chan "%s is an unused wire\n" nam
 	end
   end
 ;;
@@ -877,36 +891,42 @@ exception Error
 
 type logt = Closed | Open of out_channel;;
 
-let pending = shash_create 256;;
-let black_box = ref [];;
+let pending = Hashtbl.create 256;;
+let black_box = Hashtbl.create 256;;
 let logfile = ref Closed;;
 
 let tmpnam = "report."^(string_of_int(Unix.getpid()))^"."^Unix.gethostname()^".report";;
 
 let scan out_chan key contents = begin
+last_mod := key;
 Hashtbl.add Globals.modprims key contents;
 Printf.fprintf out_chan "scanning ..\n";
+mod_empty := true;
 moditemlist out_chan "" contents;
-check_syms out_chan contents.Globals.symbols;
-last_mod := key
+if !mod_empty then
+    Printf.fprintf out_chan "%s check skipped due to black boxing\n" key
+else
+    check_syms out_chan contents.Globals.symbols;
 end
 
 let rec remove_from_pending out_chan mykey =  let reslist = ref [] in begin
 		Hashtbl.iter (fun key contents ->
 contents.Globals.unresolved <- List.filter(fun item -> item <> mykey) contents.Globals.unresolved;
-if contents.Globals.unresolved == [] then (
-			Printf.fprintf out_chan "module %s: resumed " key;
-			scan out_chan key contents; reslist := key :: !reslist)) pending;
+if contents.Globals.unresolved == [] then match contents.Globals.tree with
+| QUINTUPLE(kind, ID mykey, _, _, _) -> (
+			Printf.fprintf out_chan "%s %s: resumed " (str_token kind) key;
+			scan out_chan key contents; reslist := key :: !reslist)
+| _ -> unhandled out_chan 899 contents.Globals.tree) pending;
 			List.iter (fun key -> shash_remove pending key; remove_from_pending out_chan key) !reslist;
 			end
 
-let read_pragma nam1 nam2 =
+let read_pragma nam1 nam2 kind =
 if (nam1 = nam2) then begin
 (*Printf.fprintf out_chan "Pragma %s is black-boxed\n" nam1;*)
-if (List.mem nam1 !black_box == false) then black_box := nam1 :: !black_box
+if (Hashtbl.mem black_box nam1 == false) then Hashtbl.add black_box nam1 kind
 end
 
-let prescan decl = let expt = { Globals.tree=decl; symbols=Hashtbl.create 256; unresolved=[]} in
+let prescan decl = let expt = { Globals.tree=decl; symbols=Hashtbl.create 256; unresolved=(!unresolved_list); } in
 	if (!logfile == Closed) then logfile := Open (open_out tmpnam);
 	match !logfile with Open out_chan -> begin match decl with
 | QUINTUPLE(kind, ID mykey, _, _, _) ->
@@ -924,7 +944,26 @@ let prescan decl = let expt = { Globals.tree=decl; symbols=Hashtbl.create 256; u
 	end;
 	flush out_chan
 | PREPROC str -> Printf.fprintf out_chan "Encountered %s\n" str
-| PRAGMATIC str -> Scanf.sscanf str "//Verilog HDL for \"%s@\", \"%s@\" \"functional\"" read_pragma
+| PRAGMATIC str ->
+( try Scanf.sscanf str "//Verilog HDL for \"%s@\", \"%s@\" \"%s@\"" read_pragma;
+with Scanf.Scan_failure msg -> Printf.fprintf out_chan "Comment %s not understood\n" str)
+| P_RESETALL        			-> begin
+    celldefine := false;
+    portfaults := false;
+    suppress_faults := false;
+    protect := false;
+    timescale := ""
+    end
+| P_CELLDEFINE			        -> celldefine := true
+| P_ENDCELLDEFINE        		-> celldefine := false
+| P_ENABLE_PORTFAULTS        		-> portfaults := true
+| P_DISABLE_PORTFAULTS        		-> portfaults := false
+| P_SUPPRESS_FAULTS        		-> suppress_faults := true
+| P_NOSUPPRESS_FAULTS        		-> suppress_faults := false
+| P_PROTECT        			-> protect := true;
+| P_ENDPROTECT        			-> protect := false;
+| P_TIMESCALE scale    			-> timescale := scale
+| P_DELAY_MODE_PATH                     -> delay_mode := PATH
 | _ -> unhandled out_chan 919 decl
 	end
 	| Closed -> raise Error

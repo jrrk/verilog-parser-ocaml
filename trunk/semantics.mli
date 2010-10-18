@@ -10,12 +10,13 @@ type exprt =
   | UNHANDLED of Vparser.token
 
 type uptr = UPTR of (out_channel -> int -> Vparser.token -> unit) | UNIL
-   val unhand_list : (int * Vparser.token) list ref
-   val unhandled_dflt : out_channel -> int -> Vparser.token -> unit
-   val unhandled_ptr : uptr ref
-   val unhandled : out_channel -> int -> Vparser.token -> unit
 
+val unhand_list : (int * Vparser.token) list ref
+val unhandled_dflt : out_channel -> int -> Vparser.token -> unit
+val unhandled_ptr : uptr ref
+val unhandled : out_channel -> int -> Vparser.token -> unit
 val stk : (string * int * Vparser.token) Stack.t
+val last_mod : string ref
 
    val enter_a_sym : out_channel -> string -> (string, Setup.symtab) Hashtbl.t -> string -> Vparser.token -> Vparser.token -> unit
 (*   val iter_ :
@@ -89,5 +90,5 @@ val enter_a_sig_attr :
   (string, Setup.symtab) Hashtbl.t ->
   Vparser.token -> Setup.TokSet.elt -> Vparser.token -> unit
 
-val read_pragma : string -> string -> unit
-val black_box : string list ref
+val read_pragma : string -> string -> string -> unit
+val black_box : (string, string) Hashtbl.t

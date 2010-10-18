@@ -176,14 +176,15 @@ let _ = List.iter (fun (str,key) -> enter_keyword str key)
 (  "xor",		XOR ) ;
 ("`celldefine", P_CELLDEFINE );
 ("`define", P_DEFINE );
+("`delay_mode_path", P_DELAY_MODE_PATH );
 ("`disable_portfaults", P_DISABLE_PORTFAULTS );
 ("`enable_portfaults", P_ENABLE_PORTFAULTS );
 ("`endcelldefine", P_ENDCELLDEFINE );
+("`endprotect", P_ENDPROTECT );
 ("`else", P_ELSE );
 ("`endif", P_ENDIF );
 ("`nosuppress_faults", P_NOSUPPRESS_FAULTS );
 ("`protect", P_PROTECT );
-("`endprotect", P_ENDPROTECT );
 ("`resetall", P_RESETALL );
 ("`suppress_faults", P_SUPPRESS_FAULTS ) ];;
 
@@ -291,7 +292,7 @@ if Hashtbl.mem ksymbols word then hlog lexbuf (Hashtbl.find ksymbols word) else 
 | digit*'\'''h'['0'-'9' 'A'-'F' 'a'-'f' 'x' 'X' 'z' 'Z' '?' '_']+ as hnum { hlog lexbuf (HEXNUM hnum ) }
 | digit+ as inum { hlog lexbuf (INTNUM inum ) }
 | '\"'anything_but_quote*'\"' as asciinum { hlog lexbuf (ASCNUM asciinum ) }
-| "`timescale" anything_but_newline+ as preproc { hlog lexbuf (PREPROC preproc) }
+| "`timescale" anything_but_newline+ as preproc { hlog lexbuf (P_TIMESCALE preproc) }
 | "`define" anything_but_newline+ as macro_raw {
 let blank1 = String.index macro_raw ' ' in
 (* check the replacement text is not null, if so define it to blank *)

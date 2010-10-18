@@ -61,6 +61,7 @@ open Vparser
 // pre-proc tokens
 %token P_CELLDEFINE
 %token P_DEFINE
+%token P_DELAY_MODE_PATH
 %token P_DISABLE_PORTFAULTS
 %token P_ELSE
 %token P_ENABLE_PORTFAULTS
@@ -516,18 +517,19 @@ modprimDecl:	moduleDecl				{ Semantics.prescan $1 }
 
 // Pre-proc
 
-preproc:	P_CELLDEFINE			        { EMPTY }
-        |       P_DISABLE_PORTFAULTS        		{ EMPTY }
-        |       P_ENABLE_PORTFAULTS        		{ EMPTY }
-        |       P_SUPPRESS_FAULTS        		{ EMPTY }
-        |       P_PROTECT        			{ EMPTY }
-        |       P_RESETALL        			{ EMPTY }
-        |       P_TIMESCALE        			{ EMPTY }
+preproc:	P_CELLDEFINE			        { P_CELLDEFINE }
+        |       P_DELAY_MODE_PATH        		{ P_DELAY_MODE_PATH }
+        |       P_DISABLE_PORTFAULTS        		{ P_DISABLE_PORTFAULTS }
+        |       P_ENABLE_PORTFAULTS        		{ P_ENABLE_PORTFAULTS }
+        |       P_SUPPRESS_FAULTS        		{ P_SUPPRESS_FAULTS }
+        |       P_PROTECT        			{ P_PROTECT }
+        |       P_RESETALL        			{ P_RESETALL }
+        |       P_TIMESCALE        			{ P_TIMESCALE $1 }
 	|	PREPROC					{ PREPROC $1 }
 	|	PRAGMATIC				{ PRAGMATIC $1 }
-	|	P_ENDCELLDEFINE        			{ EMPTY }
-        |       P_NOSUPPRESS_FAULTS        		{ EMPTY }
-        |       P_ENDPROTECT        			{ EMPTY }
+	|	P_ENDCELLDEFINE        			{ P_ENDCELLDEFINE }
+        |       P_NOSUPPRESS_FAULTS        		{ P_NOSUPPRESS_FAULTS }
+        |       P_ENDPROTECT        			{ P_ENDPROTECT }
 			
 
 //**********************************************************************
