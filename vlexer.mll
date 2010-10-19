@@ -18,11 +18,12 @@
 ******************************************************************************)
 
 {
-  open Lexing
-  open Vparser
-  open Setup
+open Lexing
+open Vparser
+open Setup
 
-  let ksymbols = Hashtbl.create 256;;
+let ksymbols = Hashtbl.create 256;;
+
 let enter_keyword id keyword = 
 if Hashtbl.mem ksymbols id then
   Printf.printf "Error: repeated keyword %s\n" id
@@ -67,6 +68,7 @@ let _ = List.iter (fun (str,key) -> enter_keyword str key)
 (  "$countones",	D_COUNTONES ) ;
 (  "countones",		D_COUNTONES ) ;
 (  "cover",		COVER ) ;
+(  "deassign",		DEASSIGN ) ;
 (  "default",		DEFAULT ) ;
 (  "defparam",		DEFPARAM ) ;
 (  "disable",		DISABLE ) ;
@@ -100,6 +102,7 @@ let _ = List.iter (fun (str,key) -> enter_keyword str key)
 (  "function",		FUNCTION ) ;
 (  "forever",		FOREVER ) ;
 (  "$fwrite",		D_FWRITE ) ;
+(  "$fwriteh",		D_FWRITEH ) ;
 (  "generate",		GENERATE ) ;
 (  "genvar",		GENVAR ) ;
 (  "$hold",		TIMINGSPEC ) ;
@@ -163,6 +166,8 @@ let _ = List.iter (fun (str,key) -> enter_keyword str key)
 (  "$timeskew",		TIMINGSPEC ) ;
 (  "$time",		D_TIME ) ;
 (  "tran",		TRAN ) ;
+(  "tri0",		TRI0 ) ;
+(  "tri1",		TRI1 ) ;
 (  "$unsigned",		D_UNSIGNED ) ;
 (  "unsigned",		UNSIGNED ) ;
 (  "uwire",		WIRE ) ;
@@ -173,21 +178,7 @@ let _ = List.iter (fun (str,key) -> enter_keyword str key)
 (  "wire",		WIRE ) ;
 (  "$write",		D_WRITE ) ;
 (  "xnor",		XNOR ) ;
-(  "xor",		XOR ) ;
-("`celldefine", P_CELLDEFINE );
-("`define", P_DEFINE );
-("`delay_mode_path", P_DELAY_MODE_PATH );
-("`disable_portfaults", P_DISABLE_PORTFAULTS );
-("`enable_portfaults", P_ENABLE_PORTFAULTS );
-("`endcelldefine", P_ENDCELLDEFINE );
-("`endprotect", P_ENDPROTECT );
-("`else", P_ELSE );
-("`endif", P_ENDIF );
-("`nosuppress_faults", P_NOSUPPRESS_FAULTS );
-("`protect", P_PROTECT );
-("`resetall", P_RESETALL );
-("`suppress_faults", P_SUPPRESS_FAULTS ) ];;
-
+(  "xor",		XOR ) ];;
 }
 
 let digit = ['0'-'9']
@@ -207,8 +198,8 @@ rule token = parse
 |  "//Verilog "anything_but_newline* as comment {hlog lexbuf (PRAGMATIC comment) }
 |  "//"anything_but_newline* {token lexbuf}
 |  "bufif"digit+ as def		{ hlog lexbuf (BUFIF def) }
+|  "notif"digit+ as def		{ hlog lexbuf (NOTIF def) }
 |  "tranif"digit+ as def	{ hlog lexbuf (TRANIF def) }
-|  "tri"digit+ as strength	{ hlog lexbuf (TRI strength) }
 |  "(weak"digit+ as strength	{ hlog lexbuf (PWEAK strength ) }
 |  "weak"digit+ as strength	{ hlog lexbuf (WEAK strength ) }
 |  "&&"			{ hlog lexbuf (P_ANDAND) }
@@ -287,23 +278,13 @@ if Hashtbl.mem ksymbols word then hlog lexbuf (Hashtbl.find ksymbols word) else 
 }
 | "$" { hlog lexbuf (DOLLAR) }
 | digit+'.'digit* as floatnum { hlog lexbuf ( FLOATNUM ( float_of_string floatnum ) ) }
-| digit*'\'''b'['0' '1' 'x' 'X' 'z' 'Z' '?' '_']+ as bnum { hlog lexbuf (BINNUM bnum ) }
-| digit*'\'''d'digit+ as dnum { hlog lexbuf (DECNUM dnum ) }
-| digit*'\'''h'['0'-'9' 'A'-'F' 'a'-'f' 'x' 'X' 'z' 'Z' '?' '_']+ as hnum { hlog lexbuf (HEXNUM hnum ) }
+| digit*'\''['b' 'B']['0' '1' 'x' 'X' 'z' 'Z' '?' '_']+ as bnum { hlog lexbuf (BINNUM bnum ) }
+| digit*'\''['o' 'O']['0'-'7' 'x' 'X' 'z' 'Z' '?' '_']+ as onum { hlog lexbuf (OCTNUM onum ) }
+| digit*'\''['d' 'D']digit+ as dnum { hlog lexbuf (DECNUM dnum ) }
+| digit*'\''['h' 'H']['0'-'9' 'A'-'F' 'a'-'f' 'x' 'X' 'z' 'Z' '?' '_']+ as hnum { hlog lexbuf (HEXNUM hnum ) }
 | digit+ as inum { hlog lexbuf (INTNUM inum ) }
 | '\"'anything_but_quote*'\"' as asciinum { hlog lexbuf (ASCNUM asciinum ) }
 | "`timescale" anything_but_newline+ as preproc { hlog lexbuf (P_TIMESCALE preproc) }
-| "`define" anything_but_newline+ as macro_raw {
-let blank1 = String.index macro_raw ' ' in
-(* check the replacement text is not null, if so define it to blank *)
-let macro = if (String.contains_from macro_raw (blank1+1) ' ') then macro_raw else macro_raw^"  " in
-let blank2 = String.index_from macro (blank1+1) ' ' in
-let name = "`" ^ (String.sub macro (blank1+1) (blank2-blank1-1)) in
-let defn = String.sub macro (blank2+1) (String.length(macro)-blank2-1) in
-let idx = ref 0 in begin
-while (!idx < String.length defn) && (defn.[!idx] == ' ') do idx := !idx+1; done;
-Hashtbl.add ksymbols name (token (Lexing.from_string (String.sub (defn) (!idx) (String.length(defn)-(!idx)))))
-end; token lexbuf }
 | "`ifdef" anything_but_newline+ as macro_raw
     {	push_ifdef macro_raw;
 	if Stack.top ifstk == false then (ifdef (Lexing.lexeme_start lexbuf) lexbuf); token lexbuf }

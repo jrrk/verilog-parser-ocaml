@@ -42,7 +42,7 @@ val find_referrer : (string, Setup.symtab) Hashtbl.t -> string -> unit
 val enter_sym_attrs : out_channel -> string -> (string, Setup.symtab) Hashtbl.t ->
   Vparser.token -> Setup.TokSet.elt list -> Vparser.token -> unit
 val check_syms : out_channel -> (string, Setup.symtab) Hashtbl.t -> unit
-val prescan : Vparser.token -> unit
+val prescan : Vparser.token -> Vparser.token
 val endscan : unit -> unit
 val subexp :
   out_channel ->

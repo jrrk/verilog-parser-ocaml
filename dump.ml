@@ -61,7 +61,6 @@ let rec dump out_chan exp indent =
 | PARTSEL -> fprintf out_chan "PartSelect "
 | PREPROC str -> fprintf out_chan "`%s\n" str
 | REG -> fprintf out_chan "reg "
-| TRI strength -> fprintf out_chan "TRI%s " strength
 | WEAK strength -> fprintf out_chan "weak%s" strength
 | _ -> fprintf out_chan "%s " (Ord.getstr exp)
 
