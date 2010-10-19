@@ -22,7 +22,7 @@
 TARGET = vparser
 #YACC = menhir -v --trace # --table
 YACC = ocamlyacc
-#YACCOPTS = -v
+YACCOPTS = -v
 #LEXOPTS = -ml
 
 CMO1 = ord.cmo setup.cmo vlexer.cmo globals.cmo dump.cmo semantics.cmo grammar.cmo
@@ -43,7 +43,7 @@ vdebug: $(TARGET)
 ocamlyacc: grammar.mly
 	ocamlyacc $(YACCOPTS) $<
 	mv -f grammar.mli grammar.mli.old
-	sed 's=\(> \)\(token\)=\1Vparser.\2=' < grammar.mli.old > grammar.mli
+	sed 's=\(> \)\(token\)=\1Vparser.\2=g' < grammar.mli.old > grammar.mli
 	cat grammar.mli | grep -v : | grep -v \> >vparser.mli
 	echo exception Error >> grammar.mli
 	rm -f vparser.ml

@@ -68,6 +68,7 @@ open Vparser
 %token P_ENDCELLDEFINE
 %token P_ENDIF
 %token P_IFDEF
+%token<string> P_INCLUDE
 %token P_NOSUPPRESS_FAULTS
 %token P_PROTECT
 %token P_ENDPROTECT
@@ -128,6 +129,7 @@ open Vparser
 %token<int>		INT	// "INTEGER NUMBER as int"
 %token<string>		INTNUM	// "INTEGER NUMBER as string"
 %token<string>		BINNUM	// "BINARY NUMBER"
+%token<string>		OCTNUM	// "OCTAL NUMBER"
 %token<string>		DECNUM	// "DECIMAL NUMBER"
 %token<string>		HEXNUM	// "HEXADECIMAL NUMBER"
 // IEEE: string_literal
@@ -183,6 +185,7 @@ open Vparser
 %token CASEZ		// "casez"
 %token CLOCKING	// "clocking"
 %token COVER		// "cover"
+%token DEASSIGN		// "deassign"
 %token DEFAULT	// "default"
 %token DEFPARAM	// "defparam"
 %token DISABLE	// "disable"
@@ -217,6 +220,7 @@ open Vparser
 %token NEGEDGE	// "negedge"
 %token NOR		// "nor"
 %token NOT		// "not"
+%token<string> NOTIF	// "notif"
 %token OR		// "or"
 %token OUTPUT		// "output"
 %token PARAMETER	// "parameter"
@@ -235,7 +239,8 @@ open Vparser
 %token SUPPLY1	// "supply1"
 %token TABLE	// "table"
 %token TASK		// "task"
-%token<string> TRI		// "tri"
+%token TRI0		// "tri0"
+%token TRI1		// "tri0"
 %token UNSIGNED	// "unsigned"
 %token VECTORED	// "vectored"
 %token<string> WEAK		// "weak"
@@ -248,46 +253,47 @@ open Vparser
 %token D_ATTRIBUTE	// "$attribute"
 %token D_BITS		// "$bits"
 %token D_C		// "$c"
-%token D_CLOG2	// "$clog2"
+%token D_CLOG2		// "$clog2"
 %token D_COUNTDRIVERS	// "$countdrivers"
 %token D_COUNTONES	// "$countones"
 %token D_DISPLAY	// "$display"
-%token D_ERROR	// "$error"
-%token D_FATAL	// "$fatal"
-%token D_FCLOSE	// "$fclose"
+%token D_ERROR		// "$error"
+%token D_FATAL		// "$fatal"
+%token D_FCLOSE		// "$fclose"
 %token D_FDISPLAY	// "$fdisplay"
 %token D_FEOF		// "$feof"
-%token D_FFLUSH	// "$fflush"
-%token D_FGETC	// "$fgetc"
-%token D_FGETS	// "$fgets"
-%token D_FINISH	// "$finish"
-%token D_FOPEN	// "$fopen"
-%token D_FSCANF	// "$fscanf"
-%token D_FWRITE	// "$fwrite"
+%token D_FFLUSH		// "$fflush"
+%token D_FGETC		// "$fgetc"
+%token D_FGETS		// "$fgets"
+%token D_FINISH		// "$finish"
+%token D_FOPEN		// "$fopen"
+%token D_FSCANF		// "$fscanf"
+%token D_FWRITE		// "$fwrite"
+%token D_FWRITEH	// "$fwriteh"
 %token D_INFO		// "$info"
 %token D_ISUNKNOWN	// "$isunknown"
 %token D_MONITOR	// "$monitor"
-%token D_ONEHOT	// "$onehot"
+%token D_ONEHOT		// "$onehot"
 %token D_ONEHOT0	// "$onehot0"
-%token D_RANDOM	// "$random"
+%token D_RANDOM		// "$random"
 %token D_READMEMB	// "$readmemb"
 %token D_READMEMH	// "$readmemh"
-%token D_SIGNED	// "$signed"
-%token D_SSCANF	// "$sscanf"
-%token D_STIME	// "$stime"
+%token D_SIGNED		// "$signed"
+%token D_SSCANF		// "$sscanf"
+%token D_STIME		// "$stime"
 %token D_STOP		// "$stop"
 %token D_TEST_PLUSARGS	// "$test$plusargs"
 %token D_TIME		// "$time"
 %token D_UNSIGNED	// "$unsigned"
 %token D_WARNING	// "$warning"
-%token D_WRITE	// "$write"
+%token D_WRITE		// "$write"
 
 %token P_OROR		// "||"
-%token P_ANDAND	// "&&"
+%token P_ANDAND		// "&&"
 %token P_NOR		// "~|"
 %token P_XNOR		// "^~"
 %token P_NAND		// "~&"
-%token P_EQUAL	// "=="
+%token P_EQUAL		// "=="
 %token P_NOTEQUAL	// "!="
 %token P_CASEEQUAL	// "==="
 %token P_CASENOTEQUAL	// "!=="
@@ -295,15 +301,15 @@ open Vparser
 %token P_WILDNOTEQUAL	// "!=?"
 %token P_GTE		// ">="
 %token P_LTE		// "<="
-%token P_SLEFT	// "<<"
-%token P_SRIGHT	// ">>"
+%token P_SLEFT		// "<<"
+%token P_SRIGHT		// ">>"
 %token P_SSRIGHT	// ">>>"
 %token P_POW		// "**"
 
 %token P_PLUSCOLON	// "+:"
 %token P_MINUSCOLON	// "-:"
 %token P_EQGT		// "=>"
-%token P_ASTGT	// "*>"
+%token P_ASTGT		// "*>"
 %token P_ANDANDAND	// "&&&"
 %token P_POUNDPOUND	// "##"
 %token P_DOTSTAR	// ".*"
@@ -313,16 +319,16 @@ open Vparser
 %token P_COLONEQ	// ":="
 %token P_COLONDIV	// ":/"
 %token P_ORMINUSGT	// "|->"
-%token P_OREQGT	// "|=>"
+%token P_OREQGT		// "|=>"
 
-%token P_PLUSEQ	// "+="
+%token P_PLUSEQ		// "+="
 %token P_MINUSEQ	// "-="
 %token P_TIMESEQ	// "*="
-%token P_DIVEQ	// "/="
-%token P_MODEQ	// "%="
-%token P_ANDEQ	// "&="
+%token P_DIVEQ		// "/="
+%token P_MODEQ		// "%="
+%token P_ANDEQ		// "&="
 %token P_OREQ		// "|="
-%token P_XOREQ	// "^="
+%token P_XOREQ		// "^="
 %token P_SLEFTEQ	// "<<="
 %token P_SRIGHTEQ	// ">>="
 %token P_SSRIGHTEQ	// ">>>="
@@ -437,7 +443,6 @@ open Vparser
 %type <token> instDecl
 %type <token list> instnameList
 %type <token> instnameParen
-%type <token> instparamListE
 %type <token> instRangeE
 %type <token> labeledStmt
 %type <token> lifetimeE
@@ -476,7 +481,7 @@ open Vparser
 %type <token> signingE
 %type <token> Junk
 %type <token list> JunkList
-%type <unit>       start
+%type <token> start
 %type <token> stateCaseForIf
 %type <token> stmt
 %type <token> stmtBlock
@@ -506,8 +511,8 @@ identifier:	ID	{ ID $1 }
 //**********************************************************************
 //
 
-start:		ENDOFFILE				{ raise End_of_file }
-	|	modprimDecl start			{ }
+start:		ENDOFFILE				{ ENDOFFILE }
+	|	modprimDecl start			{ $1 }
 	;
 
 modprimDecl:	moduleDecl				{ Semantics.prescan $1 }
@@ -672,7 +677,8 @@ modParDecl:
 varNet:		SUPPLY0					{ SUPPLY0 }
 	|	SUPPLY1					{ SUPPLY1 }
 	|	WIRE 					{ WIRE }
-	|	TRI 					{ TRI $1 }
+	|	TRI0 					{ TRI0 }
+	|	TRI1 					{ TRI1 }
 	;
 
 varGParam:	PARAMETER				{ PARAMETER }
@@ -819,11 +825,6 @@ delayE:		/* empty */				{ EMPTY }
 	|	delay					{ $1 } /* ignored */
 	;
 
-delayStrength:	/* empty */				{ EMPTY }
-	|	delay					{ $1 } /* ignored */
-	|	PWEAK strengthList RPAREN		{ TLIST ((WEAK $1 ) :: $2 ) }
-	;
-
 strengthList:
 		/* empty */				{ [] }
 	|	COMMA WEAK strengthList			{ WEAK $2 :: $3 }
@@ -934,7 +935,7 @@ defpOne:
 // Instances
 
 instDecl:
-		ID instparamListE instnameList SEMICOLON  {
+		ID delayStrength instnameList SEMICOLON  {
 if (Hashtbl.mem Globals.modprims ($1) == false) then
   begin
   if (List.mem $1 !Globals.unresolved_list == false) then begin
@@ -943,7 +944,7 @@ if (Hashtbl.mem Globals.modprims ($1) == false) then
   end;
  QUADRUPLE (MODINST, (ID $1), $2, TLIST $3 )
 }
-	| 	ID instparamListE LPAREN varRefDotBit COMMA gateUdpPinList RPAREN SEMICOLON
+	| 	ID delayStrength LPAREN varRefDotBit COMMA gateUdpPinList RPAREN SEMICOLON
 							{
 if (Hashtbl.mem Globals.modprims ($1) == false) then
   begin
@@ -955,10 +956,12 @@ if (Hashtbl.mem Globals.modprims ($1) == false) then
 }
 ;
 
-instparamListE:
+delayStrength:
 		/* empty */				{ EMPTY }
+	|	HASH dlyTerm				{ DOUBLE (HASH, $2 ) }
 	|	HASH LPAREN cellpinList RPAREN		{ TLIST $3 }
 	|	PWEAK strengthList RPAREN		{ TLIST ((WEAK $1 ) :: $2 ) }
+	|	PWEAK strengthList RPAREN HASH dlyTerm	{ DOUBLE (TLIST ((WEAK $1 ) :: $2 ), DOUBLE (HASH, $5)) }
 	;
 
 instnameList:
@@ -1066,6 +1069,8 @@ stmt:
 			{ TRIPLE (D_FOPEN, $1, $5) }
 	|	ASSIGN varRefDotBit EQUALS delayStrength expr SEMICOLON
 			{ QUADRUPLE (ASSIGN, $2, $4, $5 ) }
+	|	DEASSIGN varRefDotBit SEMICOLON
+			{ DOUBLE (DEASSIGN, $2 ) }
 	|	LCURLY concIdList RCURLY P_LTE delayE expr SEMICOLON
 			{ QUADRUPLE (DLYASSIGNMENT, DOUBLE(CONCAT,TLIST $2), $5, $6 ) }
 	|	LCURLY concIdList RCURLY EQUALS delayE expr SEMICOLON
@@ -1098,10 +1103,12 @@ stmt:
 			{ TRIPLE (D_DISPLAY, ASCNUM $3, $4); }
 	|	D_WRITE LPAREN ASCNUM commaEListE RPAREN SEMICOLON
 			{ TRIPLE (D_WRITE,ASCNUM $3,$4) }
-	|	D_FDISPLAY LPAREN varRefDotBit COMMA ASCNUM commaEListE RPAREN SEMICOLON
-		 	{ TRIPLE ( D_FDISPLAY, $3, $6 ) }
-	|	D_FWRITE   LPAREN varRefDotBit COMMA ASCNUM commaEListE RPAREN SEMICOLON
-			{ TRIPLE ( D_FWRITE, $3, $6 ) }
+	|	D_FDISPLAY LPAREN varRefDotBit monListE RPAREN SEMICOLON
+		 	{ TRIPLE ( D_FDISPLAY, $3, $4 ) }
+	|	D_FWRITE   LPAREN varRefDotBit monListE RPAREN SEMICOLON
+			{ TRIPLE ( D_FWRITE, $3, $4 ) }
+	|	D_FWRITEH  LPAREN varRefDotBit monListE RPAREN SEMICOLON
+			{ TRIPLE ( D_FWRITEH, $3, $4 ) }
 	|	D_INFO	    parenE SEMICOLON
 			{ DOUBLE (D_INFO, $2) }
 	|	D_INFO	    LPAREN ASCNUM commaEListE RPAREN SEMICOLON
@@ -1337,6 +1344,7 @@ exprNoStr:
 	|	funcRef					{ $1 }
 	|	INTNUM					{ INT (int_of_string $1) }
 	|	BINNUM					{ BINNUM $1 }
+	|	OCTNUM					{ OCTNUM $1 }
 	|	DECNUM					{ DECNUM $1 }
 	|	HEXNUM					{ HEXNUM $1 }
 	|	varRefDotBit	  			{ $1 }
@@ -1388,6 +1396,10 @@ commaVRDListE:
 	|	COMMA vrdList				{ DOUBLE (COMMA, TLIST $2 ) }
 	;
 
+monListE:
+		/* empty */				{ EMPTY }
+	|	COMMA monList				{ TLIST $2 }
+
 monList:
 		monText					{ [ $1 ] }
 	|	monList COMMA monText			{ $1 @ [ $3 ] }
@@ -1408,6 +1420,7 @@ attrDecl:
 gateDecl:
 		BUF  delayStrength gateBufList SEMICOLON		{ TRIPLE (BUF, $2, TLIST $3 ) }
 	|	BUFIF delayStrength gateBufIfList SEMICOLON		{ TRIPLE (BUFIF $1, $2, TLIST $3 ) }
+	|	NOTIF delayStrength gateBufIfList SEMICOLON		{ TRIPLE (NOTIF $1, $2, TLIST $3 ) }
 	|	NOT  delayStrength gateNotList SEMICOLON		{ TRIPLE (NOT, $2, TLIST $3 ) }
 	|	AND  delayStrength gateAndList SEMICOLON		{ TRIPLE (AND, $2, TLIST $3 ) }
 	|	NAND delayStrength gateNandList SEMICOLON		{ TRIPLE (NAND, $2, TLIST $3 ) }

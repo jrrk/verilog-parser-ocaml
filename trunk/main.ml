@@ -40,8 +40,9 @@ let dump_all_syms syms = Hashtbl.iter Setup.show_sym syms;;
 let vparser args = begin
   Setup.psuccess := true;
   for i = 1 to ( Array.length args - 1 ) do
-    (*Printexc.print*) Vparse.parse args.( i )
+    (*Printexc.print*) Vparse.push args.( i )
   done;
+  Vparse.parse();
   if (!Setup.psuccess == false) then
     Printf.printf "Not continuing due to parse errors\n";
   Semantics.endscan();
