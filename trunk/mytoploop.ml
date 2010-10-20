@@ -16,7 +16,7 @@
 
 open Path
 open Lexing
-open Format
+(*open Format*)
 open Config
 open Misc
 open Parsetree
@@ -73,15 +73,13 @@ let use_string ppf cmdbuf =
           true
         with
         | Exit -> false
-        | Sys.Break -> fprintf ppf "Interrupted.@."; false
+        | Sys.Break -> Format.fprintf ppf "Interrupted.@."; false
         | x -> Errors.report_error ppf x; false) in
     success
   with Not_found -> false
 
 let loop ppf =
-  fprintf ppf "Unhandled syntax - entering debugger - version %s@.@." Config.version;
-  initialize_toplevel_env ();
-  if (use_string ppf "open Vparser open Semantics open List open Mytoploop;; hd(!unhand_list);;" == false) then Printf.fprintf stderr "Error\n";
+  Format.fprintf ppf "Unhandled syntax - entering debugger - version %s@.@." Config.version;
   let refill_lexbuf buffer len = fst(!read_interactive_input "dbg> " buffer len) in
   let looping = ref true and lb = Lexing.from_function refill_lexbuf in
   Location.input_name := "";
@@ -97,7 +95,7 @@ let loop ppf =
       ignore(execute_phrase true ppf phr)
     with
     | End_of_file -> looping := false
-    | Sys.Break -> fprintf ppf "Interrupted.@."; Btype.backtrack snap
+    | Sys.Break -> Format.fprintf ppf "Interrupted.@."; Btype.backtrack snap
     | PPerror -> ()
     | x -> Errors.report_error ppf x; Btype.backtrack snap
   done
@@ -106,7 +104,14 @@ let loop ppf =
 
 let unhandled_dbg out_chan ln argt = let arg = (ln,argt) in if (List.mem arg !Semantics.unhand_list == false)
     then Semantics.unhand_list := arg :: !Semantics.unhand_list;
-Printexc.print_backtrace out_chan;
-loop Format.std_formatter;;
+    Printf.fprintf out_chan "\n\n**** Unhandled %d ****\n" (List.length !Semantics.unhand_list);
+(*Printexc.print_backtrace out_chan;*)
+  ignore(use_string Format.std_formatter "hd(!unhand_list);;");
+  Format.set_formatter_out_channel stderr;
+  loop Format.std_formatter;
+  Format.set_formatter_out_channel out_chan;;
 
-let _ = Semantics.unhandled_ptr := (Semantics.UPTR unhandled_dbg);;
+let _ = Semantics.unhandled_ptr := (Semantics.UPTR unhandled_dbg);
+  initialize_toplevel_env ();
+  ignore(use_string Format.std_formatter "open Vparser open Semantics open List open Mytoploop;;")
+
