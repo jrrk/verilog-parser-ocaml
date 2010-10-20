@@ -24,5 +24,6 @@ val setvalue : string -> Obj.t -> unit
 
 val loop : formatter -> unit
 
-(* variables to be debugged *)
+(* execute a string *)
 
+val use_string : formatter -> string -> bool

@@ -565,8 +565,8 @@ primItem:
 
 modParE:
 		/* empty */				{ EMPTY }
-	|	HASH LPAREN RPAREN			{ EMPTY }
-	|	HASH LPAREN modParArgs RPAREN		{ TLIST $3 }
+	|	HASH LPAREN RPAREN			{ DOUBLE (HASH, EMPTY) }
+	|	HASH LPAREN modParArgs RPAREN		{ DOUBLE (HASH, TLIST $3) }
 	;
 
 modParArgs:
@@ -818,7 +818,7 @@ AssignList:
 
 AssignOne:
 		varRefDotBit EQUALS expr			{ TRIPLE (ASSIGNMENT, $1, $3 ) }
-	|	LCURLY concIdList RCURLY EQUALS expr		{ TRIPLE (ASSIGNMENT, DOUBLE(CONCAT,TLIST $2), $5) }
+	|	LCURLY concIdList RCURLY EQUALS expr		{ TRIPLE (ASSIGNMENT, DOUBLE (CONCAT,TLIST $2), $5) }
 	;
 
 delayE:		/* empty */				{ EMPTY }
@@ -849,7 +849,7 @@ dlyTerm:
 // IEEE: mintypmax_expression and constant_mintypmax_expression
 minTypMax:
 		dlyTerm					{ $1 } /* ignored */
-	|	dlyTerm COLON dlyTerm COLON dlyTerm	{ QUADRUPLE(MINTYPMAX, $1, $3, $5) } /* ignored */
+	|	dlyTerm COLON dlyTerm COLON dlyTerm	{ QUADRUPLE (MINTYPMAX, $1, $3, $5) } /* ignored */
 	;
 
 sigAndAttr:
@@ -959,7 +959,7 @@ if (Hashtbl.mem Globals.modprims ($1) == false) then
 delayStrength:
 		/* empty */				{ EMPTY }
 	|	HASH dlyTerm				{ DOUBLE (HASH, $2 ) }
-	|	HASH LPAREN cellpinList RPAREN		{ TLIST $3 }
+	|	HASH LPAREN cellpinList RPAREN		{ DOUBLE (HASH, TLIST $3) }
 	|	PWEAK strengthList RPAREN		{ TLIST ((WEAK $1 ) :: $2 ) }
 	|	PWEAK strengthList RPAREN HASH dlyTerm	{ DOUBLE (TLIST ((WEAK $1 ) :: $2 ), DOUBLE (HASH, $5)) }
 	;
@@ -1072,9 +1072,9 @@ stmt:
 	|	DEASSIGN varRefDotBit SEMICOLON
 			{ DOUBLE (DEASSIGN, $2 ) }
 	|	LCURLY concIdList RCURLY P_LTE delayE expr SEMICOLON
-			{ QUADRUPLE (DLYASSIGNMENT, DOUBLE(CONCAT,TLIST $2), $5, $6 ) }
+			{ QUADRUPLE (DLYASSIGNMENT, DOUBLE (CONCAT,TLIST $2), $5, $6 ) }
 	|	LCURLY concIdList RCURLY EQUALS delayE expr SEMICOLON
-			{ QUADRUPLE (ASSIGNMENT, DOUBLE(CONCAT,TLIST $2), $5, $6 ) }
+			{ QUADRUPLE (ASSIGNMENT, DOUBLE (CONCAT,TLIST $2), $5, $6 ) }
 	|	D_C LPAREN cStrList RPAREN SEMICOLON
 			{ TLIST $3 }
 	|	D_FCLOSE LPAREN varRefDotBit RPAREN SEMICOLON
@@ -1402,11 +1402,11 @@ monListE:
 
 monList:
 		monText					{ [ $1 ] }
-	|	monList COMMA monText			{ $1 @ [ $3 ] }
+	|	monText COMMA monList			{ $1 :: $3 }
 	;
 
 monText:
-		/* empty */				{ EMPTY }
+		/* empty */				{ ASCNUM "" }
 	|	exprNoStr				{ $1 }
 	|	strAsText				{ $1 }
 	;
@@ -1580,7 +1580,7 @@ gateUdpPinList:
 // Tables
 // parsed but not supported
 
-tableDecl:	TABLE trowList ENDTABLE 		{ DOUBLE(TABLE, TLIST $2) }
+tableDecl:	TABLE trowList ENDTABLE 		{ DOUBLE (TABLE, TLIST $2) }
 	;
 
 trowList:
@@ -1589,8 +1589,8 @@ trowList:
 	|	trow SEMICOLON trowList			{ $1 :: $3 }
 	;
 
-trow:		tinList COLON tregoutList			{ DOUBLE(TLIST $1,TLIST $3) }
-	|	tinList COLON tregoutList COLON tregoutList	{ TRIPLE(TLIST $1,TLIST $3,TLIST $5) }
+trow:		tinList COLON tregoutList			{ DOUBLE (TLIST $1,TLIST $3) }
+	|	tinList COLON tregoutList COLON tregoutList	{ TRIPLE (TLIST $1,TLIST $3,TLIST $5) }
 
 tinList:	tin					{ [ $1 ] }
 	|	tin tinList				{ $1 :: $2 }
@@ -1790,11 +1790,11 @@ idArrayed:
 		identifier				{ $1 }
 	|	idArrayed LBRACK expr RBRACK		{ TRIPLE (BITSEL, $1, $3 ) }  // Or AstArraySel, dont know et.
 	|	idArrayed LBRACK constExpr COLON constExpr RBRACK
-							{ QUADRUPLE(PARTSEL, $1 , $3 , $5 ) }
+							{ QUADRUPLE (PARTSEL, $1 , $3 , $5 ) }
 	|	idArrayed LBRACK expr P_PLUSCOLON  constExpr RBRACK
-							{ QUADRUPLE(P_PLUSCOLON, $1 , $3 , $5 ) }
+							{ QUADRUPLE (P_PLUSCOLON, $1 , $3 , $5 ) }
 	|	idArrayed LBRACK expr P_MINUSCOLON constExpr RBRACK
-							{ QUADRUPLE(P_MINUSCOLON, $1, $3, $5 ) }
+							{ QUADRUPLE (P_MINUSCOLON, $1, $3, $5 ) }
 	;
 
 // VarRef without any dots or vectorization
