@@ -38,6 +38,7 @@ let tmpnam = "report."^(string_of_int(Unix.getpid()))^"."^Unix.gethostname()^".r
 let unresolved_list = ref [];;
 let stk = Stack.create();;
 let logfile = ref Setup.Closed;;
+let trace_file = ref Setup.Closed;;
 
 let (unhand_list:(int*token) list ref) = ref [];;
 
@@ -54,3 +55,5 @@ let last_mod = ref "";;
 
 let get_table (m:string) = Hashtbl.find modprims m;;
 let get_syms (r:modtree) = r.symbols;;
+
+let tsymbols = Hashtbl.create 256;;

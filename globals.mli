@@ -18,6 +18,8 @@ val tmpnam : string
 val modprims: (string, modtree) Hashtbl.t
 val pending: (string, modtree) Hashtbl.t
 val black_box: (string, string) Hashtbl.t
+val tsymbols : (string, Vparser.token) Hashtbl.t
+
 val get_table : string -> modtree
 val get_syms : modtree -> (string, Setup.symtab) Hashtbl.t
 (*
@@ -27,3 +29,4 @@ val show_table : string -> unit
 val unresolved_list : string list ref
 val stk : (string * int * Vparser.token) Stack.t
 val logfile : Setup.logt ref
+val trace_file : Setup.logt ref
