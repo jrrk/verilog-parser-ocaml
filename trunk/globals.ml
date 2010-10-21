@@ -21,6 +21,8 @@ open Vparser;;
 
 type symtab = { symattr : Setup.tset; width : int; };;
 
+type uptr = UPTR of (Setup.fmt -> int -> Vparser.token -> unit) | UNIL;;
+
 type modtree = {
 tree: token;
 symbols: (string, Setup.symtab) Hashtbl.t;
@@ -29,7 +31,26 @@ mutable unresolved: string list;
  };;
 
 let modprims = Hashtbl.create 256;;
+let pending = Hashtbl.create 256;;
+let black_box = Hashtbl.create 256;;
+
+let tmpnam = "report."^(string_of_int(Unix.getpid()))^"."^Unix.gethostname()^".report";;
 let unresolved_list = ref [];;
+let stk = Stack.create();;
+let logfile = ref Setup.Closed;;
+
+let (unhand_list:(int*token) list ref) = ref [];;
+
+let unhandled_dflt out_chan ln argt = let arg = (ln,argt) in if (List.mem arg !unhand_list == false) then begin
+unhand_list := arg :: !unhand_list;
+Printf.fprintf (fst out_chan) "\n\n**** Unhandled %d ****\n" (List.length !unhand_list);
+end
+
+let unhandled_ptr = ref (UPTR unhandled_dflt);;
+
+let unhandled out_chan ln arg = match !unhandled_ptr with UPTR fn -> fn out_chan ln arg | UNIL -> ();;
+
+let last_mod = ref "";;
 
 let get_table (m:string) = Hashtbl.find modprims m;;
 let get_syms (r:modtree) = r.symbols;;

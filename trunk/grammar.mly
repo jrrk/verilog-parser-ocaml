@@ -90,8 +90,10 @@ open Vparser
 %token SPECIAL
 // for parameters
 %token PARAMUSED
-// for tasks
+// for tasks/funcs/senslists
 %token TASKUSED
+%token FUNCUSED
+%token SENSUSED
 // for memories
 %token MEMORY
 // for transistor level
@@ -512,12 +514,12 @@ identifier:	ID	{ ID $1 }
 //
 
 start:		ENDOFFILE				{ ENDOFFILE }
-	|	modprimDecl start			{ $1 }
+	|	modprimDecl				{ $1 }
 	;
 
-modprimDecl:	moduleDecl				{ Semantics.prescan $1 }
-	|	primDecl				{ Semantics.prescan $1 }
-	|	preproc					{ Semantics.prescan $1 }
+modprimDecl:	moduleDecl				{ $1 }
+	|	primDecl				{ $1 }
+	|	preproc					{ $1 }
 	;
 
 // Pre-proc
@@ -1663,6 +1665,8 @@ Junk:		identifier 				{ $1 }
 	|	SPECIAL					{ EMPTY }
 	|	PARAMUSED				{ EMPTY }
 	|	TASKUSED				{ EMPTY }
+	|	FUNCUSED				{ EMPTY }
+	|	SENSUSED				{ EMPTY }
 	|	VOID					{ EMPTY }
 	|	SCALAR					{ EMPTY }
 	|	DOUBLE					{ EMPTY }

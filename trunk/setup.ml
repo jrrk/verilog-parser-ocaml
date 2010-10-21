@@ -36,7 +36,11 @@ module OrdTok : Ordered with type t = token =
 
 type tset = Set.Make(OrdTok).t
 
-type tsigattr = Sigundef | Sigarray of tset array | Sigparam of Vparser.token | Sigtask of Vparser.token
+type tsigattr = Sigundef |
+        Sigarray of tset array |
+        Sigparam of Vparser.token |
+        Sigtask of Vparser.token |
+        Sigfunc of Vparser.token 
 
 and symtab = {
   symattr : tset;
@@ -44,6 +48,10 @@ and symtab = {
   path : string;
   sigattr : tsigattr;
 }
+
+type fmt = (out_channel*Format.formatter)
+
+type logt = Closed | Open of fmt;;
 
 module TokSet = Set.Make (OrdTok)
 
@@ -73,10 +81,4 @@ let rec str_token (e:token) = match e with
 | SCALAR -> "scalar"
 | WIRE -> "wire"
 | REG -> "reg"
-| _ -> (Ord.getstr e);;
-
-let show_token (e:token) = Printf.printf "%s " (str_token e)
-
-let show_set s = TokSet.iter (fun e -> Printf.printf "%s " (str_token e)) s;;
-
-let show_sym _ (x:symtab) = Printf.printf "%s: " x.path; TokSet.iter show_token x.symattr; print_char '\n';;
+| _ -> (Ord.getstr e)

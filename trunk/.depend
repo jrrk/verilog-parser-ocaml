@@ -1,12 +1,12 @@
-grammar.cmo: vparser.cmi globals.cmo semantics.cmo grammar.cmi grammar.ml
-grammar.cmx: vparser.cmx vlexer.cmx semantics.cmx globals.cmx grammar.cmi 
+grammar.cmo: vparser.cmi globals.cmo grammar.cmi grammar.ml
+grammar.cmx: vparser.cmi globals.cmx grammar.cmi grammar.ml
 vlexer.cmo: vparser.cmi setup.cmi
 vlexer.cmx: vparser.cmi setup.cmi
 vparser.cmo: vparser.cmi 
 vparser.cmx: vparser.cmi
 grammar.cmi: vparser.cmi 
-dump.cmo: dump.cmi vlexer.cmo
-dump.cmx: vparser.cmi dump.cmi vlexer.cmo globals.cmi
+dump.cmo: globals.cmi dump.cmi vlexer.cmo
+dump.cmx: globals.cmi vparser.cmi dump.cmi vlexer.cmo
 dump.cmi: vparser.cmi globals.cmi
 vparse.cmo: vparse.cmi vlexer.cmi globals.cmi dump.cmi semantics.cmi setup.cmi grammar.cmo
 vparse.cmx: vparse.cmi vlexer.cmi globals.cmi dump.cmi semantics.cmi setup.cmi grammar.cmo
@@ -18,7 +18,7 @@ globals.cmx: vparser.cmi globals.cmi
 globals.cmi: vparser.cmi setup.cmi
 semantics.cmo: semantics.cmi vlexer.cmo dump.cmi vparser.cmi
 semantics.cmx: semantics.cmi vlexer.cmx dump.cmi vparser.cmi
-semantics.cmi: vparser.cmi setup.cmi globals.cmi
+semantics.cmi: vparser.cmi setup.cmi globals.cmi const.cmi
 setup.cmo: setup.cmi
 setup.cmx: setup.cmi vparser.cmi
 setup.cmi: vparser.cmi ord.cmi
@@ -28,4 +28,6 @@ ord.cmi: vparser.cmi
 mytoploop.cmi: vparser.cmi grammar.cmi semantics.cmi
 notoploop.cmi: mytoploop.mli vparser.cmi grammar.cmi
 mytoploop.cmo: mytoploop.cmi vparser.cmi
-
+const.cmo: const.cmi
+const.cmx: const.cmi
+const.cmi: vparser.cmi

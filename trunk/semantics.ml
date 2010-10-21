@@ -18,6 +18,7 @@
 *******************************************************************************)
 
 open List
+open Const
 open Printf
 open Vparser
 open Globals
@@ -31,23 +32,6 @@ type exprt =
 | UNHANDLED of token
 ;;
 
-type uptr = UPTR of (out_channel -> int -> Vparser.token -> unit) | UNIL;;
-
-let stk = Stack.create();;
-
-let (unhand_list:(int*token) list ref) = ref [];;
-
-let unhandled_dflt out_chan ln argt = let arg = (ln,argt) in if (List.mem arg !unhand_list == false) then begin
-unhand_list := arg :: !unhand_list;
-fprintf out_chan "\n\n**** Unhandled %d ****\n" (List.length !unhand_list);
-Dump.dump out_chan argt 0
-end
-
-let unhandled_ptr = ref (UPTR unhandled_dflt);;
-
-let unhandled out_chan ln arg = match !unhandled_ptr with UPTR fn -> fn out_chan ln arg | UNIL -> ();;
-
-let last_mod = ref "";;
 let mod_empty = ref true;;
 
 (* these functions are for debugging symbol hash related issues *)
@@ -72,93 +56,6 @@ shash_find syms pth
 end
 ;;
 
-let rec exprBoolean out_chan stem syms op expr1 expr2 =
-op (exprConst out_chan stem syms expr1) (exprConst out_chan stem syms expr2)
-
-and widthnum expbase (str:string) =
-let base = ref 10
-and width = ref 0
-and value = ref 0
-and basing = ref 0
-and converting = ref true in
-for idx = 0 to String.length(str)-1 do let ch = Char.lowercase(str.[idx]) in begin
-(*    Printf.printf "%c" ch;  *)
-    match ch with
-| '\'' -> converting := false; basing := idx+1;
-| '0'..'9' -> if (!converting) then
-    width := (!width * !base) + int_of_char(str.[idx]) - int_of_char('0')
-else
-    value := (!value * !base) + int_of_char(str.[idx]) - int_of_char('0')
-| 'a'..'z' ->  if (!converting) then
-    width := (!width * !base) + int_of_char(str.[idx]) - int_of_char('a') + 10
-else if (!basing==idx) then begin match ch with
-  | 'b' -> base := 2
-  | 'd' -> base := 10
-  | 'h' -> base := 16
-  | _ -> value := int_of_char(str.[idx]) - int_of_char('a') + 10
-end else
-    value := (!value * !base) + int_of_char(str.[idx]) - int_of_char('a') + 10;
-| _ -> converting := false; width := 0
-end
-done;
-if (!basing == 0) then begin
-  value := !width;
-  width := 32;
-end;
-if (!base <> expbase) then printf "Expected base %d, actual base %d\n" expbase !base;
-(!width, !value)
-
-and exprConst out_chan stem syms expr = Stack.push (stem, 67, expr) stk; let rslt = ( match expr with
-| INT n -> n
-| HEXNUM str -> snd(widthnum 16 str)
-| TRIPLE(TIMES, expr1, expr2) -> (exprConst out_chan stem syms expr1) * (exprConst out_chan stem syms expr2)
-| TRIPLE(PLUS, expr1, expr2) -> (exprConst out_chan stem syms expr1) + (exprConst out_chan stem syms expr2)
-| TRIPLE(MINUS, expr1, expr2) -> (exprConst out_chan stem syms expr1) - (exprConst out_chan stem syms expr2)
-| TRIPLE(P_EQUAL, expr1, expr2) -> if (exprBoolean out_chan stem syms (=)) expr1 expr2 then 1 else 0
-| TRIPLE(P_NOTEQUAL, expr1, expr2) -> if (exprBoolean out_chan stem syms (<>)) expr1 expr2 then 1 else 0
-| TRIPLE(LESS, expr1, expr2) -> if (exprBoolean out_chan stem syms (<)) expr1 expr2 then 1 else 0
-| TRIPLE(GREATER, expr1, expr2) -> if (exprBoolean out_chan stem syms (>)) expr1 expr2 then 1 else 0
-| TRIPLE(P_LTE, expr1, expr2) -> if (exprBoolean out_chan stem syms (<=)) expr1 expr2 then 1 else 0
-| TRIPLE(P_GTE, expr1, expr2) -> if (exprBoolean out_chan stem syms (>=)) expr1 expr2 then 1 else 0
-| DOUBLE(CONCAT, TLIST [left; right]) -> fprintf out_chan "Concat expr not yet implemented, value 1 assumed\n"; 1
-
-| ID id -> let pth = stem^id in begin
-if shash_mem syms pth == false then begin
-  if shash_mem syms id == false then begin
-(*    unhandled out_chan 81 expr;  *)
-    fprintf out_chan "constant %s not declared, value 1 assumed\n" pth;
-    1
-    end
-  else
-    match (shash_find syms id).sigattr with
-    | Sigparam pexpr -> exprConst out_chan stem syms pexpr
-    | Sigarray x -> fprintf out_chan "%s not a constant or for variable, value 1 assumed\n" id; 1
-    | _ -> unhandled out_chan 89 expr; 1
-  end
-else
-  match (shash_find syms pth).sigattr with
-  | Sigparam pexpr -> exprConst out_chan stem syms pexpr
-  | Sigarray x -> fprintf out_chan "%s not a constant or for variable, value 1 assumed\n" pth; 1
-  | _ -> unhandled out_chan 95 expr; 1
-end
-| TRIPLE(FUNCREF, ID id, TLIST args) -> fprintf out_chan "%s is a function, value 1 assumed\n" id; 1
-| QUADRUPLE(PARTSEL, arg, INT hi, INT lo) -> (exprConst out_chan stem syms arg) lsr lo
-| TRIPLE(P_SLEFT, INT 1, ID id) -> fprintf out_chan "Const expression 1<<%s is too complicated, value 1 assumed\n" id; 1
-| _ -> unhandled out_chan 97 expr; 1 ) in
-ignore(Stack.pop stk);
-rslt
-
-let iwidth out_chan stem syms wid =  match wid with 
-| RANGE(expr1, expr2) -> (exprConst out_chan stem syms expr1,exprConst out_chan stem syms expr2)
-| UNKNOWN -> (0,0)
-| SCALAR -> (0,0)
-| EMPTY -> (0,0)
-| _ -> unhandled out_chan 56 wid; (-1,-1)
-
-let maxwidth out_chan stem syms neww = let w = iwidth out_chan stem syms neww in
-1 + (max (fst w) (snd w))
-;;
-
 let create_attr out_chan stem syms neww = 
  Sigarray (Array.make (maxwidth out_chan stem syms neww) TokSet.empty)
 
@@ -167,12 +64,12 @@ let enter_a_sym out_chan stem symbols id attr w = let pth = stem^id in match att
  |MODULE|PRIMITIVE|SUBMODULE|SUBCCT|SPECIFY|SPECIAL|PARAMUSED
  |PARAMETER|TASK|FUNCTION) ->
 if shash_mem symbols pth then begin
-(*  printf "Update %s: %s\n" pth (Ord.getstr attr); *)
+(*  Printf.fprintf (fst out_chan) "Update %s: %s\n" pth (Ord.getstr attr); *)
   let newset = (shash_find symbols pth).symattr
   and oldw = (shash_find symbols pth).width
   and oldsattr = (shash_find symbols pth).sigattr in
   if (oldw<>UNKNOWN)&&(oldw<>w)&&(w<>UNKNOWN) then
-    Printf.fprintf out_chan "Addition of attribute %s to signal %s changed width from %s to %s\n"
+    Printf.fprintf (fst out_chan) "Addition of attribute %s to signal %s changed width from %s to %s\n"
       (str_token attr) pth (str_token oldw) (str_token w);
   if (w<>UNKNOWN) then
   shash_replace symbols pth
@@ -187,7 +84,7 @@ if shash_mem symbols pth then begin
     path=pth};
     end
 else begin
-(*  printf "Enter %s: %s\n" pth (Ord.getstr attr); *)
+(*  Printf.fprintf (fst out_chan) "Enter %s: %s\n" pth (Ord.getstr attr); *)
   shash_add symbols pth {Setup.symattr = (TokSet.singleton attr);
      width = w;
      sigattr = create_attr out_chan stem symbols w;
@@ -200,17 +97,19 @@ let iter_ semantics out_chan (stem:string) syms list =
   List.iter (fun x -> semantics out_chan stem ({Globals.unresolved=[]; tree=x; symbols=syms})) list
 ;;
 
-let not_found out_chan stem syms w = printf "wire/port %s not found\n" w; enter_a_sym out_chan stem syms w IMPLICIT SCALAR;;
+let not_found out_chan stem syms w = Printf.fprintf (fst out_chan) "wire/port %s not found\n" w; enter_a_sym out_chan stem syms w IMPLICIT SCALAR;;
 
 let find_ident out_chan dir stem syms tok = match tok with ID id -> let pth = stem^id in begin
-if shash_mem syms pth == false then begin
-(*  fprintf out_chan "Creating implicit wire %s\n" (stem^id);  *)
+if shash_mem syms pth then shash_find syms pth else begin
+if shash_mem syms id then shash_find syms id else (
+  Printf.fprintf (fst out_chan) "Creating implicit wire %s\n" (stem^id);
   shash_add syms pth {Setup.symattr = TokSet.singleton IMPLICIT;
                        width = SCALAR;
 		       sigattr = create_attr out_chan stem syms SCALAR;
-		       path=pth}
-  end;
-shash_find syms pth
+		       path=pth};
+   shash_find syms pth
+      )
+  end
 end
 | _ -> unhandled out_chan 118 tok; ({Setup.symattr = TokSet.singleton tok; width = EMPTY; sigattr = create_attr out_chan stem syms SCALAR; path=""})
 ;;
@@ -218,13 +117,15 @@ end
 let enter_sym_attrs out_chan stem syms (tok:token) list width mode = match tok with
 | ID id -> let pth = stem^id in if (shash_mem syms pth == false)&&(mode == false) then (
        if (shash_mem syms id == false) then (
-          Printf.fprintf out_chan "Signal %s cannot be declared here\n" id;
+          Printf.fprintf (fst out_chan) "Signal %s cannot be declared here\n" id;
           unhandled out_chan 221 tok ))
   else begin
      iter (fun x -> enter_a_sym out_chan stem syms id x width) list;
      let newset = (find_ident out_chan WIRE stem syms tok).symattr in
      if (TokSet.mem INPUT newset) && (TokSet.mem REG newset) then 
-       Printf.fprintf out_chan "Signal %s cannot be input and reg\n" id;
+       Printf.fprintf (fst out_chan) "Error: signal %s cannot be input and reg\n" id
+     else if (TokSet.mem INPUT newset) && (TokSet.mem WIRE newset) then 
+       Printf.fprintf (fst out_chan) "Note: input signal %s redundantly declared as wire\n" id;
     end
 | _ -> unhandled out_chan 128 tok;
 ;;
@@ -239,7 +140,7 @@ Dump.dump out_chan arg6 0;
      sigattr = Sigparam arg6;
      path=pth}
 
-let enter_a_sig_attr out_chan (stem:string) syms (tok:token) attr w = match tok with 
+let enter_a_sig_attr out_chan (stem:string) syms (tok:token) attr w = ( match tok with 
 | ID id -> let sym = find_ident out_chan WIRE stem syms tok in (match sym.sigattr with
 | Sigarray attrs -> (
 match w with
@@ -248,7 +149,7 @@ match w with
   ( try for i = hi downto lo do
     attrs.(i) <- TokSet.add attr attrs.(i);
     done;
-  with Invalid_argument("index out of bounds") -> fprintf out_chan "Trying to access %s with index [%d:%d]\n" id hi lo)
+  with Invalid_argument("index out of bounds") -> Printf.fprintf (fst out_chan) "Trying to access %s with index [%d:%d]\n" id hi lo)
 | SCALAR ->
     attrs.(0) <- TokSet.add attr attrs.(0);
 | UNKNOWN -> (*TBD*)
@@ -257,12 +158,12 @@ match w with
     attrs.(0) <- TokSet.add attr attrs.(0);
 | _ -> unhandled out_chan 98 w)
 | Sigparam x -> enter_sym_attrs out_chan stem syms tok [PARAMUSED] UNKNOWN false
-(*
-| Sigundef -> printf "Internal error - Signal %s has no width\n" id
-| Sigtask x -> printf "Internal error - Signal %s is already declared as a task\n" id
-*)
-| _ -> unhandled out_chan 173 tok)
-| _ -> unhandled out_chan 175 tok
+| Sigundef -> Printf.fprintf (fst out_chan) "Internal error - Signal %s has no width\n" id
+| Sigtask x -> Printf.fprintf (fst out_chan) "Entity %s is already declared as a task\n" id
+| Sigfunc x -> Printf.fprintf (fst out_chan) "Entity %s is already declared as a function\n" id)
+| _ -> unhandled out_chan 175 tok);
+(* Printf.fprintf (fst out_chan) "enter_a_sig_attr out_chan stem:%s syms tok:%s attr:%s width:%s\n"
+  stem (str_token tok) (str_token attr) (str_token w) *)
 ;;
 
 let inner_chk out_chan stem syms sym subcct inner wireport wid = begin
@@ -277,11 +178,11 @@ let inner_chk out_chan stem syms sym subcct inner wireport wid = begin
     | RANGE(INT x, INT y) -> if ((x==y) && (wid == EMPTY)) then compat := true;
     | _ -> ();
     if (!compat == false) then begin
-      fprintf out_chan "Width mismatch stem=%s subcct=%s inner=%s %s wireport=%s %s\n"
+      Printf.fprintf (fst out_chan) "Width mismatch stem=%s subcct=%s inner=%s %s wireport=%s %s\n"
           stem subcct inner (Setup.str_token sym.width) wireport (str_token(wid)); 
       end
     end;
-  if (TokSet.mem IOPORT sym.symattr == false) then printf "Instance port %s not an ioport\n" inner
+  if (TokSet.mem IOPORT sym.symattr == false) then Printf.fprintf (fst out_chan) "Instance port %s not an ioport\n" inner
   else if (TokSet.mem INPUT sym.symattr) then ( enter_a_sig_attr out_chan stem syms hier DRIVER wid)
   else if (TokSet.mem OUTPUT sym.symattr) then ( enter_a_sig_attr out_chan stem syms hier RECEIVER wid)
   else if (TokSet.mem INOUT sym.symattr) then ( enter_a_sig_attr out_chan stem syms hier BIDIR wid)
@@ -300,14 +201,14 @@ let inner_chk_const out_chan stem syms sym subcct inner (tok:token) wid = begin
     | RANGE(INT x, INT y) -> if ((x==y) && (wid == EMPTY)) then compat := true;
     | _ -> ();
     if (!compat == false) then begin
-      fprintf out_chan "Width mismatch stem=%s subcct=%s inner=%s %s const=%s %s\n"
+      Printf.fprintf (fst out_chan) "Width mismatch stem=%s subcct=%s inner=%s %s const=%s %s\n"
           stem subcct inner (Setup.str_token sym.width) (str_token tok) (str_token(wid)); 
       end
     end;
-  if (TokSet.mem IOPORT sym.symattr == false) then printf "Instance port %s not an ioport\n" inner
+  if (TokSet.mem IOPORT sym.symattr == false) then Printf.fprintf (fst out_chan) "Instance port %s not an ioport\n" inner
   else if (TokSet.mem INPUT sym.symattr) then ()
-  else if (TokSet.mem OUTPUT sym.symattr) then fprintf out_chan "Output port %s cannot connect to constant\n" inner
-  else if (TokSet.mem INOUT sym.symattr) then fprintf out_chan "Output port %s cannot connect to constant\n" inner
+  else if (TokSet.mem OUTPUT sym.symattr) then Printf.fprintf (fst out_chan) "Output port %s cannot connect to constant\n" inner
+  else if (TokSet.mem INOUT sym.symattr) then Printf.fprintf (fst out_chan) "Output port %s cannot connect to constant\n" inner
   end
 end
 
@@ -337,7 +238,7 @@ let isym=shash_find innersym inner in match tok with
 | DOUBLE(TILDE, left) -> () (*TBD*)
 | DOUBLE(VBAR, ID left) -> () (*TBD*)
 | _ -> unhandled out_chan 226 tok
-else fprintf out_chan "Instance port %s of %s (type %s) not found\n" inner subcct kind
+else Printf.fprintf (fst out_chan) "Instance port %s of %s (type %s) not found\n" inner subcct kind
 end
 | _ -> unhandled out_chan 229 innert
 ;;
@@ -464,7 +365,7 @@ let loops = ref 0 and unrolling = ref true in while (!unrolling) && (0 <> exprCo
       sigattr = Sigparam !crnt;
       path=pth};
     loops := 1 + !loops;
-    if (!loops > 1000) then (unrolling := false; fprintf out_chan "Loop %s unrolling stopped after 1000 iterations\n" id)
+    if (!loops > 1000) then (unrolling := false; Printf.fprintf (fst out_chan) "Loop %s unrolling stopped after 1000 iterations\n" id)
 done;
 shash_remove syms pth ;
 end 
@@ -518,7 +419,7 @@ exprGeneric out_chan stem syms expr;
 stmtBlock out_chan stem syms then_clause;
 stmtBlock out_chan stem syms else_clause
 | QUINTUPLE(FOR, TRIPLE(ASSIGNMENT,ID idstart, start), test, TRIPLE(ASSIGNMENT,ID idinc,inc), clause) ->
-if idstart <> idinc then fprintf out_chan "For variable not consistent %s vs. %s\n" idstart idinc
+if idstart <> idinc then Printf.fprintf (fst out_chan) "For variable not consistent %s vs. %s\n" idstart idinc
 else for_stmt out_chan stem syms idstart start test inc clause
 | QUADRUPLE((CASE|CASEX|CASEZ), expr, caseAttr, TLIST caseList) ->
 exprGeneric out_chan stem syms expr;
@@ -529,11 +430,11 @@ iter (fun caseitem -> caseitems out_chan stem syms caseitem) caseList
   let stem2 = stem^taskname^"." in begin
     if (shash_mem syms taskname) then match (shash_find syms taskname).sigattr with
       | Sigtask tsk -> dispatch out_chan stem2 {Globals.unresolved=[]; tree=tsk; symbols=syms} true (* scan the task *)
-      | _ -> fprintf out_chan "Trying to call non task %s\n" taskname
-    else printf "Task %s not found\n" taskname;
+      | _ -> Printf.fprintf (fst out_chan) "Trying to call non task %s\n" taskname
+    else Printf.fprintf (fst out_chan) "Task %s not found\n" taskname;
 end
-  | DOTTED path -> iter (fun name -> match name with ID id -> Printf.fprintf out_chan "%s." id | _ -> ()) path;
-    Printf.fprintf out_chan " - hierarchical task etc. not (yet) supported\n"
+  | DOTTED path -> iter (fun name -> match name with ID id -> Printf.fprintf (fst out_chan) "%s." id | _ -> ()) path;
+    Printf.fprintf (fst out_chan) " - hierarchical task etc. not (yet) supported\n"
   | _ -> ()
  )
 | TRIPLE((D_READMEMB|D_READMEMH), (ASCNUM file|ID file), args) -> ()
@@ -552,7 +453,7 @@ end
 ignore(Stack.pop stk)
 
 and subexp out_chan dir stem syms exp = Stack.push (stem, 475, exp) stk; match exp with
-| ID id -> enter_a_sig_attr out_chan stem syms exp dir SCALAR
+| ID id -> enter_a_sig_attr out_chan stem syms exp dir (find_ident out_chan WIRE stem syms exp).width
 | TRIPLE(BITSEL, ID id, sel) -> enter_a_sig_attr out_chan stem syms (ID id) dir (RANGE (sel, sel))
 | _ -> exprGeneric out_chan stem syms exp;
 ignore(Stack.pop stk)
@@ -619,7 +520,7 @@ iter (fun t -> ignore(subexp out_chan DRIVER stem syms t)) inlist
 and senitem out_chan stem syms item = match item with
 | DOUBLE(POSEDGE, clk) -> ignore(subexp out_chan DRIVER stem syms clk)
 | DOUBLE(NEGEDGE, clk) -> ignore(subexp out_chan DRIVER stem syms clk)
-| ID signal -> ignore(subexp out_chan DRIVER stem syms item)
+| ID signal -> ignore(subexp out_chan SENSUSED stem syms item)
 | _ -> unhandled out_chan 490 item
 
 and misc_syntax out_chan stem syms expr = Stack.push (stem, 539, expr) stk; ( match expr with
@@ -769,7 +670,7 @@ and toplevelitems out_chan stem tree =
 (*
     if (shash_mem Globals.modprims prim) then
       moditemlist out_chan (stem^prim^".") (shash_find Globals.modprims prim) (* scan the inner primitive *)
-    else printf "Primitive %s not found\n" prim;
+    else Printf.fprintf (fst out_chan) "Primitive %s not found\n" prim;
 *)
     enter_a_sym out_chan stem syms prim PRIMITIVE EMPTY;
     let fc inner t = connect out_chan stem syms prim prim inner t in 
@@ -795,18 +696,18 @@ let primstr = !ids in try iter2 (fun (innert:string) (term:token) -> (match term
 | _ -> byposn := true; ids := filter (fun item -> item<>innert) !ids)) primstr termlist;
 with Invalid_argument "List.iter2" -> ();
 if (!byposn) then begin
-  fprintf out_chan "sub-module %s of kind %s deprecated connect by position - %d unconnected pins(s) - might be " subcct kind (length (!ids));
-  iter (fun id -> fprintf out_chan "%s " id) (!ids);
-  output_char out_chan '\n';
+  Printf.fprintf (fst out_chan) "sub-module %s of kind %s deprecated connect by position - %d unconnected pins(s) - might be " subcct kind (length (!ids));
+  iter (fun id -> Printf.fprintf (fst out_chan) "%s " id) (!ids);
+  output_char (fst out_chan) '\n';
 end;
 (* Find which of the unconnected pins are inputs *)
 partlist := partition (fun inner -> 
 (shash_mem kindhash.symbols inner) && (TokSet.mem INPUT (shash_find kindhash.symbols inner).symattr)
 ) !ids;
 if (length (fst(!partlist)) > 0) then begin
-fprintf out_chan "sub-module %s of kind %s insufficient args - %d unconnected inputs(s): " subcct kind (length (fst(!partlist)));
-iter (fun id -> fprintf out_chan "%s " id) (fst(!partlist));
-output_char out_chan '\n';
+Printf.fprintf (fst out_chan) "sub-module %s of kind %s insufficient args - %d unconnected inputs(s): " subcct kind (length (fst(!partlist)));
+iter (fun id -> Printf.fprintf (fst out_chan) "%s " id) (fst(!partlist));
+output_char (fst out_chan) '\n';
 end
 end)
         | _ -> unhandled out_chan 669 kindhash.Globals.tree)
@@ -835,19 +736,21 @@ and dispatch out_chan stem tree pass2 =
     if (pass2) then toplevelitems out_chan stem tree
 | QUADRUPLE((MODINST|PRIMINST), ID prim, params, TLIST inlist) ->  if (pass2) then toplevelitems out_chan stem tree
 (* Parse function declarations *)
-| OCTUPLE(FUNCTION, EMPTY, range, ID funcname, EMPTY, TLIST args, stmts, EMPTY) -> (
-enter_a_sym out_chan stem syms funcname FUNCTION range;
+| OCTUPLE(FUNCTION, EMPTY, range, ID funcname, EMPTY, TLIST args, stmts, EMPTY) -> let stem = funcname^"." in (
+shash_add syms funcname {Setup.symattr = TokSet.singleton FUNCTION;
+                       width = range;
+		       sigattr = Sigfunc expr;
+		       path=funcname};
 iter (fun arg -> decls out_chan stem {Globals.unresolved=[]; tree=arg; symbols=syms} true) args;
 if (pass2==false) then stmtBlock out_chan stem syms stmts)
 (* Parse task declarations *)
-| SEPTUPLE(TASK, EMPTY, ID taskname, EMPTY, TLIST args, stmts, EMPTY) -> (
-let stem = taskname^"." in (
+| SEPTUPLE(TASK, EMPTY, ID taskname, EMPTY, TLIST args, stmts, EMPTY) -> let stem = taskname^"." in (
 shash_add syms taskname {Setup.symattr = TokSet.singleton TASK;
                        width = VOID;
 		       sigattr = Sigtask expr;
 		       path=taskname};
 iter (fun arg -> decls out_chan stem {Globals.unresolved=[]; tree=arg; symbols=syms} true) args;
-if (pass2==true) then stmtBlock out_chan stem syms stmts))
+if (pass2==true) then stmtBlock out_chan stem syms stmts)
 | _ -> unhandled out_chan 702 expr );
 ignore(Stack.pop stk)
 
@@ -877,14 +780,16 @@ let dotted s = try String.index s '.' > 0 ; with Not_found -> false;;
 let erc_chk_sig out_chan nam syma siga =
   begin
 	begin
-	  if (TokSet.mem INPUT syma) && not ((TokSet.mem DRIVER siga) || (TokSet.mem SPECIAL syma)) then
-	    Printf.fprintf out_chan "%s is an unloaded input\n" nam
+	  if ((TokSet.mem INPUT syma) && (TokSet.mem SENSUSED siga)) && not (TokSet.mem DRIVER siga) then
+	    Printf.fprintf (fst out_chan) "%s is an input mentioned in sensitivity list but not referenced\n" nam
+	  else if (TokSet.mem INPUT syma) && not ((TokSet.mem DRIVER siga) || (TokSet.mem SPECIAL syma)) then
+	    Printf.fprintf (fst out_chan) "%s is an unloaded input\n" nam
 	  else if (TokSet.mem OUTPUT syma) && not ((TokSet.mem RECEIVER siga) || (TokSet.mem SPECIAL syma)) then
-	    Printf.fprintf out_chan "%s is an undriven output\n" nam
+	    Printf.fprintf (fst out_chan) "%s is an undriven output\n" nam
 	  else if (TokSet.mem INOUT syma) then
-	    Printf.fprintf out_chan "Note: %s is an inout\n" nam
+	    Printf.fprintf (fst out_chan) "Note: %s is an inout\n" nam
 	  else if (TokSet.mem WIRE syma) && not ((TokSet.mem RECEIVER siga) || (TokSet.mem SPECIFY syma)) then
-	    Printf.fprintf out_chan "%s is an unused wire\n" nam
+	    Printf.fprintf (fst out_chan) "%s is an unused wire\n" nam
 	end
   end
 ;;
@@ -897,14 +802,16 @@ match s.width with
   ( try for i = hi downto lo do
     erc_chk_sig out_chan (id^"["^(string_of_int i)^"]") s.symattr attrs.(i)
     done
-  with Invalid_argument("index out of bounds") -> fprintf out_chan "Trying to access %s with index [%d:%d]\n" id hi lo)
+  with Invalid_argument("index out of bounds") -> Printf.fprintf (fst out_chan) "Trying to access %s with index [%d:%d]\n" id hi lo)
 | SCALAR | EMPTY | UNKNOWN->
     erc_chk_sig out_chan id s.symattr attrs.(0)
 | _ -> unhandled out_chan 791 s.width)
 | Sigparam x ->
-  if not (TokSet.mem PARAMUSED s.symattr) then Printf.fprintf out_chan "Parameter %s is not used\n" id
+  if not (TokSet.mem PARAMUSED s.symattr) then Printf.fprintf (fst out_chan) "Parameter %s is not used\n" id
 | Sigtask x ->
-  if not (TokSet.mem TASKUSED s.symattr) then Printf.fprintf out_chan "Task %s is not used\n" id
+  if not (TokSet.mem TASKUSED s.symattr) then Printf.fprintf (fst out_chan) "Task %s is not used\n" id
+| Sigfunc x ->
+  if not (TokSet.mem FUNCUSED s.symattr) then Printf.fprintf (fst out_chan) "Function %s is not used\n" id
 | _ -> unhandled out_chan 804 s.width
 ;;
 
@@ -912,22 +819,14 @@ let check_syms out_chan syms = shash_iter (fun nam s -> erc_chk out_chan syms na
 
 exception Error
 
-type logt = Closed | Open of out_channel;;
-
-let pending = Hashtbl.create 256;;
-let black_box = Hashtbl.create 256;;
-let logfile = ref Closed;;
-
-let tmpnam = "report."^(string_of_int(Unix.getpid()))^"."^Unix.gethostname()^".report";;
-
 let scan out_chan key contents = begin
 last_mod := key;
 Hashtbl.add Globals.modprims key contents;
-Printf.fprintf out_chan "scanning ..\n";
+Printf.fprintf (fst out_chan) "scanning ..\n";
 mod_empty := true;
 moditemlist out_chan "" contents;
 if !mod_empty then
-    Printf.fprintf out_chan "%s check skipped due to black boxing\n" key
+    Printf.fprintf (fst out_chan) "%s check skipped due to black boxing\n" key
 else
     check_syms out_chan contents.Globals.symbols;
 end
@@ -937,55 +836,52 @@ let rec remove_from_pending out_chan mykey =  let reslist = ref [] in begin
 contents.Globals.unresolved <- List.filter(fun item -> item <> mykey) contents.Globals.unresolved;
 if contents.Globals.unresolved == [] then match contents.Globals.tree with
 | QUINTUPLE(kind, ID mykey, _, _, _) -> (
-			Printf.fprintf out_chan "%s %s: resumed " (str_token kind) key;
+			Printf.fprintf (fst out_chan) "%s %s: resumed " (str_token kind) key;
 			scan out_chan key contents; reslist := key :: !reslist)
 | _ -> unhandled out_chan 899 contents.Globals.tree) pending;
-			List.iter (fun key -> shash_remove pending key; remove_from_pending out_chan key) !reslist;
+			List.iter (fun key -> Hashtbl.remove pending key; remove_from_pending out_chan key) !reslist;
 			end
 
-let read_pragma nam1 nam2 kind =
+let read_pragma nam1 nam2 (kind:string) =
 if (nam1 = nam2) then begin
-(*Printf.fprintf out_chan "Pragma %s is black-boxed\n" nam1;*)
+(*Printf.fprintf (fst out_chan) "Pragma %s is black-boxed\n" nam1;*)
 if (Hashtbl.mem black_box nam1 == false) then Hashtbl.add black_box nam1 kind
 end
 
-let prescan decl = let expt = { Globals.tree=decl; symbols=Hashtbl.create 256; unresolved=(!unresolved_list); } in
-	if (!logfile == Closed) then logfile := Open (open_out tmpnam);
-	match !logfile with Open out_chan -> begin Format.set_formatter_out_channel out_chan; match decl with
+let prescan out_chan decl =
+    let expt = { Globals.tree=decl; symbols=Hashtbl.create 256; unresolved=(!unresolved_list); } in
+        match decl with
 | QUINTUPLE(kind, ID mykey, _, _, _) ->
-	Printf.fprintf out_chan "%s %s: parsed " (str_token kind) mykey;
+	Printf.fprintf (fst out_chan) "%s %s: parsed " (str_token kind) mykey;
 	if (List.length(!unresolved_list)==0) then begin
 		scan out_chan mykey expt;
 		remove_from_pending out_chan mykey;
 		end
 	else begin
-		Printf.fprintf out_chan "pending: not yet encountered: ";
-		List.iter (fun key -> Printf.fprintf out_chan "%s " key) !unresolved_list;
-		output_char out_chan '\n';
+		Printf.fprintf (fst out_chan) "pending: not yet encountered: ";
+		List.iter (fun key -> Printf.fprintf (fst out_chan) "%s " key) !unresolved_list;
+		output_char (fst out_chan) '\n';
 		Hashtbl.add pending mykey expt;
 		unresolved_list := [];
 	end;
-	flush out_chan
-| PREPROC str -> Printf.fprintf out_chan "Encountered %s\n" str
+	flush (fst out_chan)
+| PREPROC str -> Printf.fprintf (fst out_chan) "Encountered %s\n" str
 | PRAGMATIC str ->
 ( try Scanf.sscanf str "//Verilog HDL for \"%s@\", \"%s@\" \"%s@\"" read_pragma;
-with Scanf.Scan_failure msg -> Printf.fprintf out_chan "Comment %s not understood\n" str)
+with Scanf.Scan_failure msg -> Printf.fprintf (fst out_chan) "Comment %s not understood\n" str)
 | _ -> unhandled out_chan 919 decl
-	end;
-decl
-	| Closed -> raise Error
 ;;
 
 let rec endscan2 indent mykey =
 	match !logfile with Open out_chan -> begin
-        for i = 1 to indent do output_char out_chan ' '; done;
-	Printf.fprintf out_chan "Checking %s: " mykey;
+        for i = 1 to indent do output_char (fst out_chan) ' '; done;
+	Printf.fprintf (fst out_chan) "Checking %s: " mykey;
 	if (shash_mem pending mykey) then
           begin
-	  Printf.fprintf out_chan "Module %s still postponed\n" mykey;
+	  Printf.fprintf (fst out_chan) "Module %s still postponed\n" mykey;
 	  List.iter (fun key -> if (shash_mem pending key) then endscan2 (indent+2) key
-          else Printf.fprintf out_chan "%s " key) ((shash_find pending mykey).Globals.unresolved);
- 	  output_char out_chan '\n';
+          else Printf.fprintf (fst out_chan) "%s " key) ((shash_find pending mykey).Globals.unresolved);
+ 	  output_char (fst out_chan) '\n';
           end
 	end
 	| Closed -> raise Error
@@ -993,7 +889,7 @@ let rec endscan2 indent mykey =
 
 let endscan () = let repfile = (!last_mod)^".report" in begin Hashtbl.iter (fun key item -> endscan2 0 key) pending;
 match !logfile with
-| Open out_chan -> close_out out_chan; logfile := Closed;
+| Open out_chan -> close_out (fst out_chan); logfile := Closed;
 Printf.printf "Module %s report %s\n" !last_mod repfile;
 Sys.rename tmpnam repfile
 | Closed -> ()
