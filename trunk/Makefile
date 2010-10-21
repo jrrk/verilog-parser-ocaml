@@ -42,11 +42,12 @@ vdebug: $(TARGET)
 
 ocamlyacc: grammar.mly
 	ocamlyacc $(YACCOPTS) $<
-	mv -f grammar.mli grammar.mli.old
-	sed 's=\(> \)\(token\)=\1Vparser.\2=g' < grammar.mli.old > grammar.mli
-	cat grammar.mli | grep -v : | grep -v \> >vparser.mli
-	echo exception Error >> grammar.mli
-	rm -f vparser.ml
+#	mv -f grammar.mli grammar.mli.old
+#	sed 's=\(> \)\(token\)=\1Vparser.\2=g' < grammar.mli.old > grammar.mli
+#	cat grammar.mli | grep -v : | grep -v \> >vparser.mli
+#	echo exception Error >> grammar.mli
+#	rm -f vparser.ml
+	mv -f grammar.mli vparser.mli
 	make vparser vdebug vtop vopt
 
 menhir: grammar.mly
@@ -54,7 +55,7 @@ menhir: grammar.mly
 	menhir --trace --external-tokens Vparser --base grammar $<
 	make vparser vdebug vtop vopt
 
-grammar.mli grammar.ml: grammar.mly
+vparser.mli grammar.ml: grammar.mly
 	@echo "Choose make ocamlyacc or make menhir"; false
 
 $(TARGET): $(CMO1) $(CMO2) mytoploop.cmo
@@ -84,7 +85,7 @@ clean:
 ord.ml: ord.sh grammar.cmi
 	sh ord.sh
 
-vparser.cmi: grammar.mli
+vparser.cmi: vparser.mli
 	ocamlc.opt -g -c vparser.mli
 
 test: vtop
