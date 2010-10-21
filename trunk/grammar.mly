@@ -1756,6 +1756,7 @@ Junk:		identifier 				{ $1 }
 	|	P_MINUSGT				{ EMPTY }
 	|	P_DEFINE				{ EMPTY }
 	|	P_IFDEF					{ EMPTY }
+	|	P_INCLUDE				{ EMPTY }
 	|	P_ELSE					{ EMPTY }
 	|	P_ENDIF					{ EMPTY }
 	|	error 					{ EMPTY }
