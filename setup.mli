@@ -12,7 +12,11 @@ module OrdTok :
 
 type tset = Set.Make(OrdTok).t
 
-type tsigattr = Sigundef | Sigarray of tset array | Sigparam of Vparser.token | Sigtask of Vparser.token
+type tsigattr = Sigundef |
+        Sigarray of tset array |
+        Sigparam of Vparser.token |
+        Sigtask of Vparser.token |
+        Sigfunc of Vparser.token 
 
 and symtab = {
   symattr : tset;
@@ -20,6 +24,10 @@ and symtab = {
   path : string;
   sigattr : tsigattr;
 }
+
+type fmt = (out_channel*Format.formatter)
+
+type logt = Closed | Open of fmt;;
 
 module TokSet :
   sig
@@ -56,8 +64,4 @@ val histcnt : int ref
 type hist = { tok : Vparser.token; strt : int; stop : int; key : bool; }
 val history : hist ref array
 val psuccess : bool ref
-val show_set : TokSet.t -> unit
 val str_token : Vparser.token -> string
-val show_token : Vparser.token -> unit
-val show_sym : string -> symtab -> unit
-

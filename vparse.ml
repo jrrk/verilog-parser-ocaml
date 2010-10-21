@@ -27,7 +27,7 @@ let delay_mode = ref Pundef;;
 let tsymbols = Hashtbl.create 256;;
 let (includes:(string*in_channel) Stack.t) = Stack.create();;
 let (ifdef_stk:bool Stack.t) = Stack.create();;
-let trace_file = open_out "trace_file";;
+(* let trace_file = open_out "trace_file";; *)
 let celldefine = ref false and portfaults = ref false and suppress_faults = ref false and protect = ref false;;
 
 let _ = List.iter (fun (str,key) -> Hashtbl.add tsymbols str key)
@@ -50,7 +50,7 @@ let _ = List.iter (fun (str,key) -> Hashtbl.add tsymbols str key)
 ("`timescale", P_TIMESCALE "" );
 ];;
 
-let from_special1 macro_raw =
+let from_special1 out_chan macro_raw =
 (* first convert any tabs to spaces *)
 for i = 0 to (String.length macro_raw)-1 do if macro_raw.[i]=='\t' then macro_raw.[i] <- ' '; done;
 let blank1 = String.index macro_raw ' ' in begin
@@ -60,7 +60,7 @@ let substr = String.sub macro_raw 0 blank1 in if (Hashtbl.mem tsymbols substr) t
   match Hashtbl.find tsymbols substr with
   | PREPROC replace -> replace^" "^right
   | P_INCLUDE _ -> ( try Scanf.sscanf right " \"%s@\"" (fun nam ->
-						     Printf.fprintf trace_file "Open %s\n" nam;
+						     Printf.fprintf (fst out_chan) "Open %s\n" nam;
 						     Stack.push (nam,open_in nam) includes)
 						     with End_of_file -> () | Scanf.Scan_failure msg -> ()); ""
   | P_DEFINE -> 	(* check the replacement text is not null, if so define it to blank *)
@@ -71,10 +71,10 @@ let substr = String.sub macro_raw 0 blank1 in if (Hashtbl.mem tsymbols substr) t
 	let idx = ref 0 in
   	  while (!idx < String.length defn) && (defn.[!idx] == ' ') do idx := !idx+1; done;
           let repl = String.sub (defn) (!idx) (String.length(defn)-(!idx)) in Hashtbl.add tsymbols name (PREPROC repl);
-          Printf.fprintf trace_file "Define %s %s\n" name repl;
+          (* Printf.fprintf trace_file "Define %s %s\n" name repl; *)
         ""
   | P_TIMESCALE _    		-> timescale := right;
-        Printf.fprintf trace_file "%s\n" macro_raw; ""
+        (* Printf.fprintf trace_file "%s\n" macro_raw; *) ""
   | P_IFDEF -> Stack.push (Hashtbl.mem tsymbols right) ifdef_stk; ""
   | P_ELSE -> Stack.push (not (Stack.pop ifdef_stk)) ifdef_stk; ""
   | P_ENDIF -> ignore(Stack.pop ifdef_stk); ""
@@ -84,7 +84,7 @@ else
   ""
 end 
 
-let from_special2 macro_raw =
+let from_special2 out_chan macro_raw =
 let retval = ref "" in begin
 if (Hashtbl.mem tsymbols macro_raw) then
   begin
@@ -96,7 +96,7 @@ if (Hashtbl.mem tsymbols macro_raw) then
     protect := false;
     timescale := ""
     end
-  | P_DEFINE -> Printf.fprintf trace_file "`define needs an argument (%s)\n" macro_raw;
+(*  | P_DEFINE -> Printf.fprintf trace_file "`define needs an argument (%s)\n" macro_raw; *)
   | P_CELLDEFINE			-> celldefine := true
   | P_ENDCELLDEFINE        		-> celldefine := false
   | P_ENABLE_PORTFAULTS        		-> portfaults := true
@@ -111,11 +111,13 @@ if (Hashtbl.mem tsymbols macro_raw) then
   | _ -> retval := macro_raw
   end
 else
-  Printf.fprintf trace_file "%s is not `defined\n" macro_raw;
+  begin
+  (* Printf.fprintf trace_file "%s is not `defined\n" macro_raw; *)
+  end;
 !retval;
 end
 
-let rec paste src (dst:string) dstlen = let tick1 = String.index src '`' and looping = ref true in (
+let rec paste out_chan src (dst:string) dstlen = let tick1 = String.index src '`' and looping = ref true in (
       let tend = ref (tick1+1) in while !looping && (!tend < String.length src) do match src.[!tend] with
       | 'A'..'Z' -> tend := !tend+1
       | 'a'..'z' -> tend := !tend+1
@@ -123,15 +125,15 @@ let rec paste src (dst:string) dstlen = let tick1 = String.index src '`' and loo
       | '_' -> tend := !tend+1
       | _ -> looping := false
       done;
-      let subst = from_special2 (String.sub src tick1 (!tend-tick1)) in
+      let subst = from_special2 out_chan (String.sub src tick1 (!tend-tick1)) in
       let combined = (String.sub src 0 tick1)^subst^(String.sub src (!tend) ((String.length src)-(!tend)))^"\n" in
       let totlen = String.length combined in
-      Printf.fprintf trace_file "Source %s subst=%s combined=%s len=%d\n" src subst combined totlen;
-      if (String.contains combined '`')&&(String.index combined '`'>tick1) then paste combined dst dstlen else
+      (* Printf.fprintf trace_file "Source %s subst=%s combined=%s len=%d\n" src subst combined totlen; *)
+      if (String.contains combined '`')&&(String.index combined '`'>tick1) then paste out_chan combined dst dstlen else
       (String.blit combined 0 dst 0 totlen;
       totlen))
 
-let from_blit src dst dstlen =
+let from_blit out_chan src dst dstlen =
       let looping = ref true and preproc = ref false in
               let tstart = ref 0 in while !looping && (!tstart < String.length src) do match src.[!tstart] with
               | ' ' -> tstart := !tstart+1
@@ -140,60 +142,66 @@ let from_blit src dst dstlen =
               | _ -> looping := false
               done;
       preproc := !preproc && ((String.contains_from src !tstart ' ')||(String.contains_from src !tstart '\t'));
-      Printf.fprintf trace_file "Source %s preproc=%s\n" src (if !preproc then "true" else "false");
+      (* Printf.fprintf trace_file "Source %s preproc=%s\n" src (if !preproc then "true" else "false"); *)
       if (!preproc) then begin
-        let subst = from_special1 (String.sub src !tstart ((String.length src)- !tstart)) in
+        let subst = from_special1 out_chan (String.sub src !tstart ((String.length src)- !tstart)) in
         let len = String.length subst in
 	String.blit subst 0 dst 0 len;
 	dst.[len] <- '\n';
 	len+1 end
-      else if (String.contains src '`') then paste src dst dstlen
+      else if (String.contains src '`') then paste out_chan src dst dstlen
       else (
       String.blit src 0 dst 0 dstlen;
       dst.[dstlen] <- '\n';
       dstlen+1)
 
-let from_func dst cnt =
+let from_func out_chan dst cnt =
     try let retval = ref 0 and looping = ref true in while !looping do
-      let pos = pos_in (snd(Stack.top includes)) in
       let src = input_line (snd(Stack.top includes)) in
-      retval := from_blit src dst (min (cnt-2) (String.length src));
+      retval := from_blit out_chan src dst (min (cnt-2) (String.length src));
       looping := Stack.top ifdef_stk == false;
-      Printf.fprintf trace_file "If=%s Offset %d %s\n"
+      (* Printf.fprintf trace_file "If=%s Offset %d %s\n"
           (if !looping then "false" else "true")
-           pos (String.sub dst 0 !retval);
+           pos_in (snd(Stack.top includes)) (String.sub dst 0 !retval); *)
       done;
       !retval
   with End_of_file ->
-    Printf.fprintf trace_file "Close %s\n" (fst (Stack.top includes));
+    Printf.fprintf (fst out_chan) "Close %s\n" (fst (Stack.top includes));
     close_in_noerr (snd(Stack.pop includes));
-    flush trace_file;
+    Printf.fprintf (fst out_chan) "Open %s\n" (fst (Stack.top includes));
+    (* flush trace_file; *)
     dst.[0] <- '\n';
     1
 ;;
 
-let push str =
+let parse str = begin
+  ( if (!Globals.logfile == Closed) then
+      let fd = open_out Globals.tmpnam in
+          Globals.logfile := Open (fd,Format.formatter_of_out_channel fd); );
+  match !Globals.logfile with Open out_chan -> begin
+  Printf.fprintf (fst out_chan) "Open %s\n" str;
   Stack.push (str, open_in str) includes;
-  Printf.fprintf trace_file "Open %s\n" str;;
-
-let parse () = begin
   Stack.push true ifdef_stk; (* toplevel ifdef default *)
   try
-    let lexbuf = Lexing.from_function from_func in
+    let lexbuf = Lexing.from_function (fun dst cnt -> from_func out_chan dst cnt) in
     let looping = ref true in while !looping do
       let rslt = Grammar.start Vlexer.token lexbuf in match rslt with
+      | QUINTUPLE((MODULE|PRIMITIVE), ID id, _, _, _) -> ( Printf.fprintf (fst out_chan) "%s\n" id; Semantics.prescan out_chan rslt )
       | ENDOFFILE -> looping := false
-      | _ -> Semantics.unhandled trace_file 171 rslt
+      | _ -> Globals.unhandled (stderr,Format.err_formatter) 191 rslt
     done
   with Stack.Empty -> ()
     | Parsing.Parse_error
     | Grammar.Error ->
     begin
     psuccess := false;
-    Printf.fprintf stderr "Parse Error in %s\n" (fst(Stack.top includes));
+    Printf.fprintf (fst out_chan) "Parse Error in %s\n" (fst(Stack.top includes));
     for i = 1 to hsiz do let idx = (hsiz-i+(!histcnt))mod hsiz in let item = !(history.(idx)) in
-        Printf.fprintf stderr "Backtrace %d : %s (%d-%d)\n"  i (str_token (item.tok)) item.strt item.stop;
+        Printf.fprintf (fst out_chan) "Backtrace %d : %s (%d-%d)\n"  i (str_token (item.tok)) item.strt item.stop;
     done;
     exit 1;
     end;
   end
+| Closed -> failwith (Printf.sprintf "Failed to open logfile %s" Globals.tmpnam)
+end
+;;

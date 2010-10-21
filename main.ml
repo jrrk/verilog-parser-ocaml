@@ -31,18 +31,11 @@ let dump_text out_chan m = Dump.dump out_chan (Hashtbl.find Globals.modprims m).
 
 (* Hashtbl.iter (fun k x -> Printf.printf "%s\n" k) (Hashtbl.find Globals.modprims "test").symbols;; -- dump symbol names *)
 
-let my_syms m = Hashtbl.iter Setup.show_sym (Hashtbl.find Globals.modprims m).Globals.symbols;;
-
-let dump_sym m s = Setup.TokSet.iter Setup.show_token ( Hashtbl.find (Hashtbl.find Globals.modprims m).Globals.symbols s).Setup.symattr;;
-
-let dump_all_syms syms = Hashtbl.iter Setup.show_sym syms;;
-
 let vparser args = begin
   Setup.psuccess := true;
   for i = 1 to ( Array.length args - 1 ) do
-    (*Printexc.print*) Vparse.push args.( i )
+    (*Printexc.print*) Vparse.parse args.( i )
   done;
-  Vparse.parse();
   if (!Setup.psuccess == false) then
     Printf.printf "Not continuing due to parse errors\n";
   Semantics.endscan();

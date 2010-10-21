@@ -102,16 +102,14 @@ let loop ppf =
 
 (* variables to be debugged *)
 
-let unhandled_dbg out_chan ln argt = let arg = (ln,argt) in if (List.mem arg !Semantics.unhand_list == false)
-    then Semantics.unhand_list := arg :: !Semantics.unhand_list;
-    Printf.fprintf out_chan "\n\n**** Unhandled %d ****\n" (List.length !Semantics.unhand_list);
-(*Printexc.print_backtrace out_chan;*)
-  ignore(use_string Format.std_formatter "hd(!unhand_list);;");
-  Format.set_formatter_out_channel stderr;
-  loop Format.std_formatter;
-  Format.set_formatter_out_channel out_chan;;
+let unhandled_dbg out_chan ln argt = let arg = (ln,argt) in if (List.mem arg !Globals.unhand_list == false)
+    then Globals.unhand_list := arg :: !Globals.unhand_list;
+    Printf.fprintf (fst out_chan) "\n\n**** Unhandled %d ****\n" (List.length !Globals.unhand_list);
+(* Printexc.print_backtrace out_chan; *)
+  ignore(use_string (snd out_chan) "hd(!Globals.unhand_list);;");
+  flush (fst out_chan);
+  loop Format.std_formatter
 
-let _ = Semantics.unhandled_ptr := (Semantics.UPTR unhandled_dbg);
+let _ = Globals.unhandled_ptr := (Globals.UPTR unhandled_dbg);
   initialize_toplevel_env ();
-  ignore(use_string Format.std_formatter "open Vparser open Semantics open List open Mytoploop;;")
-
+  ignore(use_string Format.std_formatter "open Vparser open Globals open Semantics open List open Mytoploop;;")
