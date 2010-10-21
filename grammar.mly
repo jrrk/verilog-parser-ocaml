@@ -17,13 +17,6 @@
 // Based on verilator parser code by Paul Wasson, Duane Galbi and Wilson Snyder
 //*****************************************************************************
 
-%{
-exception Error
-
-open Vparser
-
-%}
-
 // Generic void
 %token EMPTY
 // Generic double

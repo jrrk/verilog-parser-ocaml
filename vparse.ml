@@ -185,14 +185,14 @@ let parse str = begin
   try
     let lexbuf = Lexing.from_function (fun dst cnt -> from_func out_chan dst cnt) in
     let looping = ref true in while !looping do
-      let rslt = Grammar.start Vlexer.token lexbuf in match rslt with
+      let rslt = Vparser.start Vlexer.token lexbuf in match rslt with
       | QUINTUPLE((MODULE|PRIMITIVE), ID id, _, _, _) -> ( Printf.fprintf (fst out_chan) "%s\n" id; Semantics.prescan out_chan rslt )
       | ENDOFFILE -> looping := false
       | _ -> Globals.unhandled (stderr,Format.err_formatter) 191 rslt
     done
   with Stack.Empty -> ()
     | Parsing.Parse_error
-    | Grammar.Error ->
+    | Globals.Error ->
     begin
     psuccess := false;
     Printf.fprintf (fst out_chan) "Parse Error in %s\n" (fst(Stack.top includes));

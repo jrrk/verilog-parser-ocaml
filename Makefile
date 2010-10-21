@@ -25,9 +25,9 @@ YACC = ocamlyacc
 YACCOPTS = -v
 #LEXOPTS = -ml
 
-CMO1 = ord.cmo setup.cmo vlexer.cmo globals.cmo grammar.cmo dump.cmo const.cmo semantics.cmo
+CMO1 = ord.cmo setup.cmo vlexer.cmo globals.cmo vparser.cmo dump.cmo const.cmo semantics.cmo
 CMO2 = vparse.cmo main.cmo
-CMX = ord.cmx setup.cmx vlexer.cmx globals.cmx grammar.cmx dump.cmx const.cmx semantics.cmx vparse.cmx main.cmx
+CMX = ord.cmx setup.cmx vlexer.cmx globals.cmx vparser.cmx dump.cmx const.cmx semantics.cmx vparse.cmx main.cmx
 CML = toplevellib.cma str.cma unix.cma
 CMLX = str.cmxa unix.cmxa
 
@@ -41,13 +41,7 @@ vdebug: $(TARGET)
 	ocamlc -g -o $@ $(CML) $(CMO1) $(CMO2)
 
 ocamlyacc: grammar.mly
-	ocamlyacc $(YACCOPTS) $<
-#	mv -f grammar.mli grammar.mli.old
-#	sed 's=\(> \)\(token\)=\1Vparser.\2=g' < grammar.mli.old > grammar.mli
-#	cat grammar.mli | grep -v : | grep -v \> >vparser.mli
-#	echo exception Error >> grammar.mli
-#	rm -f vparser.ml
-	mv -f grammar.mli vparser.mli
+	ocamlyacc $(YACCOPTS) -b vparser $<
 	make vparser vdebug vtop vopt
 
 menhir: grammar.mly
@@ -55,18 +49,18 @@ menhir: grammar.mly
 	menhir --trace --external-tokens Vparser --base grammar $<
 	make vparser vdebug vtop vopt
 
-vparser.mli grammar.ml: grammar.mly
+vparser.mli vparser.ml: grammar.mly
 	@echo "Choose make ocamlyacc or make menhir"; false
 
 $(TARGET): $(CMO1) $(CMO2) mytoploop.cmo
 	ocamlc.opt -g -o $@ $(CML) $(CMO1) mytoploop.cmo $(CMO2)
 
-depend: grammar.ml vlexer.ml
+depend: vparser.ml vlexer.ml
 	ocamldep *.ml *.mli > .depend
 
 clean:
 	rm -rf *.cmi *.cmo *.cmx *.o vopt vtop $(TARGET)
-	rm -rf grammar.ml grammar.mli vlexer.ml vlexer.mli grammar.mli grammar.ml ord.ml
+	rm -rf vparser.ml vparser.mli vlexer.ml vlexer.mli vparser.mli vparser.ml ord.ml
 
 .SUFFIXES: .ml .mli .mll .mly .cmo .cmi .cmx
 
@@ -82,7 +76,7 @@ clean:
 .ml.cmx:
 	ocamlopt.opt -g -c $<
 
-ord.ml: ord.sh grammar.cmi
+ord.ml: ord.sh vparser.cmi
 	sh ord.sh
 
 vparser.cmi: vparser.mli

@@ -30,6 +30,8 @@ mutable unresolved: string list;
 (* gsyms : (string, Setup.symtab) Hashtbl.t; *)
  };;
 
+exception Error
+
 let modprims = Hashtbl.create 256;;
 let pending = Hashtbl.create 256;;
 let black_box = Hashtbl.create 256;;
