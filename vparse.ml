@@ -17,6 +17,8 @@
 * Based on verilator parser code by Paul Wasson, Duane Galbi and Wilson Snyder
 *******************************************************************************)
 
+exception Error
+
 open Setup
 open Vparser
 
@@ -192,7 +194,7 @@ let parse str = begin
     done
   with Stack.Empty -> ()
     | Parsing.Parse_error
-    | Globals.Error ->
+    | Error ->
     begin
     psuccess := false;
     Printf.fprintf (fst out_chan) "Parse Error in %s\n" (fst(Stack.top includes));

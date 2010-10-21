@@ -7,8 +7,6 @@ type modtree = {
 
 type uptr = UPTR of (Setup.fmt -> int -> Vparser.token -> unit) | UNIL
 
-exception Error
-
 val unhand_list : (int * Vparser.token) list ref
 val unhandled_dflt : Setup.fmt -> int -> Vparser.token -> unit
 val unhandled_ptr : uptr ref

@@ -45,8 +45,7 @@ ocamlyacc: grammar.mly
 	make vparser vdebug vtop vopt
 
 menhir: grammar.mly
-	menhir --trace --only-tokens --base vparser $<
-	menhir --trace --external-tokens Vparser --base grammar $<
+	menhir --base vparser grammar.mly
 	make vparser vdebug vtop vopt
 
 vparser.mli vparser.ml: grammar.mly
