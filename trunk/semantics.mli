@@ -70,7 +70,6 @@ val enter_a_sig_attr :
   (string, Setup.symtab) Hashtbl.t ->
   Vparser.token -> Setup.TokSet.elt -> Vparser.token -> unit
 
-val read_pragma : string -> string -> string -> unit
 val moditemlist : Setup.fmt -> string -> Globals.modtree -> unit
 val scan : Setup.fmt -> string -> Globals.modtree -> unit
 val remove_from_pending : Setup.fmt -> string -> unit

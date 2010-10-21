@@ -38,13 +38,6 @@ ignore(histcnt := (!histcnt+1)mod hsiz);
 ktok
 end
 
-let ifstk = Stack.create();;
-
-let push_ifdef macro_raw =
-let blank1 = String.index macro_raw ' ' in
-let name = "`" ^ (String.sub macro_raw (blank1+1) ((String.length macro_raw)-blank1-1)) in
-Stack.push (Hashtbl.mem ksymbols name) ifstk
-
 let _ = List.iter (fun (str,key) -> enter_keyword str key)
 [
 (  "always_comb",	ALWAYS ) ;
@@ -285,18 +278,10 @@ if Hashtbl.mem ksymbols word then hlog lexbuf (Hashtbl.find ksymbols word) else 
 | digit+ as inum { hlog lexbuf (INTNUM inum ) }
 | '\"'anything_but_quote*'\"' as asciinum { hlog lexbuf (ASCNUM asciinum ) }
 | "`timescale" anything_but_newline+ as preproc { hlog lexbuf (P_TIMESCALE preproc) }
-| "`ifdef" anything_but_newline+ as macro_raw
-    {	push_ifdef macro_raw;
-	if Stack.top ifstk == false then (ifdef (Lexing.lexeme_start lexbuf) lexbuf); token lexbuf }
-| '`'ident ident_num* as presym {if Hashtbl.mem ksymbols presym then
-let prek = Hashtbl.find ksymbols presym in (match prek with
-(* if the `ifdef condition was true, we must skip the else clause *)
-| P_ELSE -> if Stack.top ifstk then (ifdef (Lexing.lexeme_start lexbuf) lexbuf); token lexbuf
-(* this is the end of the else clause, pop the stack *)
-| P_ENDIF -> ignore(Stack.pop ifstk); token lexbuf
-| _ -> hlog lexbuf prek)
-else
-hlog lexbuf (PREPROC presym) }
+| '`'ident ident_num* as presym {
+  if Hashtbl.mem Globals.tsymbols presym then hlog lexbuf (Hashtbl.find Globals.tsymbols presym)
+  else hlog lexbuf (PREPROC presym)
+}
 | ident ident_num* as word {
 if Hashtbl.mem ksymbols word then hlog lexbuf (Hashtbl.find ksymbols word) else hlog lexbuf (ID word)
 }
@@ -324,15 +309,3 @@ and comment2 start = parse
     { failwith (Printf.sprintf "Unterminated (* comment *) at offset %d." start) }
 | _
     { comment2 start lexbuf }
-
-and ifdef start = parse
-  "`ifdef"
-    { ifdef (Lexing.lexeme_start lexbuf) lexbuf; ifdef start lexbuf }
-| "`else"
-    { () }
-| "`endif"
-    { ignore(Stack.pop ifstk); }
-| eof
-    { failwith (Printf.sprintf "Unterminated ifdef at offset %d." start) }
-| _
-    { ifdef start lexbuf }

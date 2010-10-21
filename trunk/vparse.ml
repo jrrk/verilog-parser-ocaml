@@ -21,15 +21,14 @@ exception Error
 
 open Setup
 open Vparser
+open Globals
 
 type dmode = Pundef | PATH;;
 
 let timescale = ref "";;
 let delay_mode = ref Pundef;;
-let tsymbols = Hashtbl.create 256;;
 let (includes:(string*in_channel) Stack.t) = Stack.create();;
 let (ifdef_stk:bool Stack.t) = Stack.create();;
-(* let trace_file = open_out "trace_file";; *)
 let celldefine = ref false and portfaults = ref false and suppress_faults = ref false and protect = ref false;;
 
 let _ = List.iter (fun (str,key) -> Hashtbl.add tsymbols str key)
@@ -51,6 +50,13 @@ let _ = List.iter (fun (str,key) -> Hashtbl.add tsymbols str key)
 ("`suppress_faults", P_SUPPRESS_FAULTS );
 ("`timescale", P_TIMESCALE "" );
 ];;
+
+let trace str =
+  ( if (!Globals.trace_file == Closed) then
+      let fd = open_out str in
+          Globals.trace_file := Open (fd,Format.formatter_of_out_channel fd); );;
+
+let myflush strm =  match !strm with Open chan -> flush (fst chan) | Closed -> ();;
 
 let from_special1 out_chan macro_raw =
 (* first convert any tabs to spaces *)
@@ -91,23 +97,6 @@ let retval = ref "" in begin
 if (Hashtbl.mem tsymbols macro_raw) then
   begin
   match Hashtbl.find tsymbols macro_raw with PREPROC replace -> retval := replace
-  | P_RESETALL        			-> begin
-    celldefine := false;
-    portfaults := false;
-    suppress_faults := false;
-    protect := false;
-    timescale := ""
-    end
-(*  | P_DEFINE -> Printf.fprintf trace_file "`define needs an argument (%s)\n" macro_raw; *)
-  | P_CELLDEFINE			-> celldefine := true
-  | P_ENDCELLDEFINE        		-> celldefine := false
-  | P_ENABLE_PORTFAULTS        		-> portfaults := true
-  | P_DISABLE_PORTFAULTS        	-> portfaults := false
-  | P_SUPPRESS_FAULTS        		-> suppress_faults := true
-  | P_NOSUPPRESS_FAULTS        		-> suppress_faults := false
-  | P_PROTECT        			-> protect := true;
-  | P_ENDPROTECT        		-> protect := false;
-  | P_DELAY_MODE_PATH                   -> delay_mode := PATH
   | P_ELSE -> Stack.push (not (Stack.pop ifdef_stk)) ifdef_stk;
   | P_ENDIF -> ignore(Stack.pop ifdef_stk);
   | _ -> retval := macro_raw
@@ -157,24 +146,39 @@ let from_blit out_chan src dst dstlen =
       dst.[dstlen] <- '\n';
       dstlen+1)
 
+let my_input_line chan cnt = 
+let idx = ref 0 and looping = ref true and str = String.create cnt in
+while (!looping) && (!idx < cnt-2) do
+str.[!idx] <- input_char chan;
+if str.[!idx] == '\n' then looping := false;
+if (!idx > cnt/2) && ((str.[!idx] == ' ') || (str.[!idx] == '\t')) then looping := false;
+idx := !idx + 1;
+done;
+String.sub str 0 !idx
+
 let from_func out_chan dst cnt =
     try let retval = ref 0 and looping = ref true in while !looping do
-      let src = input_line (snd(Stack.top includes)) in
-      retval := from_blit out_chan src dst (min (cnt-2) (String.length src));
+      let src = my_input_line (snd(Stack.top includes)) cnt in
+      retval := from_blit out_chan src dst (String.length src);
       looping := Stack.top ifdef_stk == false;
-      (* Printf.fprintf trace_file "If=%s Offset %d %s\n"
-          (if !looping then "false" else "true")
-           pos_in (snd(Stack.top includes)) (String.sub dst 0 !retval); *)
+      ( match !Globals.trace_file with Open chan -> 
+          let b = (if !looping then "false" else "true") and
+          p = pos_in (snd(Stack.top includes)) and
+          s = (String.sub dst 0 !retval) in Printf.fprintf (fst chan) "If=%s Offset %d %s\n" b p s | Closed -> ());
       done;
       !retval
   with End_of_file ->
     Printf.fprintf (fst out_chan) "Close %s\n" (fst (Stack.top includes));
     close_in_noerr (snd(Stack.pop includes));
     Printf.fprintf (fst out_chan) "Open %s\n" (fst (Stack.top includes));
-    (* flush trace_file; *)
+    myflush Globals.trace_file;
     dst.[0] <- '\n';
     1
 ;;
+
+let read_pragma out_chan lib nam (kind:string) =
+Printf.fprintf (fst out_chan) "Pragma %s in library %s is black-boxed\n" nam lib;
+if (Hashtbl.mem Globals.black_box nam == false) then Hashtbl.add Globals.black_box nam kind
 
 let parse str = begin
   ( if (!Globals.logfile == Closed) then
@@ -188,7 +192,28 @@ let parse str = begin
     let lexbuf = Lexing.from_function (fun dst cnt -> from_func out_chan dst cnt) in
     let looping = ref true in while !looping do
       let rslt = Vparser.start Vlexer.token lexbuf in match rslt with
-      | QUINTUPLE((MODULE|PRIMITIVE), ID id, _, _, _) -> ( Printf.fprintf (fst out_chan) "%s\n" id; Semantics.prescan out_chan rslt )
+      | QUINTUPLE((MODULE|PRIMITIVE), ID id, _, _, _) ->
+      ( Printf.fprintf (fst out_chan) "%s\n" id; Semantics.prescan out_chan rslt )
+      | PRAGMATIC str ->
+      ( try Scanf.sscanf str "//Verilog HDL for \"%s@\", \"%s@\" \"%s@\""
+	  (fun lib nam kind -> read_pragma out_chan lib nam kind)
+      with Scanf.Scan_failure msg -> Printf.fprintf (fst out_chan) "Comment %s not understood\n" str)
+      | P_RESETALL        			-> begin
+	celldefine := false;
+	portfaults := false;
+	suppress_faults := false;
+	protect := false;
+	timescale := ""
+	end
+      | P_CELLDEFINE			-> celldefine := true
+      | P_ENDCELLDEFINE        		-> celldefine := false
+      | P_ENABLE_PORTFAULTS        		-> portfaults := true
+      | P_DISABLE_PORTFAULTS        	-> portfaults := false
+      | P_SUPPRESS_FAULTS        		-> suppress_faults := true
+      | P_NOSUPPRESS_FAULTS        		-> suppress_faults := false
+      | P_PROTECT        			-> protect := true;
+      | P_ENDPROTECT        		-> protect := false;
+      | P_DELAY_MODE_PATH                   -> delay_mode := PATH
       | ENDOFFILE -> looping := false
       | _ -> Globals.unhandled (stderr,Format.err_formatter) 191 rslt
     done
@@ -197,11 +222,11 @@ let parse str = begin
     | Error ->
     begin
     psuccess := false;
+    Printf.fprintf stderr "Parse Error in %s\n" (fst(Stack.top includes));
     Printf.fprintf (fst out_chan) "Parse Error in %s\n" (fst(Stack.top includes));
     for i = 1 to hsiz do let idx = (hsiz-i+(!histcnt))mod hsiz in let item = !(history.(idx)) in
         Printf.fprintf (fst out_chan) "Backtrace %d : %s (%d-%d)\n"  i (str_token (item.tok)) item.strt item.stop;
     done;
-    exit 1;
     end;
   end
 | Closed -> failwith (Printf.sprintf "Failed to open logfile %s" Globals.tmpnam)

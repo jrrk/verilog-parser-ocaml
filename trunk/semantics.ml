@@ -710,14 +710,15 @@ iter (fun id -> Printf.fprintf (fst out_chan) "%s " id) (fst(!partlist));
 output_char (fst out_chan) '\n';
 end
 end)
-        | _ -> unhandled out_chan 669 kindhash.Globals.tree)
-      | _ -> unhandled out_chan 670 inst) instances;
+        | _ -> unhandled out_chan 713 kindhash.Globals.tree)
+      | _ -> unhandled out_chan 714 inst) instances;
     match params with
     | EMPTY -> ()
-    | TLIST parmlist -> iter (fun param -> match param with ID id -> () | _ -> unhandled out_chan 673 param) parmlist
-    | _ -> unhandled out_chan 674 params
+    | TLIST parmlist -> iter (fun param -> match param with ID id -> () | _ -> unhandled out_chan 717 param) parmlist
+    | DOUBLE (HASH, TLIST dlylist) -> iter (fun param -> match param with ID id -> () | _ -> unhandled out_chan 718 param) dlylist
+    | _ -> unhandled out_chan 719 params
     end
-| _ -> unhandled out_chan 676 expr );
+| _ -> unhandled out_chan 721 expr );
 ignore(Stack.pop stk);
 mod_empty := false
 
@@ -842,12 +843,6 @@ if contents.Globals.unresolved == [] then match contents.Globals.tree with
 			List.iter (fun key -> Hashtbl.remove pending key; remove_from_pending out_chan key) !reslist;
 			end
 
-let read_pragma nam1 nam2 (kind:string) =
-if (nam1 = nam2) then begin
-(*Printf.fprintf (fst out_chan) "Pragma %s is black-boxed\n" nam1;*)
-if (Hashtbl.mem black_box nam1 == false) then Hashtbl.add black_box nam1 kind
-end
-
 let prescan out_chan decl =
     let expt = { Globals.tree=decl; symbols=Hashtbl.create 256; unresolved=(!unresolved_list); } in
         match decl with
@@ -866,9 +861,6 @@ let prescan out_chan decl =
 	end;
 	flush (fst out_chan)
 | PREPROC str -> Printf.fprintf (fst out_chan) "Encountered %s\n" str
-| PRAGMATIC str ->
-( try Scanf.sscanf str "//Verilog HDL for \"%s@\", \"%s@\" \"%s@\"" read_pragma;
-with Scanf.Scan_failure msg -> Printf.fprintf (fst out_chan) "Comment %s not understood\n" str)
 | _ -> unhandled out_chan 919 decl
 ;;
 
