@@ -7,16 +7,16 @@ vparser.cmx: vparser.cmi
 dump.cmo: globals.cmi dump.cmi vlexer.cmo
 dump.cmx: globals.cmi vparser.cmi dump.cmi vlexer.cmo
 dump.cmi: vparser.cmi globals.cmi
-vparse.cmo: vparse.cmi vlexer.cmi globals.cmi dump.cmi semantics.cmi setup.cmi vparser.cmo
-vparse.cmx: vparse.cmi vlexer.cmi globals.cmi dump.cmi semantics.cmi setup.cmi vparser.cmo
+vparse.cmo: vparse.cmi vlexer.cmi globals.cmi dump.cmi semantics.cmo setup.cmi vparser.cmo
+vparse.cmx: vparse.cmi vlexer.cmi globals.cmi dump.cmi semantics.cmx setup.cmi vparser.cmo
 main.cmo: main.cmi vparse.cmi semantics.cmi
 main.cmx: vparser.cmi setup.cmi globals.cmi main.cmi vparse.cmi semantics.cmi semantics.cmx vparser.cmx vparse.cmx
 main.cmi: vparser.cmi globals.cmi
 globals.cmo: globals.cmi
 globals.cmx: vparser.cmi globals.cmi
 globals.cmi: vparser.cmi setup.cmi
-semantics.cmo: semantics.cmi vlexer.cmo dump.cmi vparser.cmi
-semantics.cmx: semantics.cmi vlexer.cmx dump.cmi vparser.cmi
+semantics.cmo: semantics.cmi vlexer.cmo dump.cmi vparser.cmi check.cmo
+semantics.cmx: semantics.cmi vlexer.cmx dump.cmi vparser.cmi check.cmx
 semantics.cmi: vparser.cmi setup.cmi globals.cmi const.cmi
 setup.cmo: setup.cmi
 setup.cmx: setup.cmi vparser.cmi
@@ -30,3 +30,4 @@ mytoploop.cmo: mytoploop.cmi vparser.cmi
 const.cmo: const.cmi
 const.cmx: const.cmi
 const.cmi: vparser.cmi
+check.cmo: check.cmi
