@@ -19,15 +19,12 @@
 
 open Vparser;;
 
-type symtab = { symattr : Setup.tset; width : int; };;
-
 type uptr = UPTR of (Setup.fmt -> int -> Vparser.token -> unit) | UNIL;;
 
 type modtree = {
 tree: token;
-symbols: (string, Setup.symtab) Hashtbl.t;
+symbols: Setup.shash;
 mutable unresolved: string list;
-(* gsyms : (string, Setup.symtab) Hashtbl.t; *)
  };;
 
 let modprims = Hashtbl.create 256;;

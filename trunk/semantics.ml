@@ -36,38 +36,48 @@ let mod_empty = ref true;;
 
 (* these functions are for debugging symbol hash related issues *)
 
-let shash_add syms (key:string) (sym:symtab) = Hashtbl.add syms key sym;;
-let shash_create (siz:int) = Hashtbl.create siz;;
-let shash_find syms (key:string) = Hashtbl.find syms key;;
-let shash_iter (f:string -> Setup.symtab -> unit) syms = Hashtbl.iter f syms;;
-let shash_mem syms (key:string) = Hashtbl.mem syms key;;
-let shash_remove syms (key:string) = Hashtbl.remove syms key;;
-let shash_replace syms (key:string) (sym:symtab) = Hashtbl.replace syms key sym;;
+let shash_add (syms:shash) (key:string) (sym:symtab) = match syms with
+| Shash symr -> Hashtbl.add symr.syms key sym
+| EndShash -> failwith "No symbol table passed to shash_add"
+
+let shash_create (siz:int) = Shash {nxt=EndShash; syms=Hashtbl.create siz}
+
+let shash_iter (f:string -> Setup.symtab -> unit) syms = match syms with
+| Shash symr -> Hashtbl.iter f symr.syms
+| EndShash -> failwith "No symbol table passed to shash_iter"
+
+let shash_remove (syms:shash) (key:string) = match syms with
+| Shash symr -> Hashtbl.remove symr.syms key
+| EndShash -> failwith "No symbol table passed to shash_remove"
+
+let shash_replace (syms:shash) (key:string) (sym:symtab) = match syms with
+| Shash symr -> Hashtbl.replace symr.syms key sym
+| EndShash -> failwith "No symbol table passed to shash_remove"
 
 let find_param out_chan syms pth = begin
-if shash_mem syms pth == false then begin
+if Const.shash_chain_mem syms pth == false then begin
 (*  fprintf out_chan "Creating implicit param %s\n" (stem^id);  *)
   shash_add syms pth {Setup.symattr = TokSet.singleton PARAMETER;
                        width = SCALAR;
 		       sigattr = Sigparam (INT 1);
 		       path=pth}
   end;
-shash_find syms pth
+Const.shash_chain_find syms pth
 end
 ;;
 
 let create_attr out_chan stem syms neww = 
  Sigarray (Array.make (maxwidth out_chan stem syms neww) TokSet.empty)
 
-let enter_a_sym out_chan stem symbols id attr w = let pth = stem^id in match attr with
+let enter_a_sym out_chan stem (symbols:shash) id attr w = let pth = stem^id in match attr with
 (IOPORT|INPUT|OUTPUT|INOUT|REG|WIRE|TRI0|TRI1|SUPPLY0|SUPPLY1|INTEGER|REAL|MEMORY|EVENT
  |MODULE|PRIMITIVE|SUBMODULE|SUBCCT|SPECIFY|SPECIAL|PARAMUSED
  |PARAMETER|TASK|FUNCTION) ->
-if shash_mem symbols pth then begin
+if Const.shash_chain_mem symbols pth then begin
 (*  Printf.fprintf (fst out_chan) "Update %s: %s\n" pth (Ord.getstr attr); *)
-  let newset = (shash_find symbols pth).symattr
-  and oldw = (shash_find symbols pth).width
-  and oldsattr = (shash_find symbols pth).sigattr in
+  let newset = (Const.shash_chain_find symbols pth).symattr
+  and oldw = (Const.shash_chain_find symbols pth).width
+  and oldsattr = (Const.shash_chain_find symbols pth).sigattr in
   if (oldw<>UNKNOWN)&&(oldw<>w)&&(w<>UNKNOWN) then
     Printf.fprintf (fst out_chan) "Addition of attribute %s to signal %s changed width from %s to %s\n"
       (str_token attr) pth (str_token oldw) (str_token w);
@@ -100,14 +110,14 @@ let iter_ semantics out_chan (stem:string) syms list =
 let not_found out_chan stem syms w = Printf.fprintf (fst out_chan) "wire/port %s not found\n" w; enter_a_sym out_chan stem syms w IMPLICIT SCALAR;;
 
 let find_ident out_chan dir stem syms tok = match tok with ID id -> let pth = stem^id in begin
-if shash_mem syms pth then shash_find syms pth else begin
-if shash_mem syms id then shash_find syms id else (
+if Const.shash_chain_mem syms pth then Const.shash_chain_find syms pth else begin
+if Const.shash_chain_mem syms id then Const.shash_chain_find syms id else (
   Printf.fprintf (fst out_chan) "Creating implicit wire %s\n" (stem^id);
   shash_add syms pth {Setup.symattr = TokSet.singleton IMPLICIT;
                        width = SCALAR;
 		       sigattr = create_attr out_chan stem syms SCALAR;
 		       path=pth};
-   shash_find syms pth
+   Const.shash_chain_find syms pth
       )
   end
 end
@@ -115,8 +125,8 @@ end
 ;;
 
 let enter_sym_attrs out_chan stem syms (tok:token) list width mode = match tok with
-| ID id -> let pth = stem^id in if (shash_mem syms pth == false)&&(mode == false) then (
-       if (shash_mem syms id == false) then (
+| ID id -> let pth = stem^id in if (Const.shash_chain_mem syms pth == false)&&(mode == false) then (
+       if (Const.shash_chain_mem syms id == false) then (
           Printf.fprintf (fst out_chan) "Signal %s cannot be declared here\n" id;
           unhandled out_chan 221 tok ))
   else begin
@@ -213,12 +223,12 @@ let inner_chk_const out_chan stem syms sym subcct inner (tok:token) wid = begin
 end
 
 let rec connect out_chan stem syms kind subcct (innert:token) tok = 
-let innersym = (shash_find Globals.modprims kind).symbols in match innert with ID inner -> begin
-if (shash_mem innersym inner) then
-let isym=shash_find innersym inner in match tok with
+let innersym = (Hashtbl.find Globals.modprims kind).symbols in match innert with ID inner -> begin
+if (Const.shash_chain_mem innersym inner) then
+let isym=Const.shash_chain_find innersym inner in match tok with
 | ID wireport -> inner_chk out_chan stem syms isym subcct inner wireport (find_ident out_chan WIRE stem syms tok).width
-| TRIPLE(BITSEL, ID wireport, sel) -> if (shash_mem syms wireport) then inner_chk out_chan stem syms isym subcct inner wireport (RANGE (sel, sel)) else not_found out_chan stem syms wireport
-| QUADRUPLE(PARTSEL, ID wireport, INT hi, INT lo) -> if (shash_mem syms wireport) then inner_chk out_chan stem syms isym subcct inner wireport (RANGE(INT hi, INT lo)) else not_found out_chan stem syms wireport
+| TRIPLE(BITSEL, ID wireport, sel) -> if (Const.shash_chain_mem syms wireport) then inner_chk out_chan stem syms isym subcct inner wireport (RANGE (sel, sel)) else not_found out_chan stem syms wireport
+| QUADRUPLE(PARTSEL, ID wireport, INT hi, INT lo) -> if (Const.shash_chain_mem syms wireport) then inner_chk out_chan stem syms isym subcct inner wireport (RANGE(INT hi, INT lo)) else not_found out_chan stem syms wireport
 | INT lev -> inner_chk_const out_chan stem syms isym subcct inner tok (RANGE(INT 31, INT 0))
 | BINNUM lev -> inner_chk_const out_chan stem syms isym subcct inner tok (RANGE(INT (fst(widthnum 2 lev)-1), INT 0))
 | DOUBLE(CONCAT, TLIST concat) -> let idx = ref (fst(iwidth out_chan stem syms isym.width)) in iter (fun (item:token) -> 
@@ -428,7 +438,7 @@ iter (fun caseitem -> caseitems out_chan stem syms caseitem) caseList
 | TRIPLE(TASKREF, task, args) -> ( match task with
   | ID taskname ->
   let stem2 = stem^taskname^"." in begin
-    if (shash_mem syms taskname) then match (shash_find syms taskname).sigattr with
+    if (Const.shash_chain_mem syms taskname) then match (Const.shash_chain_find syms taskname).sigattr with
       | Sigtask tsk -> dispatch out_chan stem2 {Globals.unresolved=[]; tree=tsk; symbols=syms} true (* scan the task *)
       | _ -> Printf.fprintf (fst out_chan) "Trying to call non task %s\n" taskname
     else Printf.fprintf (fst out_chan) "Task %s not found\n" taskname;
@@ -668,19 +678,19 @@ and toplevelitems out_chan stem tree =
 (* Parse primitive instance *)
 | QUADRUPLE(PRIMINST, ID prim, params, TLIST inlist) ->
 (*
-    if (shash_mem Globals.modprims prim) then
-      moditemlist out_chan (stem^prim^".") (shash_find Globals.modprims prim) (* scan the inner primitive *)
+    if (Const.shash_chain_mem Globals.modprims prim) then
+      moditemlist out_chan (stem^prim^".") (Const.shash_chain_find Globals.modprims prim) (* scan the inner primitive *)
     else Printf.fprintf (fst out_chan) "Primitive %s not found\n" prim;
 *)
     enter_a_sym out_chan stem syms prim PRIMITIVE EMPTY;
     let fc inner t = connect out_chan stem syms prim prim inner t in 
-    ( match (shash_find Globals.modprims prim).Globals.tree with QUINTUPLE(PRIMITIVE,ID arg1, EMPTY, TLIST primargs, TLIST arg4) ->
+    ( match (Hashtbl.find Globals.modprims prim).Globals.tree with QUINTUPLE(PRIMITIVE,ID arg1, EMPTY, TLIST primargs, TLIST arg4) ->
 iter2 fc primargs inlist | _ -> ())
 (* Parse module instance *)
 | QUADRUPLE(MODINST, ID kind,params, TLIST instances) ->
     begin
     enter_a_sym out_chan stem syms kind SUBMODULE EMPTY;
-    let kindhash = shash_find Globals.modprims kind in
+    let kindhash = Hashtbl.find Globals.modprims kind in
     iter (fun inst -> match inst with
       | TRIPLE(ID subcct, SCALAR, TLIST termlist) -> (* semantics out_chan (stem^subcct^".") kindhash; *)
         enter_a_sym out_chan stem syms subcct SUBCCT EMPTY;
@@ -702,7 +712,7 @@ if (!byposn) then begin
 end;
 (* Find which of the unconnected pins are inputs *)
 partlist := partition (fun inner -> 
-(shash_mem kindhash.symbols inner) && (TokSet.mem INPUT (shash_find kindhash.symbols inner).symattr)
+(Const.shash_chain_mem kindhash.symbols inner) && (TokSet.mem INPUT (Const.shash_chain_find kindhash.symbols inner).symattr)
 ) !ids;
 if (length (fst(!partlist)) > 0) then begin
 Printf.fprintf (fst out_chan) "sub-module %s of kind %s insufficient args - %d unconnected inputs(s): " subcct kind (length (fst(!partlist)));
@@ -778,7 +788,9 @@ ignore(Stack.pop stk)
 
 exception Error
 
-let check_syms out_chan syms = shash_iter (fun nam s -> Check.erc_chk out_chan syms nam s) syms;;
+let check_syms out_chan (gsyms:shash) = match gsyms with
+| Shash symr -> shash_iter (fun nam s -> Check.erc_chk out_chan symr.syms nam s) gsyms
+| EndShash -> failwith "No symbol table passed to check_syms"
 
 let scan out_chan key contents = begin
 last_mod := key;
@@ -804,7 +816,7 @@ if contents.Globals.unresolved == [] then match contents.Globals.tree with
 			end
 
 let prescan out_chan decl =
-    let expt = { Globals.tree=decl; symbols=Hashtbl.create 256; unresolved=(!unresolved_list); } in
+    let expt = { Globals.tree=decl; symbols=shash_create 256; unresolved=(!unresolved_list); } in
         match decl with
 | QUINTUPLE(kind, ID mykey, _, _, _) ->
 	Printf.fprintf (fst out_chan) "%s %s: parsed " (str_token kind) mykey;
@@ -828,11 +840,11 @@ let rec endscan2 indent mykey =
 	match !logfile with Open out_chan -> begin
         for i = 1 to indent do output_char (fst out_chan) ' '; done;
 	Printf.fprintf (fst out_chan) "Checking %s: " mykey;
-	if (shash_mem pending mykey) then
+	if (Hashtbl.mem pending mykey) then
           begin
 	  Printf.fprintf (fst out_chan) "Module %s still postponed\n" mykey;
-	  List.iter (fun key -> if (shash_mem pending key) then endscan2 (indent+2) key
-          else Printf.fprintf (fst out_chan) "%s " key) ((shash_find pending mykey).Globals.unresolved);
+	  List.iter (fun key -> if (Hashtbl.mem pending key) then endscan2 (indent+2) key
+          else Printf.fprintf (fst out_chan) "%s " key) ((Hashtbl.find pending mykey).Globals.unresolved);
  	  output_char (fst out_chan) '\n';
           end
 	end
@@ -852,9 +864,9 @@ let nullsym = {Setup.symattr = TokSet.empty; width = EMPTY; path = ""};;
 
 let moditer k (x:Globals.modtree) = semantics out_chan k x
 
-let find_glob s = Setup.show_sym s ( shash_find s);;
+let find_glob s = Setup.show_sym s ( Const.shash_chain_find s);;
 
 let find_glob_substr s = let reg = Str.regexp s in shash_iter (fun k x -> try Printf.printf "%s posn %d\n" k (Str.search_forward reg k 0); with not_found out_chan stem -> ()) gsyms;;
 
-let find_referrer s = Setup.show_sym s (match (shash_find s).referrer with Referrer lk -> lk | Nil -> nullsym);;
+let find_referrer s = Setup.show_sym s (match (Const.shash_chain_find s).referrer with Referrer lk -> lk | Nil -> nullsym);;
 *)
