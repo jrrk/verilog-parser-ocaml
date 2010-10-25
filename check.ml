@@ -26,7 +26,7 @@ open Setup
 
 let dotted s = try String.index s '.' > 0 ; with Not_found -> false;;
 
-let erc_chk_sig out_chan syma siga =
+let erc_chk_sig out_chan (syma:tset) siga =
   begin
 	begin
 	  if ((TokSet.mem INPUT syma) && (TokSet.mem SENSUSED siga)) && not (TokSet.mem DRIVER siga) then
@@ -44,10 +44,10 @@ let erc_chk_sig out_chan syma siga =
   end
 ;;
 
-let erc_chk out_chan syms id s = match s.sigattr with
+let erc_chk out_chan (gsyms:sentries) id s = match s.sigattr with
 | Sigarray attrs -> (
 match s.width with
-| RANGE range -> let (hi,lo) = iwidth out_chan "" syms s.width in
+| RANGE range -> let (hi,lo) = iwidth out_chan "" (Shash {nxt=EndShash; syms=gsyms}) s.width in
   if not ((TokSet.mem IMPLICIT s.symattr)||(TokSet.mem MEMORY s.symattr)) then
   ( let msg0 = ref "" and i0 = ref hi and i1 = ref hi in try for i = hi downto lo do
     let msg = erc_chk_sig out_chan s.symattr attrs.(i) in

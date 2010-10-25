@@ -49,6 +49,12 @@ and symtab = {
   sigattr : tsigattr;
 }
 
+type sentries = (string, symtab) Hashtbl.t
+
+type symrec = { nxt : shash; syms: sentries; }
+ 
+and shash = EndShash | Shash of symrec
+
 type fmt = (out_channel*Format.formatter)
 
 type logt = Closed | Open of fmt;;

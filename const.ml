@@ -22,7 +22,7 @@ open Globals
 open Setup
 open Ord
 
-let rec exprBoolean out_chan stem syms op expr1 expr2 =
+let rec exprBoolean out_chan stem (syms:shash) op expr1 expr2 =
 op (exprConst out_chan stem syms expr1) (exprConst out_chan stem syms expr2)
 
 and widthnum expbase (str:string) =
@@ -58,7 +58,15 @@ end;
 if (!base <> expbase) then Printf.printf "Expected base %d, actual base %d\n" expbase !base;
 (!width, !value)
 
-and exprConst out_chan stem syms expr = Stack.push (stem, 67, expr) stk; let rslt = ( match expr with
+and shash_chain_mem (syms:shash) nam = match syms with
+| Shash symr -> if Hashtbl.mem symr.syms nam then true else shash_chain_mem symr.nxt nam
+| EndShash -> false
+
+and shash_chain_find (syms:shash) nam = match syms with
+| Shash symr -> if Hashtbl.mem symr.syms nam then Hashtbl.find symr.syms nam else shash_chain_find symr.nxt nam
+| EndShash -> failwith "Not found"
+
+and exprConst out_chan stem (syms:shash) expr = Stack.push (stem, 67, expr) stk; let rslt = ( match expr with
 | INT n -> n
 | HEXNUM str -> snd(widthnum 16 str)
 | TRIPLE(TIMES, expr1, expr2) -> (exprConst out_chan stem syms expr1) * (exprConst out_chan stem syms expr2)
@@ -73,20 +81,20 @@ and exprConst out_chan stem syms expr = Stack.push (stem, 67, expr) stk; let rsl
 | DOUBLE(CONCAT, TLIST [left; right]) -> Printf.fprintf (fst out_chan) "Concat expr not yet implemented, value 1 assumed\n"; 1
 
 | ID id -> let pth = stem^id in begin
-if Hashtbl.mem syms pth == false then begin
-  if Hashtbl.mem syms id == false then begin
+if shash_chain_mem syms pth == false then begin
+  if shash_chain_mem syms id == false then begin
 (*    unhandled out_chan 81 expr;  *)
     Printf.fprintf (fst out_chan) "constant %s not declared, value 1 assumed\n" pth;
     1
     end
   else
-    match (Hashtbl.find syms id).sigattr with
+    match (shash_chain_find syms id).sigattr with
     | Sigparam pexpr -> exprConst out_chan stem syms pexpr
     | Sigarray x -> Printf.fprintf (fst out_chan) "%s not a constant or for variable, value 1 assumed\n" id; 1
     | _ -> unhandled out_chan 89 expr; 1
   end
 else
-  match (Hashtbl.find syms pth).sigattr with
+  match (shash_chain_find syms pth).sigattr with
   | Sigparam pexpr -> exprConst out_chan stem syms pexpr
   | Sigarray x -> Printf.fprintf (fst out_chan) "%s not a constant or for variable, value 1 assumed\n" pth; 1
   | _ -> unhandled out_chan 95 expr; 1
@@ -141,12 +149,19 @@ let show_token (e:token) = Printf.printf "%s " (str_token e)
 
 let show_sym _ (x:symtab) = Printf.printf "%s: " x.path; TokSet.iter show_token x.symattr; print_char '\n';;
 
-let dump_sym m s = let syms = (Hashtbl.find Globals.modprims m).Globals.symbols in let sym = Hashtbl.find syms s in (
+let dump_sym m s = let gsyms = (Hashtbl.find Globals.modprims m).Globals.symbols in match gsyms with
+| Shash symr -> let sym = Hashtbl.find symr.syms s in (
 Setup.TokSet.iter show_token sym.Setup.symattr;
 Printf.printf "\n";
-show_sig_attr syms s sym
+show_sig_attr gsyms s sym
 )
+| EndShash -> ()
 
-let my_syms m = Hashtbl.iter show_sym (Hashtbl.find Globals.modprims m).Globals.symbols;;
+let my_syms m = match (Hashtbl.find Globals.modprims m).Globals.symbols with
+| Shash symr -> Hashtbl.iter show_sym symr.syms
+| EndShash -> ()
 
-let dump_syms m = let syms = (Hashtbl.find Globals.modprims m).Globals.symbols in Hashtbl.iter show_sym syms;;
+let dump_syms m = match (Hashtbl.find Globals.modprims m).Globals.symbols with
+| Shash symr -> Hashtbl.iter show_sym symr.syms
+| EndShash -> ()
+
