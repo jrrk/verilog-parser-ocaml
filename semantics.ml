@@ -776,49 +776,9 @@ and moditemlist out_chan stem tree =
 | _ -> unhandled out_chan 723 expr );
 ignore(Stack.pop stk)
 
-let dotted s = try String.index s '.' > 0 ; with Not_found -> false;;
-
-let erc_chk_sig out_chan nam syma siga =
-  begin
-	begin
-	  if ((TokSet.mem INPUT syma) && (TokSet.mem SENSUSED siga)) && not (TokSet.mem DRIVER siga) then
-	    Printf.fprintf (fst out_chan) "%s is an input mentioned in sensitivity list but not referenced\n" nam
-	  else if (TokSet.mem INPUT syma) && not ((TokSet.mem DRIVER siga) || (TokSet.mem SPECIAL syma)) then
-	    Printf.fprintf (fst out_chan) "%s is an unloaded input\n" nam
-	  else if (TokSet.mem OUTPUT syma) && not ((TokSet.mem RECEIVER siga) || (TokSet.mem SPECIAL syma)) then
-	    Printf.fprintf (fst out_chan) "%s is an undriven output\n" nam
-	  else if (TokSet.mem INOUT syma) then
-	    Printf.fprintf (fst out_chan) "Note: %s is an inout\n" nam
-	  else if (TokSet.mem WIRE syma) && not ((TokSet.mem RECEIVER siga) || (TokSet.mem SPECIFY syma)) then
-	    Printf.fprintf (fst out_chan) "%s is an unused wire\n" nam
-	end
-  end
-;;
-
-let erc_chk out_chan syms id s = match s.sigattr with
-| Sigarray attrs -> (
-match s.width with
-| RANGE range -> let (hi,lo) = iwidth out_chan "" syms s.width in
-  if not ((TokSet.mem IMPLICIT s.symattr)||(TokSet.mem MEMORY s.symattr)) then
-  ( try for i = hi downto lo do
-    erc_chk_sig out_chan (id^"["^(string_of_int i)^"]") s.symattr attrs.(i)
-    done
-  with Invalid_argument("index out of bounds") -> Printf.fprintf (fst out_chan) "Trying to access %s with index [%d:%d]\n" id hi lo)
-| SCALAR | EMPTY | UNKNOWN->
-    erc_chk_sig out_chan id s.symattr attrs.(0)
-| _ -> unhandled out_chan 791 s.width)
-| Sigparam x ->
-  if not (TokSet.mem PARAMUSED s.symattr) then Printf.fprintf (fst out_chan) "Parameter %s is not used\n" id
-| Sigtask x ->
-  if not (TokSet.mem TASKUSED s.symattr) then Printf.fprintf (fst out_chan) "Task %s is not used\n" id
-| Sigfunc x ->
-  if not (TokSet.mem FUNCUSED s.symattr) then Printf.fprintf (fst out_chan) "Function %s is not used\n" id
-| _ -> unhandled out_chan 804 s.width
-;;
-
-let check_syms out_chan syms = shash_iter (fun nam s -> erc_chk out_chan syms nam s) syms;;
-
 exception Error
+
+let check_syms out_chan syms = shash_iter (fun nam s -> Check.erc_chk out_chan syms nam s) syms;;
 
 let scan out_chan key contents = begin
 last_mod := key;

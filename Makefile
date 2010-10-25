@@ -25,9 +25,9 @@ YACC = ocamlyacc
 YACCOPTS = -v
 #LEXOPTS = -ml
 
-CMO1 = ord.cmo setup.cmo globals.cmo vlexer.cmo vparser.cmo dump.cmo const.cmo semantics.cmo
+CMO1 = ord.cmo setup.cmo globals.cmo vlexer.cmo vparser.cmo dump.cmo const.cmo check.cmo semantics.cmo
 CMO2 = vparse.cmo main.cmo
-CMX = ord.cmx setup.cmx globals.cmx vlexer.cmx vparser.cmx dump.cmx const.cmx semantics.cmx vparse.cmx main.cmx
+CMX = ord.cmx setup.cmx globals.cmx vlexer.cmx vparser.cmx dump.cmx const.cmx check.cmx semantics.cmx vparse.cmx main.cmx
 CML = toplevellib.cma str.cma unix.cma
 CMLX = str.cmxa unix.cmxa
 
