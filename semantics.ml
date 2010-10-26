@@ -403,6 +403,9 @@ end
 and hash_dly out_chan syms dly = match dly with
   | EMPTY -> ()
   | DOUBLE(HASH, ID dlytok) -> enter_sym_attrs out_chan syms (ID dlytok) [PARAMUSED] UNKNOWN false
+  | DOUBLE(HASH, TLIST dlylist) -> iter (fun item -> match item with 
+        | ID _ -> enter_sym_attrs out_chan syms item [PARAMUSED] UNKNOWN false
+        | _ -> unhandled out_chan 408 item) dlylist
   | DOUBLE(HASH, FLOATNUM num) -> ()
   | _ -> unhandled out_chan 493 dly
 
@@ -629,67 +632,67 @@ ignore(Stack.pop stk)
 and toplevelitems out_chan tree =
    let expr = tree.Globals.tree and syms = tree.Globals.symbols in Stack.push (595, expr) stk; ( match expr with
 | DOUBLE((INITIAL|FINAL|ALWAYS), stmt) -> stmtBlock out_chan syms stmt
-| TRIPLE(ASSIGN, dly, TLIST assignlist)
--> iter (fun a -> match a with TRIPLE(ASSIGNMENT, var1, expr) ->
+| TRIPLE(ASSIGN, dly, TLIST assignlist) -> hash_dly out_chan syms dly;
+    iter (fun a -> match a with TRIPLE(ASSIGNMENT, var1, expr) ->
     ignore(subexp out_chan RECEIVER syms var1);
     ignore(exprGeneric out_chan syms expr) | _ -> unhandled out_chan 560 a) assignlist
-| TRIPLE(BUF, dly, TLIST instances) ->
+| TRIPLE(BUF, dly, TLIST instances) -> hash_dly out_chan syms dly;
     iter (fun inst -> match inst with
       | QUADRUPLE(nam, SCALAR, x, a) -> vbuf out_chan syms x a
       | _ -> unhandled out_chan 564 inst) instances
-| TRIPLE(NOT,dly, TLIST instances) ->
+| TRIPLE(NOT,dly, TLIST instances) -> hash_dly out_chan syms dly;
     iter (fun inst -> match inst with
       | QUADRUPLE(nam, SCALAR, x, a) -> vnot out_chan syms x a
       | _ -> unhandled out_chan 568 inst) instances
-| TRIPLE(AND, dly, TLIST instances) ->
+| TRIPLE(AND, dly, TLIST instances) -> hash_dly out_chan syms dly;
     iter (fun inst -> match inst with
       | QUADRUPLE(nam, SCALAR, x, TLIST inlist) -> vand out_chan syms x inlist
       | _ -> unhandled out_chan 572 inst) instances
-| TRIPLE(OR, dly, TLIST instances) ->
+| TRIPLE(OR, dly, TLIST instances) -> hash_dly out_chan syms dly;
     iter (fun inst -> match inst with
       | QUADRUPLE(nam, SCALAR, x, TLIST inlist) -> vor out_chan syms x inlist
       | _ -> unhandled out_chan 576 inst) instances
-| TRIPLE(XOR, dly, TLIST instances) ->
+| TRIPLE(XOR, dly, TLIST instances) -> hash_dly out_chan syms dly;
     iter (fun inst -> match inst with
       | QUADRUPLE(nam, SCALAR, x, TLIST inlist) -> vxor out_chan syms x inlist
       | _ -> unhandled out_chan 580 inst) instances
-| TRIPLE(NAND, dly, TLIST instances) ->
+| TRIPLE(NAND, dly, TLIST instances) -> hash_dly out_chan syms dly;
     iter (fun inst -> match inst with
       | QUADRUPLE(nam, SCALAR, x, TLIST inlist) -> vand out_chan syms x inlist
       | _ -> unhandled out_chan 584 inst) instances
-| TRIPLE(NOR, dly, TLIST instances) ->
+| TRIPLE(NOR, dly, TLIST instances) -> hash_dly out_chan syms dly;
     iter (fun inst -> match inst with
       | QUADRUPLE(nam, SCALAR, x, TLIST inlist) -> vor out_chan syms x inlist
       | _ -> unhandled out_chan 588 inst) instances
-| TRIPLE(XNOR, dly, TLIST instances) ->
+| TRIPLE(XNOR, dly, TLIST instances) -> hash_dly out_chan syms dly;
     iter (fun inst -> match inst with
       | QUADRUPLE(nam, SCALAR, x, TLIST inlist) -> vxor out_chan syms x inlist
       | _ -> unhandled out_chan 592 inst) instances
-| TRIPLE(BUFIF lev, weaklist, TLIST instances) ->
+| TRIPLE(BUFIF lev, dly, TLIST instances) -> hash_dly out_chan syms dly;
     iter (fun inst -> match inst with
       | QUADRUPLE(nam, SCALAR, x, TLIST inlist) -> vbufif out_chan syms x inlist
       | _ -> unhandled out_chan 596 inst) instances
-| TRIPLE(NOTIF lev, weaklist, TLIST instances) ->
+| TRIPLE(NOTIF lev, dly, TLIST instances) -> hash_dly out_chan syms dly;
     iter (fun inst -> match inst with
       | QUADRUPLE(nam, SCALAR, x, TLIST inlist) -> vnotif out_chan syms x inlist
       | _ -> unhandled out_chan 596 inst) instances
-| TRIPLE(PULLUP, dly, TLIST instances) ->
+| TRIPLE(PULLUP, dly, TLIST instances) -> hash_dly out_chan syms dly;
     iter (fun inst -> match inst with
       | QUADRUPLE(nam, EMPTY, EMPTY, x) -> vpullup out_chan syms x
       | _ -> unhandled out_chan 600 inst) instances
-| TRIPLE(NMOS, dly, TLIST instances) ->
+| TRIPLE(NMOS, dly, TLIST instances) -> hash_dly out_chan syms dly;
     iter (fun inst -> match inst with
       | QUINTUPLE(nam, SCALAR, pin1, pin2, pin3) -> vnmos out_chan syms pin1 pin2 pin3
       | _ -> unhandled out_chan 604 inst) instances
-| TRIPLE(PMOS, dly, TLIST instances) ->
+| TRIPLE(PMOS, dly, TLIST instances) -> hash_dly out_chan syms dly;
     iter (fun inst -> match inst with
       | QUINTUPLE(nam, SCALAR, pin1, pin2, pin3) -> vpmos out_chan syms pin1 pin2 pin3
       | _ -> unhandled out_chan 608 inst) instances
-| TRIPLE(TRANIF lev, weaklist, TLIST instances) ->
+| TRIPLE(TRANIF lev, dly, TLIST instances) -> hash_dly out_chan syms dly;
     iter (fun inst -> match inst with
       | TRIPLE(pin1, pin2, pin3) -> vtranif out_chan syms pin1 pin2 pin3
       | _ -> unhandled out_chan 612 inst) instances
-| TRIPLE(TRAN, weaklist, TLIST instances) ->
+| TRIPLE(TRAN, dly, TLIST instances) -> hash_dly out_chan syms dly;
     iter (fun inst -> match inst with
       | QUADRUPLE(nam, SCALAR, pin1, pin2) -> vtran out_chan syms pin1 pin2
       | _ -> unhandled out_chan 616 inst) instances
