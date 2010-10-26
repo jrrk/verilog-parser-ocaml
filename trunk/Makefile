@@ -42,11 +42,11 @@ vdebug: $(TARGET)
 
 ocamlyacc: grammar.mly
 	ocamlyacc $(YACCOPTS) -b vparser $<
-	make vparser vdebug vtop vopt
+	make vparser vdebug vtop vchk
 
 menhir: grammar.mly
 	menhir --base vparser grammar.mly
-	make vparser vdebug vtop vopt
+	make vparser vdebug vtop vchk
 
 vparser.mli vparser.ml: grammar.mly
 	@echo "Choose make ocamlyacc or make menhir"; false
@@ -58,7 +58,7 @@ depend: vparser.ml vlexer.ml
 	ocamldep *.ml *.mli > .depend
 
 clean:
-	rm -rf *.cmi *.cmo *.cmx *.o vopt vtop $(TARGET)
+	rm -rf *.cmi *.cmo *.cmx *.o vchk vtop $(TARGET)
 	rm -rf vparser.ml vparser.mli vlexer.ml vlexer.mli vparser.mli vparser.ml ord.ml
 
 .SUFFIXES: .ml .mli .mll .mly .cmo .cmi .cmx
@@ -87,7 +87,7 @@ test: vtop
 debug: vtop
 	ocamldebug ./vtop
 
-vopt: $(CMX)
+vchk: $(CMX)
 	ocamlopt.opt -g -o $@ $(CMLX) $(CMX)
 
 INC = /home/jrrk/cmd/src/ocaml-3.12.0
