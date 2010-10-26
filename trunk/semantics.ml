@@ -156,7 +156,7 @@ Dump.dump out_chan arg6 0;
 		       localsyms = syms;
      path=id}
 
-let enter_a_sig_attr out_chan syms (tok:token) attr w = ( match tok with 
+let enter_a_sig_attr out_chan syms (tok:token) attr w inner_sigattr = ( match tok with 
 | ID id -> let sym = find_ident out_chan WIRE syms tok in (match sym.sigattr with
 | Sigarray attrs -> (
 match w with
@@ -200,9 +200,9 @@ let inner_chk out_chan syms sym subcct inner wireport wid = begin
       end
     end;
   if (TokSet.mem IOPORT sym.symattr == false) then Printf.fprintf (fst out_chan) "Instance port %s not an ioport\n" inner
-  else if (TokSet.mem INPUT sym.symattr) then ( enter_a_sig_attr out_chan syms hier DRIVER wid)
-  else if (TokSet.mem OUTPUT sym.symattr) then ( enter_a_sig_attr out_chan syms hier RECEIVER wid)
-  else if (TokSet.mem INOUT sym.symattr) then ( enter_a_sig_attr out_chan syms hier BIDIR wid)
+  else if (TokSet.mem INPUT sym.symattr) then ( enter_a_sig_attr out_chan syms hier DRIVER wid sym.sigattr)
+  else if (TokSet.mem OUTPUT sym.symattr) then ( enter_a_sig_attr out_chan syms hier RECEIVER wid sym.sigattr)
+  else if (TokSet.mem INOUT sym.symattr) then ( enter_a_sig_attr out_chan syms hier BIDIR wid sym.sigattr)
   end
 end
 
@@ -352,8 +352,8 @@ let rec exprGeneric out_chan syms expr = Stack.push (288, expr) stk; ( match exp
 | BINNUM left -> ()
 | DECNUM left -> ()
 | HEXNUM left -> ()
-| ID arg1 -> enter_a_sig_attr out_chan syms expr DRIVER (find_ident out_chan WIRE syms expr).width
-| TRIPLE(BITSEL, arg1, arg3) -> enter_a_sig_attr out_chan syms arg1 DRIVER (RANGE(arg3,arg3))
+| ID arg1 -> enter_a_sig_attr out_chan syms expr DRIVER (find_ident out_chan WIRE syms expr).width Sigundef
+| TRIPLE(BITSEL, arg1, arg3) -> enter_a_sig_attr out_chan syms arg1 DRIVER (RANGE(arg3,arg3)) Sigundef
 | QUADRUPLE(PARTSEL, arg1 , arg3 , arg5 ) -> ()
 | QUADRUPLE(P_PLUSCOLON, arg1 , arg3 , arg5 ) -> ()
 | QUADRUPLE(P_MINUSCOLON, arg1, arg3, arg5 ) -> ()
@@ -488,8 +488,8 @@ end
 ignore(Stack.pop stk)
 
 and subexp out_chan dir syms exp = Stack.push (475, exp) stk; match exp with
-| ID id -> enter_a_sig_attr out_chan syms exp dir (find_ident out_chan WIRE syms exp).width
-| TRIPLE(BITSEL, ID id, sel) -> enter_a_sig_attr out_chan syms (ID id) dir (RANGE (sel, sel))
+| ID id -> enter_a_sig_attr out_chan syms exp dir (find_ident out_chan WIRE syms exp).width Sigundef
+| TRIPLE(BITSEL, ID id, sel) -> enter_a_sig_attr out_chan syms (ID id) dir (RANGE (sel, sel)) Sigundef
 | _ -> exprGeneric out_chan syms exp;
 ignore(Stack.pop stk)
 (*
@@ -606,7 +606,7 @@ and decls out_chan tree mode =
       | TRIPLE(ID id, arg5, arg6) -> (match arg5 with
           | EMPTY ->
               enter_sym_attrs out_chan syms (ID id) [kind] !width true;
-              enter_a_sig_attr out_chan syms (ID id) RECEIVER !width
+              enter_a_sig_attr out_chan syms (ID id) RECEIVER !width Sigundef
           | TLIST [RANGE (expr1, expr2)] ->
               enter_sym_attrs out_chan syms (ID id) [MEMORY] !width true;
           | _ -> unhandled out_chan 582 arg5);
@@ -629,7 +629,7 @@ ignore(Stack.pop stk)
 and toplevelitems out_chan tree =
    let expr = tree.Globals.tree and syms = tree.Globals.symbols in Stack.push (595, expr) stk; ( match expr with
 | DOUBLE((INITIAL|FINAL|ALWAYS), stmt) -> stmtBlock out_chan syms stmt
-| TRIPLE(ASSIGN, EMPTY, TLIST assignlist)
+| TRIPLE(ASSIGN, dly, TLIST assignlist)
 -> iter (fun a -> match a with TRIPLE(ASSIGNMENT, var1, expr) ->
     ignore(subexp out_chan RECEIVER syms var1);
     ignore(exprGeneric out_chan syms expr) | _ -> unhandled out_chan 560 a) assignlist
@@ -667,23 +667,23 @@ and toplevelitems out_chan tree =
       | _ -> unhandled out_chan 592 inst) instances
 | TRIPLE(BUFIF lev, weaklist, TLIST instances) ->
     iter (fun inst -> match inst with
-      | DOUBLE(x, TLIST inlist) -> vbufif out_chan syms x inlist
+      | QUADRUPLE(nam, SCALAR, x, TLIST inlist) -> vbufif out_chan syms x inlist
       | _ -> unhandled out_chan 596 inst) instances
 | TRIPLE(NOTIF lev, weaklist, TLIST instances) ->
     iter (fun inst -> match inst with
-      | DOUBLE(x, TLIST inlist) -> vnotif out_chan syms x inlist
+      | QUADRUPLE(nam, SCALAR, x, TLIST inlist) -> vnotif out_chan syms x inlist
       | _ -> unhandled out_chan 596 inst) instances
 | TRIPLE(PULLUP, dly, TLIST instances) ->
     iter (fun inst -> match inst with
-      | TRIPLE(EMPTY, EMPTY, x) -> vpullup out_chan syms x
+      | QUADRUPLE(nam, EMPTY, EMPTY, x) -> vpullup out_chan syms x
       | _ -> unhandled out_chan 600 inst) instances
 | TRIPLE(NMOS, dly, TLIST instances) ->
     iter (fun inst -> match inst with
-      | TRIPLE(pin1, pin2, pin3) -> vnmos out_chan syms pin1 pin2 pin3
+      | QUINTUPLE(nam, SCALAR, pin1, pin2, pin3) -> vnmos out_chan syms pin1 pin2 pin3
       | _ -> unhandled out_chan 604 inst) instances
 | TRIPLE(PMOS, dly, TLIST instances) ->
     iter (fun inst -> match inst with
-      | TRIPLE(pin1, pin2, pin3) -> vpmos out_chan syms pin1 pin2 pin3
+      | QUINTUPLE(nam, SCALAR, pin1, pin2, pin3) -> vpmos out_chan syms pin1 pin2 pin3
       | _ -> unhandled out_chan 608 inst) instances
 | TRIPLE(TRANIF lev, weaklist, TLIST instances) ->
     iter (fun inst -> match inst with
@@ -691,7 +691,7 @@ and toplevelitems out_chan tree =
       | _ -> unhandled out_chan 612 inst) instances
 | TRIPLE(TRAN, weaklist, TLIST instances) ->
     iter (fun inst -> match inst with
-      | DOUBLE(pin1, pin2) -> vtran out_chan syms pin1 pin2
+      | QUADRUPLE(nam, SCALAR, pin1, pin2) -> vtran out_chan syms pin1 pin2
       | _ -> unhandled out_chan 616 inst) instances
 (* Parse table declarations *)
 | DOUBLE(TABLE, TLIST trows) -> iter (fun row -> match row with
@@ -766,7 +766,7 @@ and dispatch out_chan tree pass2 =
     decls out_chan tree false
 (* handled by toplevelitems *)
 | DOUBLE((INITIAL|FINAL|ALWAYS|TABLE|SPECIFY), items) -> if (pass2) then toplevelitems out_chan tree
-| TRIPLE(ASSIGN, EMPTY, TLIST assignlist) ->  if (pass2) then toplevelitems out_chan tree
+| TRIPLE(ASSIGN, dly, TLIST assignlist) ->  if (pass2) then toplevelitems out_chan tree
 | TRIPLE((BUF|NOT|AND|OR|XOR|NAND|NOR|XNOR|PULLUP|NMOS|PMOS|TRAN), dly, TLIST instances) ->  if (pass2) then toplevelitems out_chan tree
 | TRIPLE((BUFIF lev|NOTIF lev|TRANIF lev), weaklist, TLIST instances) ->
     if (pass2) then toplevelitems out_chan tree
