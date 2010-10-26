@@ -28,6 +28,6 @@ val show_syms : ('a -> 'b -> unit) -> ('a, 'b) Hashtbl.t -> unit
 val show_table : string -> unit
 *)
 val unresolved_list : string list ref
-val stk : (string * int * Vparser.token) Stack.t
+val stk : (int * Vparser.token) Stack.t
 val logfile : Setup.logt ref
 val trace_file : Setup.logt ref

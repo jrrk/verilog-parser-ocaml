@@ -2,9 +2,9 @@
 
 `timescale 1ns/1ps
 
-module test2(input a, input b, output [1:0] c);
+module test2(input a, input b, input c, input r, output [1:0] cc);
 
-assign c = a+b;
+assign cc = a+b;
 
 /* extended
        0:   0 @ P ` p     0:    (  2  <  F  P  Z  d   n   x
@@ -25,22 +25,22 @@ assign c = a+b;
        F: / ? O _ o DEL
 comment */
 
+always @(posedge c)
+	if (r)
+		c = 0;
+	else
+		c = c+1;
+
 endmodule
 
 module test1(clk, rst, cnt, cc);
 
 input clk, rst;
-output [7:0] cnt;
-reg [7:0] cnt;
+input [7:0] cnt;
+// reg [7:0] cnt;
 output [1:0] cc;
 
-test2 cct(.a(), .b(), .c(cc));
-
-always @(posedge clk)
-	if (rst)
-		cnt = 0;
-	else
-		cnt = cnt+1;
+test2 cct(.a(), .b(), .c(clk), .r(rst), .cc(cc));
 
 endmodule
 
@@ -50,7 +50,11 @@ input clk, rst;
 output [15:0] count;
 wire [1:0] cc;
 
-test1 split(clk, rst, {count[7],count[6],count[5],count[4],count[3],count[2],count[1],count[0]}, cc[1:0]);
+wire count_7, count_6, count_5, count_4, count_3, count_2, count_1, count_0;
+
+assign count = {count_7, count_6, count_5, count_4, count_3, count_2, count_1, count_0};
+
+test1 split(clk, rst, {count_7, count_6, count_5, count_4, count_3, count_2, count_1, count_0}, cc[1:0]);
 
 // another comment
 

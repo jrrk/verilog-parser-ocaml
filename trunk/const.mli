@@ -4,16 +4,13 @@ val show_sym : string -> Setup.symtab -> unit
 val maxwidth : Setup.fmt -> string -> Setup.shash -> Vparser.token -> int
 val exprBoolean :
   Setup.fmt ->
-  string ->
   Setup.shash ->
   (int -> int -> bool) -> Vparser.token -> Vparser.token -> bool
-val exprConst : Setup.fmt -> string -> Setup.shash -> Vparser.token -> int
+val exprConst : Setup.fmt -> Setup.shash -> Vparser.token -> int
 val iwidth :
-  Setup.fmt ->
-  string -> Setup.shash -> Vparser.token -> int * int
+  Setup.fmt -> Setup.shash -> Vparser.token -> int * int
 val maxwidth :
-  Setup.fmt ->
-  string -> Setup.shash -> Vparser.token -> int
+  Setup.fmt -> Setup.shash -> Vparser.token -> int
 val widthnum : int -> string -> int*int
 val dump_sym : string -> string -> unit
 val dump_syms : string -> unit
