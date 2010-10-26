@@ -16,18 +16,20 @@ type tsigattr = Sigundef |
         Sigarray of tset array |
         Sigparam of Vparser.token |
         Sigtask of Vparser.token |
-        Sigfunc of Vparser.token 
+        Sigfunc of Vparser.token |
+	Signamed of Vparser.token
 
 and symtab = {
   symattr : tset;
   width : Vparser.token;
   path : string;
   sigattr : tsigattr;
+  localsyms : shash;
 }
 
-type sentries = (string, symtab) Hashtbl.t
+and sentries = (string, symtab) Hashtbl.t
 
-type symrec = { nxt : shash; syms: sentries; }
+and symrec = { nxt : shash; syms: sentries; }
  
 and shash = EndShash | Shash of symrec
 

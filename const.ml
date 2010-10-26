@@ -22,8 +22,8 @@ open Globals
 open Setup
 open Ord
 
-let rec exprBoolean out_chan stem (syms:shash) op expr1 expr2 =
-op (exprConst out_chan stem syms expr1) (exprConst out_chan stem syms expr2)
+let rec exprBoolean out_chan (syms:shash) op expr1 expr2 =
+op (exprConst out_chan syms expr1) (exprConst out_chan syms expr2)
 
 and widthnum expbase (str:string) =
 let base = ref 10
@@ -66,54 +66,46 @@ and shash_chain_find (syms:shash) nam = match syms with
 | Shash symr -> if Hashtbl.mem symr.syms nam then Hashtbl.find symr.syms nam else shash_chain_find symr.nxt nam
 | EndShash -> failwith "Not found"
 
-and exprConst out_chan stem (syms:shash) expr = Stack.push (stem, 67, expr) stk; let rslt = ( match expr with
+and exprConst out_chan (syms:shash) expr = Stack.push (67, expr) stk; let rslt = ( match expr with
 | INT n -> n
 | HEXNUM str -> snd(widthnum 16 str)
-| TRIPLE(TIMES, expr1, expr2) -> (exprConst out_chan stem syms expr1) * (exprConst out_chan stem syms expr2)
-| TRIPLE(PLUS, expr1, expr2) -> (exprConst out_chan stem syms expr1) + (exprConst out_chan stem syms expr2)
-| TRIPLE(MINUS, expr1, expr2) -> (exprConst out_chan stem syms expr1) - (exprConst out_chan stem syms expr2)
-| TRIPLE(P_EQUAL, expr1, expr2) -> if (exprBoolean out_chan stem syms (=)) expr1 expr2 then 1 else 0
-| TRIPLE(P_NOTEQUAL, expr1, expr2) -> if (exprBoolean out_chan stem syms (<>)) expr1 expr2 then 1 else 0
-| TRIPLE(LESS, expr1, expr2) -> if (exprBoolean out_chan stem syms (<)) expr1 expr2 then 1 else 0
-| TRIPLE(GREATER, expr1, expr2) -> if (exprBoolean out_chan stem syms (>)) expr1 expr2 then 1 else 0
-| TRIPLE(P_LTE, expr1, expr2) -> if (exprBoolean out_chan stem syms (<=)) expr1 expr2 then 1 else 0
-| TRIPLE(P_GTE, expr1, expr2) -> if (exprBoolean out_chan stem syms (>=)) expr1 expr2 then 1 else 0
+| TRIPLE(TIMES, expr1, expr2) -> (exprConst out_chan syms expr1) * (exprConst out_chan syms expr2)
+| TRIPLE(PLUS, expr1, expr2) -> (exprConst out_chan syms expr1) + (exprConst out_chan syms expr2)
+| TRIPLE(MINUS, expr1, expr2) -> (exprConst out_chan syms expr1) - (exprConst out_chan syms expr2)
+| TRIPLE(P_EQUAL, expr1, expr2) -> if (exprBoolean out_chan syms (=)) expr1 expr2 then 1 else 0
+| TRIPLE(P_NOTEQUAL, expr1, expr2) -> if (exprBoolean out_chan syms (<>)) expr1 expr2 then 1 else 0
+| TRIPLE(LESS, expr1, expr2) -> if (exprBoolean out_chan syms (<)) expr1 expr2 then 1 else 0
+| TRIPLE(GREATER, expr1, expr2) -> if (exprBoolean out_chan syms (>)) expr1 expr2 then 1 else 0
+| TRIPLE(P_LTE, expr1, expr2) -> if (exprBoolean out_chan syms (<=)) expr1 expr2 then 1 else 0
+| TRIPLE(P_GTE, expr1, expr2) -> if (exprBoolean out_chan syms (>=)) expr1 expr2 then 1 else 0
 | DOUBLE(CONCAT, TLIST [left; right]) -> Printf.fprintf (fst out_chan) "Concat expr not yet implemented, value 1 assumed\n"; 1
 
-| ID id -> let pth = stem^id in begin
-if shash_chain_mem syms pth == false then begin
-  if shash_chain_mem syms id == false then begin
-(*    unhandled out_chan 81 expr;  *)
-    Printf.fprintf (fst out_chan) "constant %s not declared, value 1 assumed\n" pth;
+| ID id -> begin
+if shash_chain_mem syms id == false then begin
+    Printf.fprintf (fst out_chan) "constant %s not declared, value 1 assumed\n" id;
     1
     end
-  else
+else
     match (shash_chain_find syms id).sigattr with
-    | Sigparam pexpr -> exprConst out_chan stem syms pexpr
+    | Sigparam pexpr -> exprConst out_chan syms pexpr
     | Sigarray x -> Printf.fprintf (fst out_chan) "%s not a constant or for variable, value 1 assumed\n" id; 1
     | _ -> unhandled out_chan 89 expr; 1
   end
-else
-  match (shash_chain_find syms pth).sigattr with
-  | Sigparam pexpr -> exprConst out_chan stem syms pexpr
-  | Sigarray x -> Printf.fprintf (fst out_chan) "%s not a constant or for variable, value 1 assumed\n" pth; 1
-  | _ -> unhandled out_chan 95 expr; 1
-end
 | TRIPLE(FUNCREF, ID id, TLIST args) -> Printf.fprintf (fst out_chan) "%s is a function, value 1 assumed\n" id; 1
-| QUADRUPLE(PARTSEL, arg, INT hi, INT lo) -> (exprConst out_chan stem syms arg) lsr lo
+| QUADRUPLE(PARTSEL, arg, INT hi, INT lo) -> (exprConst out_chan syms arg) lsr lo
 | TRIPLE(P_SLEFT, INT 1, ID id) -> Printf.fprintf (fst out_chan) "Const expression 1<<%s is too complicated, value 1 assumed\n" id; 1
 | _ -> unhandled out_chan 97 expr; 1 ) in
 ignore(Stack.pop stk);
 rslt
 
-let iwidth out_chan stem syms wid =  match wid with 
-| RANGE(expr1, expr2) -> (exprConst out_chan stem syms expr1,exprConst out_chan stem syms expr2)
+let iwidth out_chan syms wid =  match wid with 
+| RANGE(expr1, expr2) -> (exprConst out_chan syms expr1,exprConst out_chan syms expr2)
 | UNKNOWN -> (0,0)
 | SCALAR -> (0,0)
 | EMPTY -> (0,0)
 | _ -> unhandled out_chan 56 wid; (-1,-1)
 
-let maxwidth out_chan stem syms neww = let w = iwidth out_chan stem syms neww in
+let maxwidth out_chan syms neww = let w = iwidth out_chan syms neww in
 1 + (max (fst w) (snd w))
 
 let show_set s = TokSet.iter (fun e -> Printf.printf "%s " (str_token e)) s;;
@@ -128,7 +120,7 @@ let show_chk_sig nam syma siga =
 let show_sig_attr syms id s = match s.sigattr with
 | Sigarray attrs -> (
 match s.width with
-| RANGE range -> let (hi,lo) = iwidth (stderr,Format.err_formatter) "" syms s.width in
+| RANGE range -> let (hi,lo) = iwidth (stderr,Format.err_formatter) syms s.width in
   if not ((TokSet.mem IMPLICIT s.symattr)||(TokSet.mem MEMORY s.symattr)) then
   ( try for i = hi downto lo do
     show_chk_sig (id^"["^(string_of_int i)^"]") s.symattr attrs.(i)

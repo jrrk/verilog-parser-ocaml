@@ -1,7 +1,7 @@
 vparser.cmo: vparser.cmi globals.cmo vparser.cmi vparser.ml
 vparser.cmx: vparser.cmi globals.cmx vparser.cmi vparser.ml
-vlexer.cmo: vparser.cmi setup.cmo
-vlexer.cmx: vparser.cmi setup.cmx
+vlexer.cmo: vparser.cmi setup.cmo globals.cmo
+vlexer.cmx: vparser.cmi setup.cmx globals.cmx
 vparser.cmo: vparser.cmi 
 vparser.cmx: vparser.cmi
 dump.cmo: globals.cmi dump.cmi vlexer.cmo

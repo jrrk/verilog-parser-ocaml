@@ -37,6 +37,8 @@ let erc_chk_sig out_chan (syma:tset) siga =
 	    "is an undriven output"
 	  else if (TokSet.mem INOUT syma) then
 	    ": is an inout"
+	  else if (TokSet.mem WIRE syma) && (TokSet.mem DRIVER siga) && not ((TokSet.mem RECEIVER siga) || (TokSet.mem SPECIFY syma)) then
+	    "is a wire which drives but is not driven"
 	  else if (TokSet.mem WIRE syma) && not ((TokSet.mem RECEIVER siga) || (TokSet.mem SPECIFY syma)) then
 	    "is an unused wire"
           else ""
@@ -47,7 +49,7 @@ let erc_chk_sig out_chan (syma:tset) siga =
 let erc_chk out_chan (gsyms:sentries) id s = match s.sigattr with
 | Sigarray attrs -> (
 match s.width with
-| RANGE range -> let (hi,lo) = iwidth out_chan "" (Shash {nxt=EndShash; syms=gsyms}) s.width in
+| RANGE range -> let (hi,lo) = iwidth out_chan (Shash {nxt=EndShash; syms=gsyms}) s.width in
   if not ((TokSet.mem IMPLICIT s.symattr)||(TokSet.mem MEMORY s.symattr)) then
   ( let msg0 = ref "" and i0 = ref hi and i1 = ref hi in try for i = hi downto lo do
     let msg = erc_chk_sig out_chan s.symattr attrs.(i) in
