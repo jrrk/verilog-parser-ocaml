@@ -1490,16 +1490,16 @@ gateXnorList:
 	|	gateXnorList COMMA gateXnor		{ $1 @ [ $3 ] }
 	;
 
-gateMos:	LPAREN varRefDotBit COMMA varRefDotBit COMMA expr RPAREN
-							{ TRIPLE ($2, $4, $6 ) }
+gateMos:	gateIdE instRangeE LPAREN varRefDotBit COMMA varRefDotBit COMMA expr RPAREN
+							{ QUINTUPLE ($1, $2, $4, $6, $8 ) }
 	;
 
-gateTran:	LPAREN varRefDotBit COMMA varRefDotBit RPAREN
-							{ DOUBLE ($2, $4 ) }
+gateTran:	gateIdE instRangeE LPAREN varRefDotBit COMMA varRefDotBit RPAREN
+							{ QUADRUPLE ($1, $2, $4, $6 ) }
 	;
 
-gateTranIf:	LPAREN varRefDotBit COMMA varRefDotBit COMMA expr RPAREN
-							{ TRIPLE ($2, $4, $6 ) }
+gateTranIf:	gateIdE instRangeE LPAREN varRefDotBit COMMA varRefDotBit COMMA expr RPAREN
+							{ QUINTUPLE ($1, $2, $4, $6, $8 ) }
 	;
 
 gatePullup:	gateIdE instRangeE LPAREN varRefDotBit RPAREN
@@ -1510,8 +1510,8 @@ gateBuf:	gateIdE instRangeE LPAREN varRefDotBit COMMA expr RPAREN
 							{ QUADRUPLE ($1, $2, $4, $6 ) }
 	;
 
-gateBufIf:	LPAREN varRefDotBit COMMA gateBufIfPinList RPAREN
-							{ DOUBLE ($2, TLIST $4 ) }
+gateBufIf:	gateIdE instRangeE LPAREN varRefDotBit COMMA gateBufIfPinList RPAREN
+							{ QUADRUPLE ($1, $2, $4, TLIST $6 ) }
 	;
 
 gateNot:	gateIdE instRangeE LPAREN varRefDotBit COMMA expr RPAREN

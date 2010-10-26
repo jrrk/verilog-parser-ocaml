@@ -58,7 +58,7 @@ val shash_replace : Setup.shash -> string -> Setup.symtab -> unit
 val enter_a_sig_attr :
   Setup.fmt ->
   Setup.shash ->
-  Vparser.token -> Setup.TokSet.elt -> Vparser.token -> unit
+  Vparser.token -> Setup.TokSet.elt -> Vparser.token -> Setup.tsigattr -> unit
 
 val moditemlist : Setup.fmt -> Globals.modtree -> unit
 val scan : Setup.fmt -> string -> Globals.modtree -> unit
