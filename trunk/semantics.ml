@@ -39,7 +39,7 @@ let showmode mode = match mode with
 | SizeOnly -> "SizeOnly"
 | AttrOnly -> "AttrOnly"
 
-let verbose = ref false;;
+let verbose = ref ((int_of_string (Globals.mygetenv "VCHK_VERBOSE"))==1);;
 let mod_empty = ref true;;
 let anon = {Setup.symattr = (TokSet.empty); width=UNKNOWN; sigattr=Sigundef; localsyms=EndShash; path="*unknown*"};;
 
@@ -178,20 +178,20 @@ match inner.width with
 | Sigfunc x -> rslt := rslt0
 | Signamed x -> rslt := rslt0); !rslt
 
-let chk_inner_attr out_chan inner inner_attr attr idx = try
- (inner.sigattr == Sigundef) || (match attr with
+let chk_inner_attr out_chan inner inner_attr attr idx = (*try*)
+ (inner.sigattr == Sigundef) || (TokSet.mem SPECIAL inner.symattr) || (match attr with
       | DRIVER -> TokSet.mem DRIVER (inner_attr.(idx))
       | RECEIVER -> TokSet.mem RECEIVER (inner_attr.(idx))
       | BIDIR -> TokSet.mem BIDIR (inner_attr.(idx))
-      | _ -> false);
-  with Invalid_argument("index out of bounds") -> Printf.fprintf (fst out_chan) "Trying to access %s with index [%d]\n" inner.path idx; true
+      | _ -> false)
+(*with Invalid_argument("index out of bounds") -> Printf.fprintf (fst out_chan) "Trying to access %s with index [%d]\n" inner.path idx; true*)
 ;;
 
 let enter_range out_chan syms id sym attr w inner high (low:int) inner_attr attrs = let (hi,lo) = iwidth out_chan syms w in
   if not ((TokSet.mem IMPLICIT sym.symattr)||(TokSet.mem MEMORY sym.symattr)) then
-    for i = hi downto lo do try
+    for i = hi downto lo do (*try*)
     if chk_inner_attr out_chan inner inner_attr attr (high+i-hi) then attrs.(i) <- TokSet.add attr attrs.(i);
-    with Invalid_argument("index out of bounds") -> Printf.fprintf (fst out_chan) "Trying to access %s with index [%d]\n" id i
+    (*with Invalid_argument("index out of bounds") -> Printf.fprintf (fst out_chan) "Trying to access %s with index [%d]\n" id i*)
     done
 
 let enter_a_sig_attr out_chan syms (tok:token) attr w inner = ( match tok with 
@@ -274,10 +274,10 @@ let isym=Const.shash_chain_find innersym inner in match tok with
 | BINNUM lev -> inner_chk_const out_chan syms isym subcct inner tok (RANGE(INT (fst(widthnum 2 lev)-1), INT 0))
 | DOUBLE(CONCAT, TLIST concat) -> let idx = ref (fst(iwidth out_chan syms isym.width)) in iter (fun (item:token) -> 
 (match item with
-  | ID id -> let wid = (find_ident out_chan WIRE syms item).width in begin inner_chk out_chan syms {symattr=isym.symattr; width=RANGE(INT !idx, INT !idx); sigattr = isym.sigattr; localsyms = EndShash; path=id} subcct inner id wid; idx := !idx + snd(iwidth out_chan syms wid) - fst(iwidth out_chan syms wid) - 1; end
-  | TRIPLE(BITSEL, ID id, INT sel) -> inner_chk out_chan syms {symattr=isym.symattr; width=RANGE(INT !idx, INT !idx); sigattr = create_attr out_chan syms SCALAR; localsyms = EndShash; path=id} subcct inner id (RANGE(INT sel, INT sel)); idx := !idx-1
-  | QUADRUPLE(PARTSEL, ID id, INT hi, INT lo) -> inner_chk out_chan syms {symattr=isym.symattr; width=RANGE(INT !idx, INT (!idx+lo-hi)); sigattr = isym.sigattr; localsyms = EndShash; path=id} subcct inner id (RANGE(INT hi, INT lo)); idx := !idx+lo-hi-1
-  | BINNUM lev -> let w = fst(widthnum 2 lev) in inner_chk_const out_chan syms {symattr=isym.symattr; width=RANGE(INT !idx, INT (!idx+1-w)); sigattr = isym.sigattr; localsyms = EndShash; path=""} subcct inner tok (RANGE(INT (w-1), INT 0))
+  | ID id -> let wid = (find_ident out_chan WIRE syms item).width in begin inner_chk out_chan syms {symattr=isym.symattr; width=RANGE(INT !idx, INT !idx); sigattr = isym.sigattr; localsyms = EndShash; path=isym.path} subcct inner id wid; idx := !idx + snd(iwidth out_chan syms wid) - fst(iwidth out_chan syms wid) - 1; end
+  | TRIPLE(BITSEL, ID id, INT sel) -> inner_chk out_chan syms {symattr=isym.symattr; width=RANGE(INT !idx, INT !idx); sigattr = isym.sigattr; localsyms = EndShash; path=isym.path} subcct inner id (RANGE(INT sel, INT sel)); idx := !idx-1
+  | QUADRUPLE(PARTSEL, ID id, INT hi, INT lo) -> inner_chk out_chan syms {symattr=isym.symattr; width=RANGE(INT !idx, INT (!idx+lo-hi)); sigattr = isym.sigattr; localsyms = EndShash; path=isym.path} subcct inner id (RANGE(INT hi, INT lo)); idx := !idx+lo-hi-1
+  | BINNUM lev -> let w = fst(widthnum 2 lev) in inner_chk_const out_chan syms {symattr=isym.symattr; width=RANGE(INT !idx, INT (!idx+1-w)); sigattr = isym.sigattr; localsyms = EndShash; path=isym.path} subcct inner tok (RANGE(INT (w-1), INT 0))
   | _ -> unhandled out_chan 224 item)
 ) concat
 (* These patterns are temporary placeholders *)
@@ -442,6 +442,7 @@ and hash_dly out_chan syms dly = match dly with
         | ID _ -> enter_sym_attrs out_chan syms item [PARAMUSED] UNKNOWN AttrOnly
         | _ -> unhandled out_chan 408 item) dlylist
   | DOUBLE(HASH, FLOATNUM num) -> ()
+  | TLIST [WEAK weak0; WEAK weak1] -> ()
   | _ -> unhandled out_chan 493 dly
 
 and stmtBlock out_chan syms block = Stack.push (465, block) stk; ( match block with
@@ -857,20 +858,20 @@ ignore(Stack.pop stk)
 
 exception Error
 
-let check_syms out_chan (gsyms:shash) = match gsyms with
-| Shash symr -> shash_iter (fun nam s -> Check.erc_chk out_chan symr.syms nam s) gsyms
+let check_syms out_chan key (gsyms:shash) = match gsyms with
+| Shash symr -> shash_iter (fun nam s -> Check.erc_chk out_chan key symr.syms nam s) gsyms
 | EndShash -> failwith "No symbol table passed to check_syms"
 
 let scan out_chan key contents = begin
 last_mod := key;
 Hashtbl.add Globals.modprims key contents;
-Printf.fprintf (fst out_chan) "scanning ..\n";
+if (!verbose) then Printf.fprintf (fst out_chan) "scanning ..\n";
 mod_empty := true;
 moditemlist out_chan contents;
 if !mod_empty then
     Printf.fprintf (fst out_chan) "%s check skipped due to black boxing\n" key
 else
-    check_syms out_chan contents.Globals.symbols;
+    check_syms out_chan key contents.Globals.symbols;
 end
 
 let rec remove_from_pending out_chan mykey =  let reslist = ref [] in begin
@@ -878,7 +879,7 @@ let rec remove_from_pending out_chan mykey =  let reslist = ref [] in begin
 contents.Globals.unresolved <- List.filter(fun item -> item <> mykey) contents.Globals.unresolved;
 if contents.Globals.unresolved == [] then match contents.Globals.tree with
 | QUINTUPLE(kind, ID mykey, _, _, _) -> (
-			Printf.fprintf (fst out_chan) "%s %s: resumed " (str_token kind) key;
+			if (!verbose) then Printf.fprintf (fst out_chan) "%s %s: resumed " (str_token kind) key;
 			scan out_chan key contents; reslist := key :: !reslist)
 | _ -> unhandled out_chan 899 contents.Globals.tree) pending;
 			List.iter (fun key -> Hashtbl.remove pending key; remove_from_pending out_chan key) !reslist;
@@ -888,15 +889,17 @@ let prescan out_chan decl =
     let expt = { Globals.tree=decl; symbols=shash_create EndShash 256; unresolved=(!unresolved_list); } in
         match decl with
 | QUINTUPLE(kind, ID mykey, _, _, _) ->
-	Printf.fprintf (fst out_chan) "%s %s: parsed " (str_token kind) mykey;
+	if (!verbose) then Printf.fprintf (fst out_chan) "%s %s: parsed " (str_token kind) mykey;
 	if (List.length(!unresolved_list)==0) then begin
 		scan out_chan mykey expt;
 		remove_from_pending out_chan mykey;
 		end
 	else begin
-		Printf.fprintf (fst out_chan) "pending: not yet encountered: ";
-		List.iter (fun key -> Printf.fprintf (fst out_chan) "%s " key) !unresolved_list;
-		output_char (fst out_chan) '\n';
+		if (!verbose) then (
+                    Printf.fprintf (fst out_chan) "pending: not yet encountered: ";
+		    List.iter (fun key -> Printf.fprintf (fst out_chan) "%s " key) !unresolved_list;
+		    output_char (fst out_chan) '\n';
+                    );
 		Hashtbl.add pending mykey expt;
 		unresolved_list := [];
 	end;
@@ -907,13 +910,13 @@ let prescan out_chan decl =
 
 let rec endscan2 indent mykey =
 	match !logfile with Open out_chan -> begin
-        for i = 1 to indent do output_char (fst out_chan) ' '; done;
-	Printf.fprintf (fst out_chan) "Checking %s: " mykey;
+        if (!verbose) then ( for i = 1 to indent do output_char (fst out_chan) ' '; done;
+	Printf.fprintf (fst out_chan) "Checking %s: " mykey );
 	if (Hashtbl.mem pending mykey) then
           begin
-	  Printf.fprintf (fst out_chan) "Module %s still postponed\n" mykey;
+	  if (!verbose) then Printf.fprintf (fst out_chan) "Module %s still postponed\n" mykey;
 	  List.iter (fun key -> if (Hashtbl.mem pending key) then endscan2 (indent+2) key
-          else Printf.fprintf (fst out_chan) "%s " key) ((Hashtbl.find pending mykey).Globals.unresolved);
+          else if (!verbose) then Printf.fprintf (fst out_chan) "%s " key) ((Hashtbl.find pending mykey).Globals.unresolved);
  	  output_char (fst out_chan) '\n';
           end
 	end

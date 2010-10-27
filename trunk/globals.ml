@@ -30,6 +30,7 @@ mutable unresolved: string list;
 let modprims = Hashtbl.create 256;;
 let pending = Hashtbl.create 256;;
 let black_box = Hashtbl.create 256;;
+let env_cache = Hashtbl.create 256;;
 
 let tmpnam = "report."^(string_of_int(Unix.getpid()))^"."^Unix.gethostname()^".report";;
 let unresolved_list = ref [];;
@@ -54,3 +55,6 @@ let get_table (m:string) = Hashtbl.find modprims m;;
 let get_syms (r:modtree) = r.symbols;;
 
 let tsymbols = Hashtbl.create 256;;
+
+let mygetenv str = if Hashtbl.mem env_cache str then Hashtbl.find env_cache str else
+        try let env = Sys.getenv str in Hashtbl.add env_cache str env; env; with Not_found -> (); ""

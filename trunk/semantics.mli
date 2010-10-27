@@ -17,7 +17,7 @@ val not_found : Setup.fmt -> Setup.shash -> string -> unit
 val connect : Setup.fmt -> Setup.shash -> string -> string -> Vparser.token -> Vparser.token -> unit
 val fiter : Setup.fmt -> Setup.shash -> string -> string -> Vparser.token -> Vparser.token -> unit
 val enter_sym_attrs : Setup.fmt -> Setup.shash -> Vparser.token -> Setup.TokSet.elt list -> Vparser.token -> declmode -> unit
-val check_syms : Setup.fmt -> Setup.shash -> unit
+val check_syms : Setup.fmt -> string -> Setup.shash -> unit
 val endscan : unit -> unit
 val subexp : Setup.fmt -> Setup.TokSet.elt -> Setup.shash -> Vparser.token -> unit
 val enter_parameter : Setup.fmt -> Setup.shash -> string -> Vparser.token -> Vparser.token -> Vparser.token -> unit
