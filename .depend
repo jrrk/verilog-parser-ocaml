@@ -28,8 +28,8 @@ ord.cmi: vparser.cmi
 mytoploop.cmi: vparser.cmi vparser.cmi semantics.cmi
 notoploop.cmi: mytoploop.mli vparser.cmi vparser.cmi
 mytoploop.cmo: mytoploop.cmi vparser.cmi
-const.cmo: const.cmi setup.cmo
-const.cmx: const.cmi setup.cmx
+const.cmo: const.cmi setup.cmo globals.cmo
+const.cmx: const.cmi setup.cmx globals.cmo
 const.cmi: vparser.cmi setup.cmi
 check.cmi: setup.cmi
 check.cmo: check.cmi const.cmo setup.cmo

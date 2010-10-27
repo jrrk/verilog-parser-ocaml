@@ -46,7 +46,8 @@ let erc_chk_sig out_chan (syma:tset) siga =
   end
 ;;
 
-let erc_chk out_chan (gsyms:sentries) id s = match s.sigattr with
+let erc_chk out_chan key (gsyms:sentries) id s = let h = ref false
+and erch h = if not !h then Printf.fprintf (fst out_chan) "In %s:\n" key; h := true in match s.sigattr with
 | Sigarray attrs -> (
 match s.width with
 | RANGE range -> let (hi,lo) = iwidth out_chan (Shash {nxt=EndShash; syms=gsyms}) s.width in
@@ -57,26 +58,26 @@ match s.width with
         Printf.fprintf (fst out_chan) "DBG: %s %s\n" (id^"["^(string_of_int i)^"]") msg;  *)
     if (msg <> !msg0) then (
       if (String.length !msg0 > 0) then
-	 Printf.fprintf (fst out_chan) "%s %s\n" (id^"["^(string_of_int !i0)^":"^(string_of_int !i1)^"]") !msg0;
+	 (erch h; Printf.fprintf (fst out_chan) "%s %s\n" (id^"["^(string_of_int !i0)^":"^(string_of_int !i1)^"]") !msg0;);
       i0 := i;
       i1 := i;
       msg0 := msg; )
     else if (i == lo) then (
       if (String.length msg > 0) then
-	 Printf.fprintf (fst out_chan) "%s %s\n" (id^"["^(string_of_int !i0)^":"^(string_of_int i)^"]") !msg0 )
+	 (erch h; Printf.fprintf (fst out_chan) "%s %s\n" (id^"["^(string_of_int !i0)^":"^(string_of_int i)^"]") !msg0 ))
     else
       i1 := i;
     done
-  with Invalid_argument("index out of bounds") -> Printf.fprintf (fst out_chan) "Trying to access %s with index [%d:%d]\n" id hi lo)
+  with Invalid_argument("index out of bounds") -> (erch h; Printf.fprintf (fst out_chan) "Trying to access %s with index [%d:%d]\n" id hi lo))
 | SCALAR | EMPTY | UNKNOWN->
     let msg = erc_chk_sig out_chan s.symattr attrs.(0) in
-    if (String.length msg > 0) then Printf.fprintf (fst out_chan) "%s %s\n" id msg
+    if (String.length msg > 0) then (erch h; Printf.fprintf (fst out_chan) "%s %s\n" id msg)
 | _ -> unhandled out_chan 791 s.width)
 | Sigparam x ->
-  if not (TokSet.mem PARAMUSED s.symattr) then Printf.fprintf (fst out_chan) "Parameter %s is not used\n" id
+  if not (TokSet.mem PARAMUSED s.symattr) then (erch h; Printf.fprintf (fst out_chan) "Parameter %s is not used\n" id)
 | Sigtask x ->
-  if not (TokSet.mem TASKUSED s.symattr) then Printf.fprintf (fst out_chan) "Task %s is not used\n" id
+  if not (TokSet.mem TASKUSED s.symattr) then (erch h; Printf.fprintf (fst out_chan) "Task %s is not used\n" id)
 | Sigfunc x ->
-  if not (TokSet.mem FUNCUSED s.symattr) then Printf.fprintf (fst out_chan) "Function %s is not used\n" id
+  if not (TokSet.mem FUNCUSED s.symattr) then (erch h; Printf.fprintf (fst out_chan) "Function %s is not used\n" id)
 | _ -> unhandled out_chan 804 s.width
 ;;

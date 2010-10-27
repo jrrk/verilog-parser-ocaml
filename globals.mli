@@ -31,3 +31,4 @@ val unresolved_list : string list ref
 val stk : (int * Vparser.token) Stack.t
 val logfile : Setup.logt ref
 val trace_file : Setup.logt ref
+val mygetenv : string -> string

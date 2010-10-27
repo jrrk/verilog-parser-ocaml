@@ -20,8 +20,7 @@
 .PHONY: menhir ocamlyacc
 
 TARGET = vparser
-#YACC = menhir -v --trace # --table
-YACC = ocamlyacc
+MENHIROPTS = --trace # --table
 YACCOPTS = -v
 #LEXOPTS = -ml
 
@@ -45,7 +44,7 @@ ocamlyacc: grammar.mly
 	make vparser vdebug vtop vchk
 
 menhir: grammar.mly
-	menhir --base vparser grammar.mly
+	menhir $(MENHIROPTS) --base vparser grammar.mly
 	make vparser vdebug vtop vchk
 
 vparser.mli vparser.ml: grammar.mly

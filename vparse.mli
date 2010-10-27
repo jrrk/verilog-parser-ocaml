@@ -1,5 +1,4 @@
 val parse: string -> unit
-val trace : string -> unit
 val myflush : Setup.logt ref -> unit
 val includes : (string*in_channel) Stack.t
 val from_func : Setup.fmt -> string -> int -> int

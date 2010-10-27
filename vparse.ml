@@ -51,10 +51,7 @@ let _ = List.iter (fun (str,key) -> Hashtbl.add tsymbols str key)
 ("`timescale", P_TIMESCALE "" );
 ];;
 
-let trace str =
-  ( if (!Globals.trace_file == Closed) then
-      let fd = open_out str in
-          Globals.trace_file := Open (fd,Format.formatter_of_out_channel fd); );;
+let yesno cond = if cond then "true" else "false"
 
 let myflush strm =  match !strm with Open chan -> flush (fst chan) | Closed -> ();;
 
@@ -79,11 +76,16 @@ let substr = String.sub macro_raw 0 blank1 in if (Hashtbl.mem tsymbols substr) t
 	let idx = ref 0 in
   	  while (!idx < String.length defn) && (defn.[!idx] == ' ') do idx := !idx+1; done;
           let repl = String.sub (defn) (!idx) (String.length(defn)-(!idx)) in Hashtbl.add tsymbols name (PREPROC repl);
-          (* Printf.fprintf trace_file "Define %s %s\n" name repl; *)
+          ( match !Globals.trace_file with Open chan -> Printf.fprintf (fst chan) "Define %s %s\n" name repl | Closed -> () );
         ""
-  | P_TIMESCALE _    		-> timescale := right;
-        (* Printf.fprintf trace_file "%s\n" macro_raw; *) ""
-  | P_IFDEF -> Stack.push (Hashtbl.mem tsymbols right) ifdef_stk; ""
+  | P_TIMESCALE _  -> timescale := right;
+     ( match !Globals.trace_file with Open chan -> Printf.fprintf (fst chan) "%s\n" macro_raw | Closed -> () ); ""
+  | P_IFDEF -> let defn = "`"^(String.sub right 0 (String.length(right)-1)) in let cond = Hashtbl.mem tsymbols defn in 
+     ( match !Globals.trace_file with Open chan ->
+        Hashtbl.iter (fun key contents -> Printf.fprintf (fst chan) "Defined %s %s\n" key (str_token contents)) tsymbols;
+        Printf.fprintf (fst chan) "Ifdef %s %s %s\n" macro_raw right (yesno cond) |
+        Closed -> () );
+     Stack.push cond ifdef_stk; ""
   | P_ELSE -> Stack.push (not (Stack.pop ifdef_stk)) ifdef_stk; ""
   | P_ENDIF -> ignore(Stack.pop ifdef_stk); ""
   | _ -> macro_raw
@@ -133,7 +135,7 @@ let from_blit out_chan src dst dstlen =
               | _ -> looping := false
               done;
       preproc := !preproc && ((String.contains_from src !tstart ' ')||(String.contains_from src !tstart '\t'));
-      (* Printf.fprintf trace_file "Source %s preproc=%s\n" src (if !preproc then "true" else "false"); *)
+      (* Printf.fprintf trace_file "Source %s preproc=%s\n" src (yesno !preproc); *)
       if (!preproc) then begin
         let subst = from_special1 out_chan (String.sub src !tstart ((String.length src)- !tstart)) in
         let len = String.length subst in
@@ -164,7 +166,7 @@ let from_func out_chan dst cnt =
       ( match !Globals.trace_file with Open chan -> 
           let b = (if !looping then "false" else "true") and
           p = pos_in (snd(Stack.top includes)) and
-          s = (String.sub dst 0 !retval) in Printf.fprintf (fst chan) "If=%s Offset %d %s\n" b p s | Closed -> ());
+          s = (String.sub dst 0 !retval) in Printf.fprintf (fst chan) "If=%s Offset %d %s" b p s | Closed -> ());
       done;
       !retval
   with End_of_file ->
@@ -181,6 +183,10 @@ Printf.fprintf (fst out_chan) "Pragma %s in library %s is black-boxed\n" nam lib
 if (Hashtbl.mem Globals.black_box nam == false) then Hashtbl.add Globals.black_box nam kind
 
 let parse str = begin
+  (   let trc_file = Globals.mygetenv "VCHK_TRACE_FILE" in
+    if (!Globals.trace_file == Closed) && (trc_file <> "") then
+      let fd = open_out trc_file in
+          Globals.trace_file := Open (fd,Format.formatter_of_out_channel fd); );
   ( if (!Globals.logfile == Closed) then
       let fd = open_out Globals.tmpnam in
           Globals.logfile := Open (fd,Format.formatter_of_out_channel fd); );
@@ -193,7 +199,7 @@ let parse str = begin
     let looping = ref true in while !looping do
       let rslt = Vparser.start Vlexer.token lexbuf in match rslt with
       | QUINTUPLE((MODULE|PRIMITIVE), ID id, _, _, _) ->
-      ( Printf.fprintf (fst out_chan) "%s\n" id; Semantics.prescan out_chan rslt )
+      ( (* Printf.fprintf (fst out_chan) "%s\n" id; *) Semantics.prescan out_chan rslt )
       | PRAGMATIC str ->
       ( try Scanf.sscanf str "//Verilog HDL for \"%s@\", \"%s@\" \"%s@\""
 	  (fun lib nam kind -> read_pragma out_chan lib nam kind)
