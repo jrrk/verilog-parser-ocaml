@@ -8,6 +8,8 @@ type modtree = {
 type uptr = UPTR of (Setup.fmt -> int -> Vparser.token -> unit) | UNIL
 
 val unhand_list : (int * Vparser.token) list ref
+val implicit_params : string list ref
+val implicit_wires : string list ref
 val unhandled_dflt : Setup.fmt -> int -> Vparser.token -> unit
 val unhandled_ptr : uptr ref
 val unhandled : Setup.fmt -> int -> Vparser.token -> unit

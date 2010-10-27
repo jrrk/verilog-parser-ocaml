@@ -39,6 +39,8 @@ let logfile = ref Setup.Closed;;
 let trace_file = ref Setup.Closed;;
 
 let (unhand_list:(int*token) list ref) = ref [];;
+let (implicit_params:string list ref) = ref [];;
+let (implicit_wires:string list ref) = ref [];;
 
 let unhandled_dflt out_chan ln argt = let arg = (ln,argt) in if (List.mem arg !unhand_list == false) then begin
 unhand_list := arg :: !unhand_list;
