@@ -32,7 +32,16 @@ type exprt =
 | UNHANDLED of token
 ;;
 
+type declmode = Create | SizeOnly | AttrOnly
+
+let showmode mode = match mode with
+| Create -> "Create"
+| SizeOnly -> "SizeOnly"
+| AttrOnly -> "AttrOnly"
+
+let verbose = ref false;;
 let mod_empty = ref true;;
+let anon = {Setup.symattr = (TokSet.empty); width=UNKNOWN; sigattr=Sigundef; localsyms=EndShash; path="*unknown*"};;
 
 (* these functions are for debugging symbol hash related issues *)
 
@@ -70,19 +79,19 @@ end
 let create_attr out_chan syms neww = 
  Sigarray (Array.make (maxwidth out_chan syms neww) TokSet.empty)
 
-let enter_a_sym out_chan (symbols:shash) id attr w = match attr with
+let enter_a_sym out_chan (symbols:shash) id attr w mode = match attr with
 (IOPORT|INPUT|OUTPUT|INOUT|REG|WIRE|TRI0|TRI1|SUPPLY0|SUPPLY1|INTEGER|REAL|MEMORY|EVENT
  |MODULE|PRIMITIVE|SUBMODULE|SUBCCT|SPECIFY|SPECIAL|PARAMUSED
  |PARAMETER|TASK|FUNCTION) ->
 if Const.shash_chain_mem symbols id then begin
-(*  Printf.fprintf (fst out_chan) "Update %s: %s\n" id (Ord.getstr attr); *)
+if !verbose then ( Printf.fprintf (fst out_chan) "Update %s %s: %s %s\n" id (str_token w) (Ord.getstr attr) (showmode mode));
   let newset = (Const.shash_chain_find symbols id).symattr
   and oldw = (Const.shash_chain_find symbols id).width
   and oldsattr = (Const.shash_chain_find symbols id).sigattr in
   if (oldw<>UNKNOWN)&&(oldw<>w)&&(w<>UNKNOWN) then
     Printf.fprintf (fst out_chan) "Addition of attribute %s to signal %s changed width from %s to %s\n"
       (str_token attr) id (str_token oldw) (str_token w);
-  if (w<>UNKNOWN) then
+  if (w<>UNKNOWN) && (mode<>AttrOnly) then
   shash_replace symbols id
     {Setup.symattr = (TokSet.add attr newset);
     width = w;
@@ -97,7 +106,7 @@ if Const.shash_chain_mem symbols id then begin
     path=id};
     end
 else begin
-(*  Printf.fprintf (fst out_chan) "Enter %s: %s\n" id (Ord.getstr attr); *)
+if !verbose then (Printf.fprintf (fst out_chan) "Enter %s %s: %s %s\n" id (str_token w) (Ord.getstr attr) (showmode mode));
   shash_add symbols id {Setup.symattr = (TokSet.singleton attr);
      width = w;
      sigattr = create_attr out_chan symbols w;
@@ -111,7 +120,7 @@ let iter_ semantics out_chan syms list =
   List.iter (fun x -> semantics out_chan ({Globals.unresolved=[]; tree=x; symbols=syms})) list
 ;;
 
-let not_found out_chan syms w = Printf.fprintf (fst out_chan) "wire/port %s not found\n" w; enter_a_sym out_chan syms w IMPLICIT SCALAR;;
+let not_found out_chan syms w = Printf.fprintf (fst out_chan) "wire/port %s not found\n" w; enter_a_sym out_chan syms w IMPLICIT SCALAR Create
 
 let find_ident out_chan dir syms tok = match tok with ID id -> begin
 if Const.shash_chain_mem syms id then Const.shash_chain_find syms id else begin
@@ -130,12 +139,11 @@ end
 ;;
 
 let enter_sym_attrs out_chan syms (tok:token) list width mode = match tok with
-| ID id -> if (Const.shash_chain_mem syms id == false)&&(mode == false) then (
-       if (Const.shash_chain_mem syms id == false) then (
+| ID id -> if (Const.shash_chain_mem syms id == false)&&(mode <> Create) then (
           Printf.fprintf (fst out_chan) "Signal %s cannot be declared here\n" id;
-          unhandled out_chan 221 tok ))
+          unhandled out_chan 221 tok )
   else begin
-     iter (fun x -> enter_a_sym out_chan syms id x width) list;
+     iter (fun x -> enter_a_sym out_chan syms id x width mode) list;
      let newset = (find_ident out_chan WIRE syms tok).symattr in
      if (TokSet.mem INPUT newset) && (TokSet.mem REG newset) then 
        Printf.fprintf (fst out_chan) "Error: signal %s cannot be input and reg\n" id
@@ -146,34 +154,60 @@ let enter_sym_attrs out_chan syms (tok:token) list width mode = match tok with
 ;;
 
 let enter_parameter out_chan syms id arg5 arg6 w =
-(*
-Dump.dump out_chan arg5 0;
-Dump.dump out_chan arg6 0;
-*)
   shash_add syms id {Setup.symattr = (TokSet.singleton PARAMETER);
      width = w;
      sigattr = Sigparam arg6;
 		       localsyms = syms;
      path=id}
 
-let enter_a_sig_attr out_chan syms (tok:token) attr w inner_sigattr = ( match tok with 
-| ID id -> let sym = find_ident out_chan WIRE syms tok in (match sym.sigattr with
+let sig_attr_extract out_chan syms inner = let rslt0 = (0,0,Array.make 1 TokSet.empty) in
+let rslt = ref rslt0 in ( match inner.sigattr with
+| Sigarray attrs -> (
+match inner.width with
+| RANGE range -> let (hi,lo) = iwidth out_chan syms inner.width in rslt := (hi,lo,attrs)
+| SCALAR ->
+    rslt := (0,0,attrs);
+| UNKNOWN -> (*TBD*)
+    rslt := rslt0;
+| EMPTY -> (*TBD*)
+    rslt := rslt0;
+| _ -> unhandled out_chan 98 inner.width)
+| Sigparam x -> rslt := rslt0
+| Sigundef -> rslt := rslt0
+| Sigtask x -> rslt := rslt0
+| Sigfunc x -> rslt := rslt0
+| Signamed x -> rslt := rslt0); !rslt
+
+let chk_inner_attr out_chan inner inner_attr attr idx = try
+ (inner.sigattr == Sigundef) || (match attr with
+      | DRIVER -> TokSet.mem DRIVER (inner_attr.(idx))
+      | RECEIVER -> TokSet.mem RECEIVER (inner_attr.(idx))
+      | BIDIR -> TokSet.mem BIDIR (inner_attr.(idx))
+      | _ -> false);
+  with Invalid_argument("index out of bounds") -> Printf.fprintf (fst out_chan) "Trying to access %s with index [%d]\n" inner.path idx; true
+;;
+
+let enter_range out_chan syms id sym attr w inner high (low:int) inner_attr attrs = let (hi,lo) = iwidth out_chan syms w in
+  if not ((TokSet.mem IMPLICIT sym.symattr)||(TokSet.mem MEMORY sym.symattr)) then
+    for i = hi downto lo do try
+    if chk_inner_attr out_chan inner inner_attr attr (high+i-hi) then attrs.(i) <- TokSet.add attr attrs.(i);
+    with Invalid_argument("index out of bounds") -> Printf.fprintf (fst out_chan) "Trying to access %s with index [%d]\n" id i
+    done
+
+let enter_a_sig_attr out_chan syms (tok:token) attr w inner = ( match tok with 
+| ID id -> let sym = find_ident out_chan WIRE syms tok and (high,low,inner_attr) = sig_attr_extract out_chan syms inner
+ in (match sym.sigattr with
 | Sigarray attrs -> (
 match w with
-| RANGE range -> let (hi,lo) = iwidth out_chan syms w in
-  if not ((TokSet.mem IMPLICIT sym.symattr)||(TokSet.mem MEMORY sym.symattr)) then
-  ( try for i = hi downto lo do
-    attrs.(i) <- TokSet.add attr attrs.(i);
-    done;
-  with Invalid_argument("index out of bounds") -> Printf.fprintf (fst out_chan) "Trying to access %s with index [%d:%d]\n" id hi lo)
+| RANGE range -> enter_range out_chan syms id sym attr w inner high low inner_attr attrs
 | SCALAR ->
-    attrs.(0) <- TokSet.add attr attrs.(0);
+    if chk_inner_attr out_chan inner inner_attr attr (0) then attrs.(0) <- TokSet.add attr attrs.(0);
 | UNKNOWN -> (*TBD*)
-    attrs.(0) <- TokSet.add attr attrs.(0);
+    if chk_inner_attr out_chan inner inner_attr attr (0) then attrs.(0) <- TokSet.add attr attrs.(0);
 | EMPTY -> (*TBD*)
-    attrs.(0) <- TokSet.add attr attrs.(0);
+    if chk_inner_attr out_chan inner inner_attr attr (0) then attrs.(0) <- TokSet.add attr attrs.(0);
 | _ -> unhandled out_chan 98 w)
-| Sigparam x -> enter_sym_attrs out_chan syms tok [PARAMUSED] UNKNOWN false
+| Sigparam x -> enter_sym_attrs out_chan syms tok [PARAMUSED] UNKNOWN AttrOnly
 | Sigundef -> Printf.fprintf (fst out_chan) "Internal error - Signal %s has no width\n" id
 | Sigtask x -> Printf.fprintf (fst out_chan) "Entity %s is already declared as a task\n" id
 | Sigfunc x -> Printf.fprintf (fst out_chan) "Entity %s is already declared as a function\n" id
@@ -200,9 +234,9 @@ let inner_chk out_chan syms sym subcct inner wireport wid = begin
       end
     end;
   if (TokSet.mem IOPORT sym.symattr == false) then Printf.fprintf (fst out_chan) "Instance port %s not an ioport\n" inner
-  else if (TokSet.mem INPUT sym.symattr) then ( enter_a_sig_attr out_chan syms hier DRIVER wid sym.sigattr)
-  else if (TokSet.mem OUTPUT sym.symattr) then ( enter_a_sig_attr out_chan syms hier RECEIVER wid sym.sigattr)
-  else if (TokSet.mem INOUT sym.symattr) then ( enter_a_sig_attr out_chan syms hier BIDIR wid sym.sigattr)
+  else if (TokSet.mem INPUT sym.symattr) then ( enter_a_sig_attr out_chan syms hier DRIVER wid sym)
+  else if (TokSet.mem OUTPUT sym.symattr) then ( enter_a_sig_attr out_chan syms hier RECEIVER wid sym)
+  else if (TokSet.mem INOUT sym.symattr) then ( enter_a_sig_attr out_chan syms hier BIDIR wid sym)
   end
 end
 
@@ -230,7 +264,7 @@ let inner_chk_const out_chan syms sym subcct inner (tok:token) wid = begin
 end
 
 let rec connect out_chan syms kind subcct (innert:token) tok = 
-let innersym = (Hashtbl.find Globals.modprims kind).symbols in match innert with ID inner -> begin
+let innersym = (Hashtbl.find Globals.modprims kind).symbols in ( Stack.push (255, innert) stk; match innert with ID inner -> begin
 if (Const.shash_chain_mem innersym inner) then
 let isym=Const.shash_chain_find innersym inner in match tok with
 | ID wireport -> inner_chk out_chan syms isym subcct inner wireport (find_ident out_chan WIRE syms tok).width
@@ -240,10 +274,10 @@ let isym=Const.shash_chain_find innersym inner in match tok with
 | BINNUM lev -> inner_chk_const out_chan syms isym subcct inner tok (RANGE(INT (fst(widthnum 2 lev)-1), INT 0))
 | DOUBLE(CONCAT, TLIST concat) -> let idx = ref (fst(iwidth out_chan syms isym.width)) in iter (fun (item:token) -> 
 (match item with
-  | ID id -> let wid = (find_ident out_chan WIRE syms item).width in begin inner_chk out_chan syms {symattr=isym.symattr; width=RANGE(INT !idx, INT !idx); sigattr = create_attr out_chan syms SCALAR; localsyms = EndShash; path=id} subcct inner id wid; idx := !idx + snd(iwidth out_chan syms wid) - fst(iwidth out_chan syms wid); end
+  | ID id -> let wid = (find_ident out_chan WIRE syms item).width in begin inner_chk out_chan syms {symattr=isym.symattr; width=RANGE(INT !idx, INT !idx); sigattr = isym.sigattr; localsyms = EndShash; path=id} subcct inner id wid; idx := !idx + snd(iwidth out_chan syms wid) - fst(iwidth out_chan syms wid) - 1; end
   | TRIPLE(BITSEL, ID id, INT sel) -> inner_chk out_chan syms {symattr=isym.symattr; width=RANGE(INT !idx, INT !idx); sigattr = create_attr out_chan syms SCALAR; localsyms = EndShash; path=id} subcct inner id (RANGE(INT sel, INT sel)); idx := !idx-1
-  | QUADRUPLE(PARTSEL, ID id, INT hi, INT lo) -> inner_chk out_chan syms {symattr=isym.symattr; width=RANGE(INT !idx, INT (!idx+lo-hi)); sigattr = create_attr out_chan syms SCALAR; localsyms = EndShash; path=id} subcct inner id (RANGE(INT hi, INT lo)); idx := !idx+lo-hi-1
-  | BINNUM lev -> let w = fst(widthnum 2 lev) in inner_chk_const out_chan syms {symattr=isym.symattr; width=RANGE(INT !idx, INT (!idx+1-w)); sigattr = Sigundef; localsyms = EndShash; path=""} subcct inner tok (RANGE(INT (w-1), INT 0))
+  | QUADRUPLE(PARTSEL, ID id, INT hi, INT lo) -> inner_chk out_chan syms {symattr=isym.symattr; width=RANGE(INT !idx, INT (!idx+lo-hi)); sigattr = isym.sigattr; localsyms = EndShash; path=id} subcct inner id (RANGE(INT hi, INT lo)); idx := !idx+lo-hi-1
+  | BINNUM lev -> let w = fst(widthnum 2 lev) in inner_chk_const out_chan syms {symattr=isym.symattr; width=RANGE(INT !idx, INT (!idx+1-w)); sigattr = isym.sigattr; localsyms = EndShash; path=""} subcct inner tok (RANGE(INT (w-1), INT 0))
   | _ -> unhandled out_chan 224 item)
 ) concat
 (* These patterns are temporary placeholders *)
@@ -257,7 +291,8 @@ let isym=Const.shash_chain_find innersym inner in match tok with
 | _ -> unhandled out_chan 226 tok
 else Printf.fprintf (fst out_chan) "Instance port %s of %s (type %s) not found\n" inner subcct kind
 end
-| _ -> unhandled out_chan 229 innert
+| _ -> unhandled out_chan 229 innert);
+ignore(Stack.pop stk)
 ;;
 
 let f2 inner t = show_token(inner);show_token(t);print_char '\n';;
@@ -352,8 +387,8 @@ let rec exprGeneric out_chan syms expr = Stack.push (288, expr) stk; ( match exp
 | BINNUM left -> ()
 | DECNUM left -> ()
 | HEXNUM left -> ()
-| ID arg1 -> enter_a_sig_attr out_chan syms expr DRIVER (find_ident out_chan WIRE syms expr).width Sigundef
-| TRIPLE(BITSEL, arg1, arg3) -> enter_a_sig_attr out_chan syms arg1 DRIVER (RANGE(arg3,arg3)) Sigundef
+| ID arg1 -> enter_a_sig_attr out_chan syms expr DRIVER (find_ident out_chan WIRE syms expr).width anon
+| TRIPLE(BITSEL, arg1, arg3) -> enter_a_sig_attr out_chan syms arg1 DRIVER (RANGE(arg3,arg3)) anon
 | QUADRUPLE(PARTSEL, arg1 , arg3 , arg5 ) -> ()
 | QUADRUPLE(P_PLUSCOLON, arg1 , arg3 , arg5 ) -> ()
 | QUADRUPLE(P_MINUSCOLON, arg1, arg3, arg5 ) -> ()
@@ -373,7 +408,7 @@ stmtBlock out_chan syms stmt
 | QUADRUPLE(P_LTE, dest, dly, exp) ->
 exprGeneric out_chan syms exp;
 ignore(subexp out_chan RECEIVER syms dest)
-| ID id -> enter_a_sym out_chan syms id EMPTY EMPTY
+| ID id -> enter_a_sym out_chan syms id EMPTY EMPTY AttrOnly
 | PREPROC txt -> ()
 | EMPTY -> ()
 | _ -> unhandled out_chan 417 expr );
@@ -402,9 +437,9 @@ end
 
 and hash_dly out_chan syms dly = match dly with
   | EMPTY -> ()
-  | DOUBLE(HASH, ID dlytok) -> enter_sym_attrs out_chan syms (ID dlytok) [PARAMUSED] UNKNOWN false
+  | DOUBLE(HASH, ID dlytok) -> enter_sym_attrs out_chan syms (ID dlytok) [PARAMUSED] UNKNOWN AttrOnly
   | DOUBLE(HASH, TLIST dlylist) -> iter (fun item -> match item with 
-        | ID _ -> enter_sym_attrs out_chan syms item [PARAMUSED] UNKNOWN false
+        | ID _ -> enter_sym_attrs out_chan syms item [PARAMUSED] UNKNOWN AttrOnly
         | _ -> unhandled out_chan 408 item) dlylist
   | DOUBLE(HASH, FLOATNUM num) -> ()
   | _ -> unhandled out_chan 493 dly
@@ -420,7 +455,7 @@ and stmtBlock out_chan syms block = Stack.push (465, block) stk; ( match block w
 		       sigattr = Signamed block;
 		       localsyms = syms2;
 		       path=blk_named};
- iter (fun item -> decls out_chan {Globals.unresolved=[]; tree=item; symbols=syms2} false) loc_decls;
+ iter (fun item -> decls out_chan {Globals.unresolved=[]; tree=item; symbols=syms2} Create) loc_decls;
  iter (fun item -> stmtBlock out_chan syms2 item) stmts
 | TLIST stmtList -> iter (fun item ->
     stmtBlock out_chan syms item) stmtList
@@ -491,8 +526,8 @@ end
 ignore(Stack.pop stk)
 
 and subexp out_chan dir syms exp = Stack.push (475, exp) stk; match exp with
-| ID id -> enter_a_sig_attr out_chan syms exp dir (find_ident out_chan WIRE syms exp).width Sigundef
-| TRIPLE(BITSEL, ID id, sel) -> enter_a_sig_attr out_chan syms (ID id) dir (RANGE (sel, sel)) Sigundef
+| ID id -> enter_a_sig_attr out_chan syms exp dir (find_ident out_chan WIRE syms exp).width anon
+| TRIPLE(BITSEL, ID id, sel) -> enter_a_sig_attr out_chan syms (ID id) dir (RANGE (sel, sel)) anon
 | _ -> exprGeneric out_chan syms exp;
 ignore(Stack.pop stk)
 (*
@@ -590,8 +625,10 @@ and decls out_chan tree mode =
       | _ -> unhandled out_chan 510 arg3);
     ( match arg4 with
       | DOUBLE(id, arg5) -> enter_sym_attrs out_chan syms id !attr !width mode
-      | TRIPLE(id, TLIST arg5, TLIST arg6) -> enter_sym_attrs out_chan syms id !attr !width mode
-      | TLIST arg9 ->  List.iter (fun x -> match x with TRIPLE(id, arg5, arg6) -> enter_sym_attrs out_chan syms id !attr !width mode | _ -> unhandled out_chan 514 x) arg9
+      | TRIPLE(id, TLIST arg5, TLIST arg6) -> enter_sym_attrs out_chan syms id !attr !width SizeOnly
+      | TLIST arg9 ->  List.iter (fun x -> match x with
+        | TRIPLE(id, arg5, arg6) -> enter_sym_attrs out_chan syms id !attr !width SizeOnly
+        | _ -> unhandled out_chan 514 x) arg9
       | EMPTY -> ()
       | _ -> unhandled out_chan 516 arg4); end
 (* Parse wire/reg declarations *)
@@ -608,13 +645,13 @@ and decls out_chan tree mode =
     ( List.iter (fun x -> match x with
       | TRIPLE(ID id, arg5, arg6) -> (match arg5 with
           | EMPTY ->
-              enter_sym_attrs out_chan syms (ID id) [kind] !width true;
-              enter_a_sig_attr out_chan syms (ID id) RECEIVER !width Sigundef
+              enter_sym_attrs out_chan syms (ID id) [kind] !width Create;
+              enter_a_sig_attr out_chan syms (ID id) RECEIVER !width anon
           | TLIST [RANGE (expr1, expr2)] ->
-              enter_sym_attrs out_chan syms (ID id) [MEMORY] !width true;
+              enter_sym_attrs out_chan syms (ID id) [MEMORY] !width Create;
           | _ -> unhandled out_chan 582 arg5);
           if (arg6 <> EMPTY) then exprGeneric out_chan syms arg6;
-      | DOUBLE(id, EMPTY) -> enter_sym_attrs out_chan syms id [kind] !width true
+      | DOUBLE(id, EMPTY) -> enter_sym_attrs out_chan syms id [kind] !width Create
       | _ -> unhandled out_chan 534 x) arg3); end
 (* Parse real/integer/event decls *)
 | QUADRUPLE((REAL|INTEGER|EVENT) as kind, arg1, arg2, TLIST arg3) ->
@@ -624,7 +661,7 @@ and decls out_chan tree mode =
       | TRIPLE(EMPTY,EMPTY,EMPTY) -> ()
       | _ ->  unhandled out_chan 541 arg2);
     ( List.iter (fun x -> match x with
-      | TRIPLE(id, arg5, arg6) -> enter_sym_attrs out_chan syms id [kind] SCALAR true
+      | TRIPLE(id, arg5, arg6) -> enter_sym_attrs out_chan syms id [kind] SCALAR Create
       | _ -> unhandled out_chan 544 x) arg3)
 | _ -> unhandled out_chan 545 expr );
 ignore(Stack.pop stk)
@@ -702,7 +739,9 @@ and toplevelitems out_chan tree =
   | TRIPLE(TLIST tin,TLIST treg,TLIST tout) -> ()
   | _ -> unhandled out_chan 621 row) trows
 (* Parse truncated specify blocks *)
-| DOUBLE(SPECIFY, TLIST speclist) -> iter (fun item -> match item with ID id -> enter_a_sym out_chan syms id SPECIFY UNKNOWN| _ -> ()) speclist
+| DOUBLE(SPECIFY, TLIST speclist) -> iter (fun item -> match item with
+  | ID id -> enter_a_sym out_chan syms id SPECIFY UNKNOWN AttrOnly
+  | _ -> ()) speclist
 (* Parse primitive instance *)
 | QUADRUPLE(PRIMINST, ID prim, params, TLIST inlist) ->
 (*
@@ -710,18 +749,18 @@ and toplevelitems out_chan tree =
       moditemlist out_chan (stem^prim^".") (Const.shash_chain_find Globals.modprims prim) (* scan the inner primitive *)
     else Printf.fprintf (fst out_chan) "Primitive %s not found\n" prim;
 *)
-    enter_a_sym out_chan syms prim PRIMITIVE EMPTY;
+    enter_a_sym out_chan syms prim PRIMITIVE EMPTY Create;
     let fc inner t = connect out_chan syms prim prim inner t in 
     ( match (Hashtbl.find Globals.modprims prim).Globals.tree with QUINTUPLE(PRIMITIVE,ID arg1, EMPTY, TLIST primargs, TLIST arg4) ->
 iter2 fc primargs inlist | _ -> ())
 (* Parse module instance *)
 | QUADRUPLE(MODINST, ID kind,params, TLIST instances) ->
     begin
-    enter_a_sym out_chan syms kind SUBMODULE EMPTY;
+    enter_a_sym out_chan syms kind SUBMODULE EMPTY Create;
     let kindhash = Hashtbl.find Globals.modprims kind in
     iter (fun inst -> match inst with
       | TRIPLE(ID subcct, SCALAR, TLIST termlist) -> (* semantics out_chan (stem^subcct^".") kindhash; *)
-        enter_a_sym out_chan syms subcct SUBCCT EMPTY;
+        enter_a_sym out_chan syms subcct SUBCCT EMPTY Create;
         ( match kindhash.Globals.tree with QUINTUPLE((MODULE|PRIMITIVE),ID arg1, EMPTY, TLIST primargs, TLIST arg4) ->
         (try iter2 (fun (inner:token) (term:token) -> fiter out_chan syms kind subcct inner term) primargs termlist; with Invalid_argument "List.iter2" -> let ids = ref [] and partlist = ref ([],[])and byposn = ref false in begin
 iter (fun (inner:token) -> (match inner with
@@ -763,10 +802,10 @@ mod_empty := false
 and dispatch out_chan tree pass2 =
    let expr = tree.Globals.tree and syms = tree.Globals.symbols in Stack.push (726, expr) stk; ( match expr with
 (* handled by decls *)
-| QUADRUPLE(PARAMETER, EMPTY, EMPTY, params) -> if (pass2==false) then decls out_chan tree false
-| QUINTUPLE((INPUT|OUTPUT|INOUT), arg1, arg2, arg3, arg4) -> if (pass2==true) then decls out_chan tree false
+| QUADRUPLE(PARAMETER, EMPTY, EMPTY, params) -> if (pass2==false) then decls out_chan tree Create
+| QUINTUPLE((INPUT|OUTPUT|INOUT), arg1, arg2, arg3, arg4) -> if (pass2==true) then decls out_chan tree SizeOnly
 | QUADRUPLE((WIRE|REG|TRI0|TRI1|SUPPLY0|SUPPLY1|REAL|INTEGER|EVENT), arg1, arg2, TLIST arg3) -> if (pass2==true) then
-    decls out_chan tree false
+    decls out_chan tree Create
 (* handled by toplevelitems *)
 | DOUBLE((INITIAL|FINAL|ALWAYS|TABLE|SPECIFY), items) -> if (pass2) then toplevelitems out_chan tree
 | TRIPLE(ASSIGN, dly, TLIST assignlist) ->  if (pass2) then toplevelitems out_chan tree
@@ -781,7 +820,7 @@ shash_add syms funcname {Setup.symattr = TokSet.singleton FUNCTION;
 		       sigattr = Sigfunc expr;
 		       localsyms = syms2;
 		       path=funcname};
-iter (fun arg -> decls out_chan {Globals.unresolved=[]; tree=arg; symbols=syms2} true) args;
+iter (fun arg -> decls out_chan {Globals.unresolved=[]; tree=arg; symbols=syms2} Create) args;
 if (pass2==false) then stmtBlock out_chan syms2 stmts)
 (* Parse task declarations *)
 | SEPTUPLE(TASK, EMPTY, ID taskname, EMPTY, TLIST args, stmts, EMPTY) -> let syms2 = shash_create syms 256 in (
@@ -790,7 +829,7 @@ shash_add syms taskname {Setup.symattr = TokSet.singleton TASK;
 		       sigattr = Sigtask expr;
 		       localsyms = syms2;
 		       path=taskname};
-iter (fun arg -> decls out_chan {Globals.unresolved=[]; tree=arg; symbols=syms2} true) args;
+iter (fun arg -> decls out_chan {Globals.unresolved=[]; tree=arg; symbols=syms2} Create) args;
 if (pass2==true) then stmtBlock out_chan syms2 stmts)
 | _ -> unhandled out_chan 702 expr );
 ignore(Stack.pop stk)
@@ -799,18 +838,18 @@ and moditemlist out_chan tree =
    let expr = tree.Globals.tree and syms = tree.Globals.symbols in Stack.push (752, expr) stk; ( match expr with
 (* Parse module declarations *)
 | QUINTUPLE(MODULE,ID arg1, arg2, TLIST arg3, TLIST arg4) ->
-    enter_a_sym out_chan syms arg1 MODULE SCALAR; (* print_endline (stem^arg1); *)
+    enter_a_sym out_chan syms arg1 MODULE SCALAR Create;
     misc_syntax out_chan syms arg2;
     iter (fun arg -> match arg with
-| ID id -> enter_a_sym out_chan syms id IOPORT UNKNOWN
-| _ -> decls out_chan {Globals.unresolved=[]; tree=arg; symbols=syms} true) arg3;
+| ID id -> enter_a_sym out_chan syms id IOPORT UNKNOWN Create
+| _ -> decls out_chan {Globals.unresolved=[]; tree=arg; symbols=syms} Create) arg3;
     iter (fun item -> dispatch out_chan {Globals.unresolved=[]; tree=item; symbols=syms} false) arg4;
     iter (fun item -> dispatch out_chan {Globals.unresolved=[]; tree=item; symbols=syms} true) arg4;
 (* Parse primitive declarations *)
 | QUINTUPLE(PRIMITIVE,ID arg1, EMPTY, TLIST primargs, TLIST arg4) ->
-    enter_a_sym out_chan syms arg1 PRIMITIVE EMPTY;
+    enter_a_sym out_chan syms arg1 PRIMITIVE EMPTY Create;
     iter (fun arg -> match arg with
-      | ID id -> iter (fun x -> enter_a_sym out_chan syms id x UNKNOWN) [IOPORT;SPECIAL]; 
+      | ID id -> iter (fun x -> enter_a_sym out_chan syms id x UNKNOWN Create) [IOPORT;SPECIAL]; 
       | _ -> misc_syntax out_chan syms arg) primargs;
     iter (fun item -> dispatch out_chan {Globals.unresolved=[]; tree=item; symbols=syms} true) arg4;
 | _ -> unhandled out_chan 723 expr );
