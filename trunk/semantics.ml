@@ -39,7 +39,7 @@ let showmode mode = match mode with
 | SizeOnly -> "SizeOnly"
 | AttrOnly -> "AttrOnly"
 
-let verbose = ref ((int_of_string (Globals.mygetenv "VCHK_VERBOSE"))==1);;
+let verbose = ref ((Globals.mygetenv "VCHK_VERBOSE")=="1");;
 let mod_empty = ref true;;
 let anon = {Setup.symattr = (TokSet.empty); width=UNKNOWN; sigattr=Sigundef; localsyms=EndShash; path="*unknown*"};;
 
