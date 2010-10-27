@@ -54,7 +54,7 @@ wire count_7, count_6, count_5, count_4, count_3, count_2, count_1, count_0;
 
 assign count = {count_7, count_6, count_5, count_4, count_3, count_2, count_1, count_0};
 
-test1 split(clk, rst, {count_7, count_6, count_5, count_4, count_3, count_2, count_1, count_0}, cc[1:0]);
+test1 split(clk, rst, {count_7, count_6, count_5, count_4, count_3, count_2, cc[1:0]}, cc[1:0]);
 
 // another comment
 
