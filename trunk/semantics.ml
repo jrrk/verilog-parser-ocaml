@@ -65,7 +65,7 @@ let shash_replace (syms:shash) (key:string) (sym:symtab) = match syms with
 
 let find_param out_chan syms id = begin
 if Const.shash_chain_mem syms id == false then begin
-(*  fprintf out_chan "Creating implicit param %s\n" id;  *)
+  ( if List.mem id !implicit_params == false then implicit_params := id :: !implicit_params );
   shash_add syms id {Setup.symattr = TokSet.singleton PARAMETER;
                        width = SCALAR;
 		       sigattr = Sigparam (INT 1);
@@ -120,12 +120,9 @@ let iter_ semantics out_chan syms list =
   List.iter (fun x -> semantics out_chan ({Globals.unresolved=[]; tree=x; symbols=syms})) list
 ;;
 
-let not_found out_chan syms w = Printf.fprintf (fst out_chan) "wire/port %s not found\n" w; enter_a_sym out_chan syms w IMPLICIT SCALAR Create
-
-let find_ident out_chan dir syms tok = match tok with ID id -> begin
-if Const.shash_chain_mem syms id then Const.shash_chain_find syms id else begin
+let find_ident out_chan syms tok = match tok with ID id -> begin
 if Const.shash_chain_mem syms id then Const.shash_chain_find syms id else (
-  Printf.fprintf (fst out_chan) "Creating implicit wire %s\n" id;
+  ( if List.mem id !implicit_wires == false then implicit_wires := id :: !implicit_wires );
   shash_add syms id {Setup.symattr = TokSet.singleton IMPLICIT;
                        width = SCALAR;
 		       sigattr = create_attr out_chan syms SCALAR;
@@ -133,10 +130,11 @@ if Const.shash_chain_mem syms id then Const.shash_chain_find syms id else (
 		       path=id};
    Const.shash_chain_find syms id
       )
-  end
 end
 | _ -> unhandled out_chan 118 tok; ({Setup.symattr = TokSet.singleton tok; width = EMPTY; sigattr = create_attr out_chan syms SCALAR; localsyms = EndShash; path=""})
 ;;
+
+let not_found out_chan syms w = Printf.fprintf (fst out_chan) "wire/port %s not found\n" w; ignore(find_ident out_chan syms (ID w))
 
 let enter_sym_attrs out_chan syms (tok:token) list width mode = match tok with
 | ID id -> if (Const.shash_chain_mem syms id == false)&&(mode <> Create) then (
@@ -144,7 +142,7 @@ let enter_sym_attrs out_chan syms (tok:token) list width mode = match tok with
           unhandled out_chan 221 tok )
   else begin
      iter (fun x -> enter_a_sym out_chan syms id x width mode) list;
-     let newset = (find_ident out_chan WIRE syms tok).symattr in
+     let newset = (find_ident out_chan syms tok).symattr in
      if (TokSet.mem INPUT newset) && (TokSet.mem REG newset) then 
        Printf.fprintf (fst out_chan) "Error: signal %s cannot be input and reg\n" id
      else if (TokSet.mem INPUT newset) && (TokSet.mem WIRE newset) then 
@@ -195,7 +193,7 @@ let enter_range out_chan syms id sym attr w inner high (low:int) inner_attr attr
     done
 
 let enter_a_sig_attr out_chan syms (tok:token) attr w inner = ( match tok with 
-| ID id -> let sym = find_ident out_chan WIRE syms tok and (high,low,inner_attr) = sig_attr_extract out_chan syms inner
+| ID id -> let sym = find_ident out_chan syms tok and (high,low,inner_attr) = sig_attr_extract out_chan syms inner
  in (match sym.sigattr with
 | Sigarray attrs -> (
 match w with
@@ -267,14 +265,14 @@ let rec connect out_chan syms kind subcct (innert:token) tok =
 let innersym = (Hashtbl.find Globals.modprims kind).symbols in ( Stack.push (255, innert) stk; match innert with ID inner -> begin
 if (Const.shash_chain_mem innersym inner) then
 let isym=Const.shash_chain_find innersym inner in match tok with
-| ID wireport -> inner_chk out_chan syms isym subcct inner wireport (find_ident out_chan WIRE syms tok).width
+| ID wireport -> inner_chk out_chan syms isym subcct inner wireport (find_ident out_chan syms tok).width
 | TRIPLE(BITSEL, ID wireport, sel) -> if (Const.shash_chain_mem syms wireport) then inner_chk out_chan syms isym subcct inner wireport (RANGE (sel, sel)) else not_found out_chan syms wireport
 | QUADRUPLE(PARTSEL, ID wireport, INT hi, INT lo) -> if (Const.shash_chain_mem syms wireport) then inner_chk out_chan syms isym subcct inner wireport (RANGE(INT hi, INT lo)) else not_found out_chan syms wireport
 | INT lev -> inner_chk_const out_chan syms isym subcct inner tok (RANGE(INT 31, INT 0))
 | BINNUM lev -> inner_chk_const out_chan syms isym subcct inner tok (RANGE(INT (fst(widthnum 2 lev)-1), INT 0))
 | DOUBLE(CONCAT, TLIST concat) -> let idx = ref (fst(iwidth out_chan syms isym.width)) in iter (fun (item:token) -> 
 (match item with
-  | ID id -> let wid = (find_ident out_chan WIRE syms item).width in begin inner_chk out_chan syms {symattr=isym.symattr; width=RANGE(INT !idx, INT !idx); sigattr = isym.sigattr; localsyms = EndShash; path=isym.path} subcct inner id wid; idx := !idx + snd(iwidth out_chan syms wid) - fst(iwidth out_chan syms wid) - 1; end
+  | ID id -> let wid = (find_ident out_chan syms item).width in begin inner_chk out_chan syms {symattr=isym.symattr; width=RANGE(INT !idx, INT !idx); sigattr = isym.sigattr; localsyms = EndShash; path=isym.path} subcct inner id wid; idx := !idx + snd(iwidth out_chan syms wid) - fst(iwidth out_chan syms wid) - 1; end
   | TRIPLE(BITSEL, ID id, INT sel) -> inner_chk out_chan syms {symattr=isym.symattr; width=RANGE(INT !idx, INT !idx); sigattr = isym.sigattr; localsyms = EndShash; path=isym.path} subcct inner id (RANGE(INT sel, INT sel)); idx := !idx-1
   | QUADRUPLE(PARTSEL, ID id, INT hi, INT lo) -> inner_chk out_chan syms {symattr=isym.symattr; width=RANGE(INT !idx, INT (!idx+lo-hi)); sigattr = isym.sigattr; localsyms = EndShash; path=isym.path} subcct inner id (RANGE(INT hi, INT lo)); idx := !idx+lo-hi-1
   | BINNUM lev -> let w = fst(widthnum 2 lev) in inner_chk_const out_chan syms {symattr=isym.symattr; width=RANGE(INT !idx, INT (!idx+1-w)); sigattr = isym.sigattr; localsyms = EndShash; path=isym.path} subcct inner tok (RANGE(INT (w-1), INT 0))
@@ -387,7 +385,7 @@ let rec exprGeneric out_chan syms expr = Stack.push (288, expr) stk; ( match exp
 | BINNUM left -> ()
 | DECNUM left -> ()
 | HEXNUM left -> ()
-| ID arg1 -> enter_a_sig_attr out_chan syms expr DRIVER (find_ident out_chan WIRE syms expr).width anon
+| ID arg1 -> enter_a_sig_attr out_chan syms expr DRIVER (find_ident out_chan syms expr).width anon
 | TRIPLE(BITSEL, arg1, arg3) -> enter_a_sig_attr out_chan syms arg1 DRIVER (RANGE(arg3,arg3)) anon
 | QUADRUPLE(PARTSEL, arg1 , arg3 , arg5 ) -> ()
 | QUADRUPLE(P_PLUSCOLON, arg1 , arg3 , arg5 ) -> ()
@@ -414,7 +412,7 @@ ignore(subexp out_chan RECEIVER syms dest)
 | _ -> unhandled out_chan 417 expr );
 ignore(Stack.pop stk)
 
-and for_stmt out_chan syms id start test inc clause = let wid = (find_ident out_chan WIRE syms (ID id)).width and crnt = ref (INT (exprConst out_chan syms start)) in begin
+and for_stmt out_chan syms id start test inc clause = let wid = (find_ident out_chan syms (ID id)).width and crnt = ref (INT (exprConst out_chan syms start)) in begin
   shash_add syms id {Setup.symattr = (TokSet.singleton PARAMETER);
      width = wid;
      sigattr = Sigparam !crnt;
@@ -527,7 +525,7 @@ end
 ignore(Stack.pop stk)
 
 and subexp out_chan dir syms exp = Stack.push (475, exp) stk; match exp with
-| ID id -> enter_a_sig_attr out_chan syms exp dir (find_ident out_chan WIRE syms exp).width anon
+| ID id -> enter_a_sig_attr out_chan syms exp dir (find_ident out_chan syms exp).width anon
 | TRIPLE(BITSEL, ID id, sel) -> enter_a_sig_attr out_chan syms (ID id) dir (RANGE (sel, sel)) anon
 | _ -> exprGeneric out_chan syms exp;
 ignore(Stack.pop stk)
@@ -858,8 +856,20 @@ ignore(Stack.pop stk)
 
 exception Error
 
-let check_syms out_chan key (gsyms:shash) = match gsyms with
-| Shash symr -> shash_iter (fun nam s -> Check.erc_chk out_chan key symr.syms nam s) gsyms
+let check_syms out_chan key (gsyms:shash) = let h = ref false in match gsyms with
+| Shash symr -> 
+    let erch () = begin if not !h then Printf.fprintf (fst out_chan) "In %s:\n" key; h := true; end in
+    if (List.length(!implicit_params) > 0) then
+      ( erch();
+        Printf.fprintf (fst out_chan) "Implicit params:";
+        List.iter (fun s -> Printf.fprintf (fst out_chan) " %s" s) !implicit_params;
+        Printf.fprintf (fst out_chan) "\n" );
+    if (List.length(!implicit_wires) > 0) then
+      ( erch();
+        Printf.fprintf (fst out_chan) "Implicit wires:";
+        List.iter (fun s -> Printf.fprintf (fst out_chan) " %s" s) !implicit_wires;
+        Printf.fprintf (fst out_chan) "\n" );
+    shash_iter (fun nam s -> Check.erc_chk out_chan erch symr.syms nam s) gsyms
 | EndShash -> failwith "No symbol table passed to check_syms"
 
 let scan out_chan key contents = begin
@@ -867,6 +877,8 @@ last_mod := key;
 Hashtbl.add Globals.modprims key contents;
 if (!verbose) then Printf.fprintf (fst out_chan) "scanning ..\n";
 mod_empty := true;
+implicit_wires := [];
+implicit_params := [];
 moditemlist out_chan contents;
 if !mod_empty then
     Printf.fprintf (fst out_chan) "%s check skipped due to black boxing\n" key

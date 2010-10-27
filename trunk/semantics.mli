@@ -12,7 +12,7 @@ type exprt =
 type declmode = Create | SizeOnly | AttrOnly
 
 val enter_a_sym : Setup.fmt -> Setup.shash -> string -> Vparser.token -> Vparser.token -> declmode -> unit
-val find_ident : Setup.fmt -> Vparser.token -> Setup.shash -> Vparser.token -> Setup.symtab
+val find_ident : Setup.fmt -> Setup.shash -> Vparser.token -> Setup.symtab
 val not_found : Setup.fmt -> Setup.shash -> string -> unit
 val connect : Setup.fmt -> Setup.shash -> string -> string -> Vparser.token -> Vparser.token -> unit
 val fiter : Setup.fmt -> Setup.shash -> string -> string -> Vparser.token -> Vparser.token -> unit
