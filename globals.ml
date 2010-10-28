@@ -63,6 +63,8 @@ let mygetenv str = if Hashtbl.mem env_cache str then Hashtbl.find env_cache str 
 
 let mygetenv_int str = try int_of_string (mygetenv str) with Failure("int_of_string") -> 0;;
 
+let verbose = mygetenv_int "VCHK_VERBOSE"
+
 let yesno cond = if cond then "true" else "false"
 
 let rec quicksort = function

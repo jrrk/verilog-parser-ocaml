@@ -25,29 +25,29 @@ open Ord
 let rec exprBoolean out_chan (syms:shash) op expr1 expr2 =
 op (exprConst out_chan syms expr1) (exprConst out_chan syms expr2)
 
-and widthnum expbase (str:string) =
+and widthnum out_chan expbase (str:string) =
 let base = ref 10
 and width = ref 0
 and value = ref 0
 and basing = ref 0
 and converting = ref true in
 for idx = 0 to String.length(str)-1 do let ch = Char.lowercase(str.[idx]) in begin
-(*    Printf.printf "%c" ch;  *)
+if (Globals.verbose >= 2) then Printf.fprintf (fst out_chan) "%c %d %d\n" ch !base !value;
     match ch with
 | '\'' -> converting := false; basing := idx+1;
 | '0'..'9' -> if (!converting) then
-    width := (!width * !base) + int_of_char(str.[idx]) - int_of_char('0')
+    width := (!width * !base) + int_of_char(ch) - int_of_char('0')
 else
-    value := (!value * !base) + int_of_char(str.[idx]) - int_of_char('0')
+    value := (!value * !base) + int_of_char(ch) - int_of_char('0')
 | 'a'..'z' ->  if (!converting) then
-    width := (!width * !base) + int_of_char(str.[idx]) - int_of_char('a') + 10
+    width := (!width * !base) + int_of_char(ch) - int_of_char('a') + 10
 else if (!basing==idx) then begin match ch with
   | 'b' -> base := 2
   | 'd' -> base := 10
   | 'h' -> base := 16
-  | _ -> value := int_of_char(str.[idx]) - int_of_char('a') + 10
+  | _ -> value := int_of_char(ch) - int_of_char('a') + 10
 end else
-    value := (!value * !base) + int_of_char(str.[idx]) - int_of_char('a') + 10;
+    value := (!value * !base) + int_of_char(ch) - int_of_char('a') + 10;
 | _ -> converting := false; width := 0
 end
 done;
@@ -66,9 +66,13 @@ and shash_chain_find (syms:shash) nam = match syms with
 | Shash symr -> if Hashtbl.mem symr.syms nam then Hashtbl.find symr.syms nam else shash_chain_find symr.nxt nam
 | EndShash -> failwith "Not found"
 
+and shash_chain_replace (syms:shash) (nam:string) (sym:symtab) = match syms with
+| Shash symr -> if Hashtbl.mem symr.syms nam then Hashtbl.replace symr.syms nam sym else shash_chain_replace symr.nxt nam sym
+| EndShash -> failwith "Not found"
+
 and exprConst out_chan (syms:shash) expr = Stack.push (67, expr) stk; let rslt = ( match expr with
 | INT n -> n
-| HEXNUM str -> snd(widthnum 16 str)
+| HEXNUM str -> snd(widthnum out_chan 16 str)
 | TRIPLE(TIMES, expr1, expr2) -> (exprConst out_chan syms expr1) * (exprConst out_chan syms expr2)
 | TRIPLE(PLUS, expr1, expr2) -> (exprConst out_chan syms expr1) + (exprConst out_chan syms expr2)
 | TRIPLE(MINUS, expr1, expr2) -> (exprConst out_chan syms expr1) - (exprConst out_chan syms expr2)
@@ -86,8 +90,10 @@ if shash_chain_mem syms id == false then begin
     1
     end
 else
-    match (shash_chain_find syms id).sigattr with
-    | Sigparam pexpr -> exprConst out_chan syms pexpr
+    let found = shash_chain_find syms id in match found.sigattr with
+    | Sigparam pexpr -> shash_chain_replace syms id
+    {Setup.symattr = (TokSet.add PARAMUSED found.symattr); width = found.width; sigattr = found.sigattr; localsyms = EndShash; path=id};
+    exprConst out_chan syms pexpr
     | Sigarray x -> Printf.fprintf (fst out_chan) "%s not a constant or for variable, value 1 assumed\n" id; 1
     | _ -> unhandled out_chan 89 expr; 1
   end

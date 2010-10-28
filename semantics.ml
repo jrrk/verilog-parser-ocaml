@@ -39,7 +39,6 @@ let showmode mode = match mode with
 | SizeOnly -> "SizeOnly"
 | AttrOnly -> "AttrOnly"
 
-let verbose = ref (Globals.mygetenv_int "VCHK_VERBOSE");;
 let mod_empty = ref true;;
 let anon = {Setup.symattr = (TokSet.empty); width=UNKNOWN; sigattr=Sigundef; localsyms=EndShash; path="*unknown*"};;
 
@@ -57,10 +56,6 @@ let shash_iter (f:string -> Setup.symtab -> unit) syms = match syms with
 
 let shash_remove (syms:shash) (key:string) = match syms with
 | Shash symr -> Hashtbl.remove symr.syms key
-| EndShash -> failwith "No symbol table passed to shash_remove"
-
-let shash_replace (syms:shash) (key:string) (sym:symtab) = match syms with
-| Shash symr -> Hashtbl.replace symr.syms key sym
 | EndShash -> failwith "No symbol table passed to shash_remove"
 
 let find_param out_chan syms id = begin
@@ -83,22 +78,22 @@ let enter_a_sym out_chan (symbols:shash) id attr w mode = match attr with
 (IOPORT|INPUT|OUTPUT|INOUT|REG|WIRE|TRI0|TRI1|SUPPLY0|SUPPLY1|INTEGER|REAL|MEMORY|EVENT
  |MODULE|PRIMITIVE|SUBMODULE|SUBCCT|SPECIFY|SPECIAL|PARAMUSED
  |PARAMETER|TASK|FUNCTION) ->
-if Const.shash_chain_mem symbols id then begin
-if (!verbose > 0) then ( Printf.fprintf (fst out_chan) "Update %s %s: %s %s\n" id (str_token w) (Ord.getstr attr) (showmode mode));
-  let newset = (Const.shash_chain_find symbols id).symattr
-  and oldw = (Const.shash_chain_find symbols id).width
-  and oldsattr = (Const.shash_chain_find symbols id).sigattr in
+if Const.shash_chain_mem symbols id then let found = Const.shash_chain_find symbols id in begin
+if (Globals.verbose > 0) then ( Printf.fprintf (fst out_chan) "Update %s %s: %s %s\n" id (str_token w) (Ord.getstr attr) (showmode mode));
+  let newset = found.symattr
+  and oldw = found.width
+  and oldsattr = found.sigattr in
   if (oldw<>UNKNOWN)&&(oldw<>w)&&(w<>UNKNOWN) then
     Printf.fprintf (fst out_chan) "Addition of attribute %s to signal %s changed width from %s to %s\n"
       (str_token attr) id (str_token oldw) (str_token w);
   if (w<>UNKNOWN) && (mode<>AttrOnly) then
-  shash_replace symbols id
+  shash_chain_replace symbols id
     {Setup.symattr = (TokSet.add attr newset);
     width = w;
     sigattr = create_attr out_chan symbols w;
     localsyms = EndShash;
     path=id}
-  else shash_replace symbols id
+  else shash_chain_replace symbols id
     {Setup.symattr = (TokSet.add attr newset);
     width = oldw;
     sigattr = oldsattr;
@@ -106,7 +101,7 @@ if (!verbose > 0) then ( Printf.fprintf (fst out_chan) "Update %s %s: %s %s\n" i
     path=id};
     end
 else begin
-if (!verbose > 0) then (Printf.fprintf (fst out_chan) "Enter %s %s: %s %s\n" id (str_token w) (Ord.getstr attr) (showmode mode));
+if (Globals.verbose > 0) then (Printf.fprintf (fst out_chan) "Enter %s %s: %s %s\n" id (str_token w) (Ord.getstr attr) (showmode mode));
   shash_add symbols id {Setup.symattr = (TokSet.singleton attr);
      width = w;
      sigattr = create_attr out_chan symbols w;
@@ -177,18 +172,18 @@ match inner.width with
 | Signamed x -> rslt := rslt0); !rslt
 
 let chk_inner_attr out_chan inner inner_attr attr idx =
-let retval = (inner.sigattr == Sigundef) || (TokSet.mem SPECIAL inner.symattr) || (match attr with
+let retval = (inner.sigattr == Sigundef) || (idx < 0) || (TokSet.mem SPECIAL inner.symattr) || (match attr with
       | DRIVER -> TokSet.mem DRIVER (inner_attr.(idx))
       | RECEIVER -> TokSet.mem RECEIVER (inner_attr.(idx))
       | BIDIR -> TokSet.mem BIDIR (inner_attr.(idx))
       | _ -> false) in
-if (inner.sigattr <> Sigundef) && (!verbose >= 2) then
+if (inner.sigattr <> Sigundef) && (Globals.verbose >= 2) then
     Printf.fprintf (fst out_chan) "Accessing %s with index [%d] -> result %s\n" inner.path idx (yesno retval);
 retval
 ;;
 
 let enter_range out_chan syms id sym attr wid inner high (low:int) inner_attr attrs = let (hi,lo) = iwidth out_chan syms wid in
-  if not ((TokSet.mem IMPLICIT sym.symattr)||(TokSet.mem MEMORY sym.symattr)) then
+  if not ((TokSet.mem IMPLICIT sym.symattr)||(TokSet.mem MEMORY sym.symattr)||(hi < 0)||(lo < 0)) then
     for i = hi downto lo do (*try*)
     if chk_inner_attr out_chan inner inner_attr attr (high+i-hi) then attrs.(i) <- TokSet.add attr attrs.(i);
     (*with Invalid_argument("index out of bounds") -> Printf.fprintf (fst out_chan) "Trying to access %s with index [%d]\n" id i*)
@@ -204,12 +199,12 @@ let enter_a_sig_attr out_chan syms (tok:token) attr w isyms isym = ( match tok w
 | Sigfunc x -> Printf.fprintf (fst out_chan) "Entity %s is already declared as a function\n" id
 | Signamed x -> Printf.fprintf (fst out_chan) "Entity %s is already declared as a named block\n" id)
 | _ -> unhandled out_chan 175 tok);
- if (!verbose >= 2) then Printf.fprintf (fst out_chan) "enter_a_sig_attr out_chan syms tok:%s attr:%s width:%s\n"
+ if (Globals.verbose >= 2) then Printf.fprintf (fst out_chan) "enter_a_sig_attr out_chan syms tok:%s attr:%s width:%s\n"
   (str_token tok) (str_token attr) (str_token w)
 ;;
 
 let inner_chk out_chan syms isyms isym subcct outer wid = begin
- if (!verbose >= 2) then Printf.fprintf (fst out_chan) "inner_chk out_chan syms isym {path:%s width:%s} subcct:%s outer:%s width:%s\n"
+ if (Globals.verbose >= 2) then Printf.fprintf (fst out_chan) "inner_chk out_chan syms isym {path:%s width:%s} subcct:%s outer:%s width:%s\n"
   isym.path (str_token isym.width) subcct outer (str_token wid);
   let hier = ID (outer) and compat=ref false in 
   begin
@@ -256,43 +251,67 @@ let inner_chk_const out_chan syms isyms isym subcct (tok:token) wid = begin
   end
 end
 
-let rec connect out_chan syms kind subcct (innert:token) tok = 
+let rec inner_chk_expr out_chan syms isyms isym subcct (tok:token) wid = begin
+  let compat=ref false in 
+  begin ( match tok with
+(* These patterns are temporary placeholders *)
+| TRIPLE(CARET, ID left, ID right) -> exprGeneric out_chan syms tok
+| TRIPLE(P_OROR, arg1, arg2) -> exprGeneric out_chan syms tok
+| TRIPLE(P_ANDAND, ID arg1, ID arg2) -> exprGeneric out_chan syms tok
+| TRIPLE(VBAR, ID left, ID right) -> exprGeneric out_chan syms tok
+| TRIPLE(AMPERSAND, arg1, arg2) -> exprGeneric out_chan syms tok
+| DOUBLE(VBAR, ID left) -> exprGeneric out_chan syms tok
+| DOUBLE(TILDE, left) -> exprGeneric out_chan syms tok
+| _ -> unhandled out_chan 226 tok );
+  if (isym.width <> wid) then
+    begin
+    match wid with
+    | RANGE(INT x, INT y) -> if ((x==y) && (isym.width == EMPTY)) then compat := true;
+    | _ -> ();
+    match isym.width with
+    | RANGE(INT x, INT y) -> if ((x==y) && (wid == EMPTY)) then compat := true;
+    | _ -> ();
+    if (!compat == false) then begin
+      Printf.fprintf (fst out_chan) "Width mismatch subcct=%s inner=%s %s const=%s %s\n"
+          subcct isym.path (Setup.str_token isym.width) (str_token tok) (str_token(wid)); 
+      end
+    end;
+  if (TokSet.mem IOPORT isym.symattr == false) then Printf.fprintf (fst out_chan) "Instance port %s not an ioport\n" isym.path
+  else if (TokSet.mem INPUT isym.symattr) then ()
+  else if (TokSet.mem OUTPUT isym.symattr) then Printf.fprintf (fst out_chan) "Output port %s cannot connect to expression\n" isym.path
+  else if (TokSet.mem INOUT isym.symattr) then Printf.fprintf (fst out_chan) "Output port %s cannot connect to expression\n" isym.path
+  end
+end
+
+and connect out_chan syms kind subcct (innert:token) tok = 
 let isyms = (Hashtbl.find Globals.modprims kind).symbols in ( Stack.push (255, innert) stk; match innert with ID innerid -> begin
 if (Const.shash_chain_mem isyms innerid) then
-let isym=Const.shash_chain_find isyms innerid in match tok with
+let isym=Const.shash_chain_find isyms innerid in let irange = iwidth out_chan isyms isym.width in match tok with
 | ID outer -> inner_chk out_chan syms isyms isym subcct outer (find_ident out_chan syms tok).width
 | TRIPLE(BITSEL, ID outer, sel) -> if (Const.shash_chain_mem syms outer) then inner_chk out_chan syms isyms isym subcct outer (RANGE (sel, sel)) else not_found out_chan syms outer
 | QUADRUPLE(PARTSEL, ID outer, INT hi, INT lo) -> if (Const.shash_chain_mem syms outer) then inner_chk out_chan syms isyms isym subcct outer (RANGE(INT hi, INT lo)) else not_found out_chan syms outer
 | INT lev -> inner_chk_const out_chan syms isyms isym subcct tok (RANGE(INT 31, INT 0))
-| BINNUM lev -> inner_chk_const out_chan syms isyms isym subcct tok (RANGE(INT (fst(widthnum 2 lev)-1), INT 0))
-| DOUBLE(CONCAT, TLIST concat) -> let idx = ref (fst(iwidth out_chan syms isym.width)) in iter (fun (item:token) -> 
-( if (!verbose >= 3) then Printf.fprintf (fst out_chan) "Concat idx %d\n" !idx; match item with
+| BINNUM lev -> inner_chk_const out_chan syms isyms isym subcct tok (RANGE(INT (fst(widthnum out_chan 2 lev)-1), INT 0))
+| DOUBLE(CONCAT, TLIST concat) -> let idx = ref (fst irange) in iter (fun (item:token) -> 
+( if (Globals.verbose >= 3) then Printf.fprintf (fst out_chan) "Concat idx %d\n" !idx; match item with
   | ID id -> let wid = (find_ident out_chan syms item).width in
       let (hi,lo) = iwidth out_chan syms wid in let last = !idx + lo - hi in
       begin inner_chk out_chan syms isyms {symattr=isym.symattr; width=RANGE(INT !idx, INT last); sigattr = isym.sigattr; localsyms = EndShash; path=isym.path} subcct id wid; idx := last-1; end
   | TRIPLE(BITSEL, ID id, INT sel) -> inner_chk out_chan syms isyms {symattr=isym.symattr; width=RANGE(INT !idx, INT !idx); sigattr = isym.sigattr; localsyms = EndShash; path=isym.path} subcct id (RANGE(INT sel, INT sel)); idx := !idx-1
   | QUADRUPLE(PARTSEL, ID id, INT hi, INT lo) -> inner_chk out_chan syms isyms {symattr=isym.symattr; width=RANGE(INT !idx, INT (!idx+lo-hi)); sigattr = isym.sigattr; localsyms = EndShash; path=isym.path} subcct id (RANGE(INT hi, INT lo)); idx := !idx+lo-hi-1
-  | BINNUM lev -> let w = fst(widthnum 2 lev) in inner_chk_const out_chan syms isyms {symattr=isym.symattr; width=RANGE(INT !idx, INT (!idx+1-w)); sigattr = isym.sigattr; localsyms = EndShash; path=isym.path} subcct tok (RANGE(INT (w-1), INT 0))
+  | BINNUM lev -> let w = fst(widthnum out_chan 2 lev) in inner_chk_const out_chan syms isyms {symattr=isym.symattr; width=RANGE(INT !idx, INT (!idx+1-w)); sigattr = isym.sigattr; localsyms = EndShash; path=isym.path} subcct tok (RANGE(INT (w-1), INT 0)); idx := !idx-w
   | _ -> unhandled out_chan 224 item)
-) concat
-(* These patterns are temporary placeholders *)
-| TRIPLE(CARET, ID left, ID right) -> () (*TBD*)
-| TRIPLE(P_OROR, arg1, arg2) -> () (*TBD*)
-| TRIPLE(P_ANDAND, ID arg1, ID arg2) -> () (*TBD*)
-| TRIPLE(VBAR, ID left, ID right) -> () (*TBD*)
-| TRIPLE(AMPERSAND, arg1, arg2) -> () (*TBD*)
-| DOUBLE(TILDE, left) -> () (*TBD*)
-| DOUBLE(VBAR, ID left) -> () (*TBD*)
-| _ -> unhandled out_chan 226 tok
+) concat;
+if (!idx <> (snd irange - 1)) then
+  Printf.fprintf (fst out_chan) "Concatenation width %d does not match port width %s[%d:%d] in %s\n"
+    (fst irange - !idx) innerid (fst irange) (snd irange) subcct;
+| _ -> inner_chk_expr out_chan syms isyms isym subcct tok UNKNOWN
 else Printf.fprintf (fst out_chan) "Instance port %s of %s (type %s) not found\n" innerid subcct kind
 end
 | _ -> unhandled out_chan 229 innert);
 ignore(Stack.pop stk)
-;;
 
-let f2 inner t = show_token(inner);show_token(t);print_char '\n';;
-
-let fiter out_chan syms (kind:string) (subcct:string) (inner:token) (term:token) = match term with
+and fiter out_chan syms (kind:string) (subcct:string) (inner:token) (term:token) = match term with
           | DOUBLE(CELLPIN, myinner) -> ()
           | TRIPLE(CELLPIN, myinner, tok) -> connect out_chan syms kind subcct myinner tok
           (* connect by position syntax - deprecated *)
@@ -300,9 +319,8 @@ let fiter out_chan syms (kind:string) (subcct:string) (inner:token) (term:token)
 	  | DOUBLE(CONCAT, TLIST concat) -> connect out_chan syms kind subcct inner term
           | QUADRUPLE(PARTSEL, ID net, INT hi, INT lo) -> connect out_chan syms kind subcct inner term
 	  | _ -> unhandled out_chan 241 term
-;;
 
-let rec exprGeneric out_chan syms expr = Stack.push (288, expr) stk; ( match expr with
+and exprGeneric out_chan syms expr = Stack.push (288, expr) stk; ( match expr with
 | TRIPLE( P_OROR, left, right ) -> exprGeneric out_chan syms left; exprGeneric out_chan syms right
 | TRIPLE( P_ANDAND, left, right ) -> exprGeneric out_chan syms left; exprGeneric out_chan syms right
 | TRIPLE( AMPERSAND, left, right ) -> exprGeneric out_chan syms left; exprGeneric out_chan syms right
@@ -418,7 +436,7 @@ and for_stmt out_chan syms id start test inc clause = let wid = (find_ident out_
 let loops = ref 0 and unrolling = ref true in while (!unrolling) && (0 <> exprConst out_chan syms test) do
     stmtBlock out_chan syms clause;
     crnt := INT (exprConst out_chan syms inc);
-    shash_replace syms id
+    shash_chain_replace syms id
       {Setup.symattr = (TokSet.singleton PARAMETER);
       width = wid;
       sigattr = Sigparam !crnt;
@@ -868,7 +886,7 @@ let check_syms out_chan key (gsyms:shash) = let h = ref false and msg_cache = Ha
         Printf.fprintf (fst out_chan) "\n" );
     shash_iter (fun nam s -> Check.erc_chk out_chan msg_cache erch symr.syms nam s) gsyms;
     let oc = (fst out_chan) in Hashtbl.iter (fun key contents -> 
-        erch(); Printf.fprintf oc "%s: " key;
+        erch(); if List.length contents > 1 then Printf.fprintf oc "%ss: " key else Printf.fprintf oc "%s: " key;
         let tab = ref (1 + String.length key) in List.iter (fun item ->
             Printf.fprintf oc "%s " item; tab := !tab+1+String.length item;
             if !tab > 72 then (output_char oc '\n'; tab := 0)) (qsort contents);
@@ -878,7 +896,7 @@ let check_syms out_chan key (gsyms:shash) = let h = ref false and msg_cache = Ha
 let scan out_chan key contents = begin
 last_mod := key;
 Hashtbl.add Globals.modprims key contents;
-if (!verbose > 0) then Printf.fprintf (fst out_chan) "scanning ..\n";
+if (Globals.verbose > 0) then Printf.fprintf (fst out_chan) "scanning ..\n";
 mod_empty := true;
 implicit_wires := [];
 implicit_params := [];
@@ -894,7 +912,7 @@ let rec remove_from_pending out_chan mykey =  let reslist = ref [] in begin
 contents.Globals.unresolved <- List.filter(fun item -> item <> mykey) contents.Globals.unresolved;
 if contents.Globals.unresolved == [] then match contents.Globals.tree with
 | QUINTUPLE(kind, ID mykey, _, _, _) -> (
-			if (!verbose > 0) then Printf.fprintf (fst out_chan) "%s %s: resumed " (str_token kind) key;
+			if (Globals.verbose > 0) then Printf.fprintf (fst out_chan) "%s %s: resumed " (str_token kind) key;
 			scan out_chan key contents; reslist := key :: !reslist)
 | _ -> unhandled out_chan 899 contents.Globals.tree) pending;
 			List.iter (fun key -> Hashtbl.remove pending key; remove_from_pending out_chan key) !reslist;
@@ -904,13 +922,13 @@ let prescan out_chan decl =
     let expt = { Globals.tree=decl; symbols=shash_create EndShash 256; unresolved=(!unresolved_list); } in
         match decl with
 | QUINTUPLE(kind, ID mykey, _, _, _) ->
-	if (!verbose > 0) then Printf.fprintf (fst out_chan) "%s %s: parsed " (str_token kind) mykey;
+	if (Globals.verbose > 0) then Printf.fprintf (fst out_chan) "%s %s: parsed " (str_token kind) mykey;
 	if (List.length(!unresolved_list)==0) then begin
 		scan out_chan mykey expt;
 		remove_from_pending out_chan mykey;
 		end
 	else begin
-		if (!verbose > 0) then (
+		if (Globals.verbose > 0) then (
                     Printf.fprintf (fst out_chan) "pending: not yet encountered: ";
 		    List.iter (fun key -> Printf.fprintf (fst out_chan) "%s " key) !unresolved_list;
 		    output_char (fst out_chan) '\n';
@@ -925,13 +943,13 @@ let prescan out_chan decl =
 
 let rec endscan2 indent mykey =
 	match !logfile with Open out_chan -> begin
-        if (!verbose > 0) then ( for i = 1 to indent do output_char (fst out_chan) ' '; done;
+        if (Globals.verbose > 0) then ( for i = 1 to indent do output_char (fst out_chan) ' '; done;
 	Printf.fprintf (fst out_chan) "Checking %s: " mykey );
 	if (Hashtbl.mem pending mykey) then
           begin
-	  if (!verbose > 0) then Printf.fprintf (fst out_chan) "Module %s still postponed\n" mykey;
+	  if (Globals.verbose > 0) then Printf.fprintf (fst out_chan) "Module %s still postponed\n" mykey;
 	  List.iter (fun key -> if (Hashtbl.mem pending key) then endscan2 (indent+2) key
-          else if (!verbose > 0) then Printf.fprintf (fst out_chan) "%s " key) ((Hashtbl.find pending mykey).Globals.unresolved);
+          else if (Globals.verbose > 0) then Printf.fprintf (fst out_chan) "%s " key) ((Hashtbl.find pending mykey).Globals.unresolved);
  	  output_char (fst out_chan) '\n';
           end
 	end

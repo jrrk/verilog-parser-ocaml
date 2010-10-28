@@ -27,7 +27,6 @@ val for_stmt : Setup.fmt -> Setup.shash -> string -> Vparser.token -> Vparser.to
 val shash_create : Setup.shash -> int -> Setup.shash 
 val shash_iter : (string -> Setup.symtab -> unit) -> Setup.shash -> unit 
 val shash_remove : Setup.shash -> string -> unit 
-val shash_replace : Setup.shash -> string -> Setup.symtab -> unit 
 val enter_a_sig_attr : Setup.fmt -> Setup.shash -> Vparser.token -> Vparser.token -> Vparser.token -> Setup.shash -> Setup.symtab -> unit
 val sig_attr_extract : Setup.fmt -> Setup.shash -> Setup.symtab -> int * int * Setup.tset array
 val moditemlist : Setup.fmt -> Globals.modtree -> unit
