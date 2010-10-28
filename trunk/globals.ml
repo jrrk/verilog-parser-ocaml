@@ -31,6 +31,7 @@ let modprims = Hashtbl.create 256;;
 let pending = Hashtbl.create 256;;
 let black_box = Hashtbl.create 256;;
 let env_cache = Hashtbl.create 256;;
+let msg_cache = Hashtbl.create 256;;
 
 let tmpnam = "report."^(string_of_int(Unix.getpid()))^"."^Unix.gethostname()^".report";;
 let unresolved_list = ref [];;
@@ -60,3 +61,22 @@ let tsymbols = Hashtbl.create 256;;
 
 let mygetenv str = if Hashtbl.mem env_cache str then Hashtbl.find env_cache str else
         try let env = Sys.getenv str in Hashtbl.add env_cache str env; env; with Not_found -> (); ""
+
+let mygetenv_int str = try int_of_string (mygetenv str) with Failure("int_of_string") -> 0;;
+
+let yesno cond = if cond then "true" else "false"
+
+let rec quicksort = function
+          | (x::xs) -> 
+              (quicksort (List.filter (fun i -> i < x) xs))
+              @ [x] @ 
+              (quicksort (List.filter (fun i -> i >= x) xs))
+          | [] -> []
+        ;;
+
+let rec qsort = function
+   | [] -> []
+   | pivot :: rest ->
+       let is_less x = x < pivot in
+       let left, right = List.partition is_less rest in
+       qsort left @ [pivot] @ qsort right

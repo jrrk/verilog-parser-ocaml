@@ -26,25 +26,33 @@ open Setup
 
 let dotted s = try String.index s '.' > 0 ; with Not_found -> false;;
 
-let erc_chk_sig out_chan (syma:tset) siga =
+let erc_chk_sig out_chan (syma:tset) siga id =
   begin
 	begin
 	  if ((TokSet.mem INPUT syma) && (TokSet.mem SENSUSED siga)) && not (TokSet.mem DRIVER siga) then
-	    "is an input mentioned in sensitivity list but not referenced"
+	    "Input mentioned in sensitivity list but not referenced"
 	  else if (TokSet.mem INPUT syma) && not ((TokSet.mem DRIVER siga) || (TokSet.mem SPECIAL syma)) then
-	    "is an unloaded input"
+	    "Unloaded input"
 	  else if (TokSet.mem OUTPUT syma) && not ((TokSet.mem RECEIVER siga) || (TokSet.mem SPECIAL syma)) then
-	    "is an undriven output"
+	    "Undriven output"
 	  else if (TokSet.mem INOUT syma) then
-	    ": is an inout"
+	    "Is an inout"
 	  else if (TokSet.mem WIRE syma) && (TokSet.mem DRIVER siga) && not ((TokSet.mem RECEIVER siga) || (TokSet.mem SPECIFY syma)) then
-	    "is a wire which drives but is not driven"
-	  else if (TokSet.mem WIRE syma) && not ((TokSet.mem RECEIVER siga) || (TokSet.mem SPECIFY syma)) then
-	    "is an unused wire"
+	    "Is a wire which drives but is not driven"
+	  else let skip="SYNOPSYS_UNCONNECTED__" in if ((String.length id < String.length skip) || (skip <> String.sub id 0 (String.length skip))) && (TokSet.mem WIRE syma) && not ((TokSet.mem RECEIVER siga) || (TokSet.mem SPECIFY syma)) then
+	    "Unused wire"
           else ""
 	end
   end
-;;
+
+let cache_msgs msg id = if (String.length msg > 0) then begin
+if (Hashtbl.mem Globals.msg_cache msg) then begin
+ let entry = Hashtbl.find Globals.msg_cache msg in
+  Hashtbl.replace Globals.msg_cache msg (id :: entry)
+ end
+else
+ Hashtbl.add Globals.msg_cache msg [id]
+end;;
 
 let erc_chk out_chan erch (gsyms:sentries) id s = match s.sigattr with
 | Sigarray attrs -> (
@@ -52,25 +60,24 @@ match s.width with
 | RANGE range -> let (hi,lo) = iwidth out_chan (Shash {nxt=EndShash; syms=gsyms}) s.width in
   if not ((TokSet.mem IMPLICIT s.symattr)||(TokSet.mem MEMORY s.symattr)) then
   ( let msg0 = ref "" and i0 = ref hi and i1 = ref hi in try for i = hi downto lo do
-    let msg = erc_chk_sig out_chan s.symattr attrs.(i) in
+    let msg = erc_chk_sig out_chan s.symattr attrs.(i) id in
 (*    if (String.length msg > 0) then
         Printf.fprintf (fst out_chan) "DBG: %s %s\n" (id^"["^(string_of_int i)^"]") msg;  *)
     if (msg <> !msg0) then (
-      if (String.length !msg0 > 0) then
-	 (erch(); Printf.fprintf (fst out_chan) "%s %s\n" (id^"["^(string_of_int !i0)^":"^(string_of_int !i1)^"]") !msg0;);
+      cache_msgs !msg0 (id^"["^(string_of_int !i0)^":"^(string_of_int !i1)^"]");
       i0 := i;
       i1 := i;
       msg0 := msg; )
     else if (i == lo) then (
       if (String.length msg > 0) then
-	 (erch(); Printf.fprintf (fst out_chan) "%s %s\n" (id^"["^(string_of_int !i0)^":"^(string_of_int i)^"]") !msg0 ))
+      cache_msgs !msg0 (id^"["^(string_of_int !i0)^":"^(string_of_int i)^"]"))
     else
       i1 := i;
     done
   with Invalid_argument("index out of bounds") -> (erch(); Printf.fprintf (fst out_chan) "Trying to access %s with index [%d:%d]\n" id hi lo))
 | SCALAR | EMPTY | UNKNOWN->
-    let msg = erc_chk_sig out_chan s.symattr attrs.(0) in
-    if (String.length msg > 0) then (erch(); Printf.fprintf (fst out_chan) "%s %s\n" id msg)
+    let msg = erc_chk_sig out_chan s.symattr attrs.(0) id in
+    cache_msgs msg id
 | _ -> unhandled out_chan 791 s.width)
 | Sigparam x ->
   if not (TokSet.mem PARAMUSED s.symattr) then (erch(); Printf.fprintf (fst out_chan) "Parameter %s is not used\n" id)
