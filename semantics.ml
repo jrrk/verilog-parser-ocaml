@@ -251,9 +251,8 @@ let inner_chk_const out_chan syms isyms isym subcct (tok:token) wid = begin
   end
 end
 
-let rec inner_chk_expr out_chan syms isyms isym subcct (tok:token) wid = begin
-  let compat=ref false in 
-  begin ( match tok with
+let rec inner_chk_expr out_chan syms isyms isym subcct (tok:token) = begin
+ let wid = ( match tok with
 (* These patterns are temporary placeholders *)
 | TRIPLE(CARET, ID left, ID right) -> exprGeneric out_chan syms tok
 | TRIPLE(P_OROR, arg1, arg2) -> exprGeneric out_chan syms tok
@@ -262,7 +261,9 @@ let rec inner_chk_expr out_chan syms isyms isym subcct (tok:token) wid = begin
 | TRIPLE(AMPERSAND, arg1, arg2) -> exprGeneric out_chan syms tok
 | DOUBLE(VBAR, ID left) -> exprGeneric out_chan syms tok
 | DOUBLE(TILDE, left) -> exprGeneric out_chan syms tok
-| _ -> unhandled out_chan 226 tok );
+| _ -> unhandled out_chan 226 tok; UNKNOWN ) in
+  let compat=ref false in 
+  begin
   if (isym.width <> wid) then
     begin
     match wid with
@@ -305,7 +306,7 @@ let isym=Const.shash_chain_find isyms innerid in let irange = iwidth out_chan is
 if (!idx <> (snd irange - 1)) then
   Printf.fprintf (fst out_chan) "Concatenation width %d does not match port width %s[%d:%d] in %s\n"
     (fst irange - !idx) innerid (fst irange) (snd irange) subcct;
-| _ -> inner_chk_expr out_chan syms isyms isym subcct tok UNKNOWN
+| _ -> inner_chk_expr out_chan syms isyms isym subcct tok
 else Printf.fprintf (fst out_chan) "Instance port %s of %s (type %s) not found\n" innerid subcct kind
 end
 | _ -> unhandled out_chan 229 innert);
@@ -320,70 +321,72 @@ and fiter out_chan syms (kind:string) (subcct:string) (inner:token) (term:token)
           | QUADRUPLE(PARTSEL, ID net, INT hi, INT lo) -> connect out_chan syms kind subcct inner term
 	  | _ -> unhandled out_chan 241 term
 
-and exprGeneric out_chan syms expr = Stack.push (288, expr) stk; ( match expr with
-| TRIPLE( P_OROR, left, right ) -> exprGeneric out_chan syms left; exprGeneric out_chan syms right
-| TRIPLE( P_ANDAND, left, right ) -> exprGeneric out_chan syms left; exprGeneric out_chan syms right
-| TRIPLE( AMPERSAND, left, right ) -> exprGeneric out_chan syms left; exprGeneric out_chan syms right
-| TRIPLE( VBAR, left, right ) -> exprGeneric out_chan syms left; exprGeneric out_chan syms right
-| TRIPLE( P_NAND, left, right ) -> exprGeneric out_chan syms left; exprGeneric out_chan syms right
-| TRIPLE( P_NOR, left, right ) -> exprGeneric out_chan syms left; exprGeneric out_chan syms right
-| TRIPLE( CARET, left, right ) -> exprGeneric out_chan syms left; exprGeneric out_chan syms right
-| TRIPLE( P_XNOR, left, right ) -> exprGeneric out_chan syms left; exprGeneric out_chan syms right
-| TRIPLE( P_EQUAL, left, right ) -> exprGeneric out_chan syms left; exprGeneric out_chan syms right
-| TRIPLE( P_NOTEQUAL, left, right ) -> exprGeneric out_chan syms left; exprGeneric out_chan syms right
-| TRIPLE( P_CASEEQUAL, left, right ) -> exprGeneric out_chan syms left; exprGeneric out_chan syms right
-| TRIPLE( P_CASENOTEQUAL, left, right ) -> exprGeneric out_chan syms left; exprGeneric out_chan syms right
-| TRIPLE( P_WILDEQUAL, left, right ) -> exprGeneric out_chan syms left; exprGeneric out_chan syms right
-| TRIPLE( P_WILDNOTEQUAL, left, right ) -> exprGeneric out_chan syms left; exprGeneric out_chan syms right
-| TRIPLE( GREATER, left, right ) -> exprGeneric out_chan syms left; exprGeneric out_chan syms right
-| TRIPLE( LESS, left, right ) -> exprGeneric out_chan syms left; exprGeneric out_chan syms right
-| TRIPLE( P_GTE, left, right ) -> exprGeneric out_chan syms left; exprGeneric out_chan syms right
-| TRIPLE( P_LTE, left, right ) -> exprGeneric out_chan syms left; exprGeneric out_chan syms right
-| TRIPLE( P_SLEFT, left, right ) -> exprGeneric out_chan syms left; exprGeneric out_chan syms right
-| TRIPLE( P_SRIGHT, left, right ) -> exprGeneric out_chan syms left; exprGeneric out_chan syms right
-| TRIPLE( P_SSRIGHT, left, right ) -> exprGeneric out_chan syms left; exprGeneric out_chan syms right
-| TRIPLE( PLUS, left, right ) -> exprGeneric out_chan syms left; exprGeneric out_chan syms right
-| TRIPLE( MINUS, left, right ) -> exprGeneric out_chan syms left; exprGeneric out_chan syms right
-| TRIPLE( TIMES, left, right ) -> exprGeneric out_chan syms left; exprGeneric out_chan syms right
-| TRIPLE( DIVIDE, left, right ) -> exprGeneric out_chan syms left; exprGeneric out_chan syms right
-| TRIPLE( MODULO, left, right ) -> exprGeneric out_chan syms left; exprGeneric out_chan syms right
-| TRIPLE( P_POW, left, right ) -> exprGeneric out_chan syms left; exprGeneric out_chan syms right
-| TRIPLE(CONCAT, arg2, TLIST arg4) -> iter (fun arg -> exprGeneric out_chan syms arg) (arg2::arg4)
-| DOUBLE(CONCAT, TLIST concat) -> iter (fun arg -> exprGeneric out_chan syms arg) concat
-| DOUBLE(MINUS, arg2) -> exprGeneric out_chan syms arg2
-| DOUBLE(PLUS, arg2) -> exprGeneric out_chan syms arg2
-| DOUBLE(AMPERSAND, arg2) -> exprGeneric out_chan syms arg2
-| DOUBLE(VBAR, arg2) -> exprGeneric out_chan syms arg2
-| DOUBLE(CARET, arg2) -> exprGeneric out_chan syms arg2
-| DOUBLE(P_XNOR, arg2) -> exprGeneric out_chan syms arg2
-| DOUBLE(P_NAND, arg2) -> exprGeneric out_chan syms arg2
-| DOUBLE(P_NOR, arg2) -> exprGeneric out_chan syms arg2
-| DOUBLE(PLING, arg2) -> exprGeneric out_chan syms arg2
-| DOUBLE(TILDE, arg2) -> exprGeneric out_chan syms arg2
+and exprGeneric out_chan syms expr = Stack.push (288, expr) stk; let retval = ref SCALAR in ( match expr with
+| TRIPLE( P_OROR, left, right ) -> retval := exprGeneric out_chan syms left; retval := exprGeneric out_chan syms right;
+| TRIPLE( P_ANDAND, left, right ) -> retval := exprGeneric out_chan syms left; retval := exprGeneric out_chan syms right
+| TRIPLE( AMPERSAND, left, right ) -> retval := exprGeneric out_chan syms left; retval := exprGeneric out_chan syms right
+| TRIPLE( VBAR, left, right ) -> retval := exprGeneric out_chan syms left; retval := exprGeneric out_chan syms right
+| TRIPLE( P_NAND, left, right ) -> retval := exprGeneric out_chan syms left; retval := exprGeneric out_chan syms right
+| TRIPLE( P_NOR, left, right ) -> retval := exprGeneric out_chan syms left; retval := exprGeneric out_chan syms right
+| TRIPLE( CARET, left, right ) -> retval := exprGeneric out_chan syms left; retval := exprGeneric out_chan syms right
+| TRIPLE( P_XNOR, left, right ) -> retval := exprGeneric out_chan syms left; retval := exprGeneric out_chan syms right
+| TRIPLE( P_EQUAL, left, right ) -> retval := exprGeneric out_chan syms left; retval := exprGeneric out_chan syms right;
+| TRIPLE( P_NOTEQUAL, left, right ) -> retval := exprGeneric out_chan syms left; retval := exprGeneric out_chan syms right
+| TRIPLE( P_CASEEQUAL, left, right ) -> retval := exprGeneric out_chan syms left; retval := exprGeneric out_chan syms right
+| TRIPLE( P_CASENOTEQUAL, left, right ) -> retval := exprGeneric out_chan syms left; retval := exprGeneric out_chan syms right
+| TRIPLE( P_WILDEQUAL, left, right ) -> retval := exprGeneric out_chan syms left; retval := exprGeneric out_chan syms right
+| TRIPLE( P_WILDNOTEQUAL, left, right ) -> retval := exprGeneric out_chan syms left; retval := exprGeneric out_chan syms right
+| TRIPLE( GREATER, left, right ) -> retval := exprGeneric out_chan syms left; retval := exprGeneric out_chan syms right
+| TRIPLE( LESS, left, right ) -> retval := exprGeneric out_chan syms left; retval := exprGeneric out_chan syms right
+| TRIPLE( P_GTE, left, right ) -> retval := exprGeneric out_chan syms left; retval := exprGeneric out_chan syms right
+| TRIPLE( P_LTE, left, right ) -> retval := exprGeneric out_chan syms left; retval := exprGeneric out_chan syms right
+| TRIPLE( P_SLEFT, left, right ) -> retval := exprGeneric out_chan syms left; retval := exprGeneric out_chan syms right
+| TRIPLE( P_SRIGHT, left, right ) -> retval := exprGeneric out_chan syms left; retval := exprGeneric out_chan syms right
+| TRIPLE( P_SSRIGHT, left, right ) -> retval := exprGeneric out_chan syms left; retval := exprGeneric out_chan syms right
+| TRIPLE( PLUS, left, right ) -> retval := exprGeneric out_chan syms left; retval := exprGeneric out_chan syms right
+| TRIPLE( MINUS, left, right ) -> retval := exprGeneric out_chan syms left; retval := exprGeneric out_chan syms right
+| TRIPLE( TIMES, left, right ) -> retval := exprGeneric out_chan syms left; retval := exprGeneric out_chan syms right
+| TRIPLE( DIVIDE, left, right ) -> retval := exprGeneric out_chan syms left; retval := exprGeneric out_chan syms right
+| TRIPLE( MODULO, left, right ) -> retval := exprGeneric out_chan syms left; retval := exprGeneric out_chan syms right
+| TRIPLE( P_POW, left, right ) -> retval := exprGeneric out_chan syms left; retval := exprGeneric out_chan syms right
+| TRIPLE(CONCAT, arg2, TLIST arg4) -> iter (fun arg -> retval := exprGeneric out_chan syms arg) (arg2::arg4)
+| DOUBLE(CONCAT, TLIST concat) -> iter (fun arg -> retval := exprGeneric out_chan syms arg) concat
+| DOUBLE(MINUS, arg2) -> retval := exprGeneric out_chan syms arg2
+| DOUBLE(PLUS, arg2) -> retval := exprGeneric out_chan syms arg2
+| DOUBLE(AMPERSAND, arg2) -> retval := exprGeneric out_chan syms arg2
+| DOUBLE(VBAR, arg2) -> retval := exprGeneric out_chan syms arg2
+| DOUBLE(CARET, arg2) -> retval := exprGeneric out_chan syms arg2
+| DOUBLE(P_XNOR, arg2) -> retval := exprGeneric out_chan syms arg2
+| DOUBLE(P_NAND, arg2) -> retval := exprGeneric out_chan syms arg2
+| DOUBLE(P_NOR, arg2) -> retval := exprGeneric out_chan syms arg2
+| DOUBLE(PLING, arg2) -> retval := exprGeneric out_chan syms arg2
+| DOUBLE(TILDE, arg2) -> retval := exprGeneric out_chan syms arg2
 | QUADRUPLE(QUERY, expr, then_clause, else_clause ) ->
-    exprGeneric out_chan syms expr;
-    exprGeneric out_chan syms then_clause;
-    exprGeneric out_chan syms else_clause
-| DOUBLE(D_BITS, right ) -> exprGeneric out_chan syms right
-| DOUBLE(D_C, TLIST right ) -> iter(fun arg -> exprGeneric out_chan syms arg) right
-| DOUBLE(D_CLOG2, right ) -> exprGeneric out_chan syms right
-| DOUBLE(D_COUNTDRIVERS, right ) -> exprGeneric out_chan syms right
-| DOUBLE(D_COUNTONES, right ) -> exprGeneric out_chan syms right
-| DOUBLE(D_FEOF, right ) -> exprGeneric out_chan syms right
-| DOUBLE(D_FGETC, right ) -> exprGeneric out_chan syms right
-| TRIPLE(D_FGETS, right, arg5) -> exprGeneric out_chan syms right
-| TRIPLE(D_FSCANF, right, arg6) -> exprGeneric out_chan syms right
-| TRIPLE(D_SSCANF, right, arg6) -> exprGeneric out_chan syms right
-| DOUBLE(D_ISUNKNOWN, right ) -> exprGeneric out_chan syms right
-| DOUBLE(D_ONEHOT, right ) -> exprGeneric out_chan syms right
-| DOUBLE(D_ONEHOT0, right ) -> exprGeneric out_chan syms right
-| DOUBLE(D_RANDOM, right ) -> exprGeneric out_chan syms right
-| D_RANDOM -> ()
-| DOUBLE(D_SIGNED, right ) -> exprGeneric out_chan syms right
-| D_STIME -> ()
-| D_TIME -> ()
-| DOUBLE(D_TEST_PLUSARGS, right ) -> exprGeneric out_chan syms right
-| DOUBLE(D_UNSIGNED, right ) -> exprGeneric out_chan syms right
+    ( ignore(exprGeneric out_chan syms expr);
+    let retval1 = exprGeneric out_chan syms then_clause in
+    let retval2 = exprGeneric out_chan syms else_clause in
+    let (hi1,lo1) = iwidth out_chan syms retval1 and (hi2,lo2) = iwidth out_chan syms retval2 in
+      retval := if (hi1-lo1 > hi2-lo2) then retval1 else retval2; )
+| DOUBLE(D_BITS, right ) -> retval := exprGeneric out_chan syms right
+| DOUBLE(D_C, TLIST right ) -> iter(fun arg -> retval := exprGeneric out_chan syms arg) right
+| DOUBLE(D_CLOG2, right ) -> retval := exprGeneric out_chan syms right
+| DOUBLE(D_COUNTDRIVERS, right ) -> retval := exprGeneric out_chan syms right
+| DOUBLE(D_COUNTONES, right ) -> retval := exprGeneric out_chan syms right
+| DOUBLE(D_FEOF, right ) -> retval := exprGeneric out_chan syms right
+| DOUBLE(D_FGETC, right ) -> retval := exprGeneric out_chan syms right
+| TRIPLE(D_FGETS, right, arg5) -> retval := exprGeneric out_chan syms right
+| TRIPLE(D_FSCANF, right, arg6) -> retval := exprGeneric out_chan syms right
+| TRIPLE(D_SSCANF, right, arg6) -> retval := exprGeneric out_chan syms right
+| DOUBLE(D_ISUNKNOWN, right ) -> retval := exprGeneric out_chan syms right
+| DOUBLE(D_ONEHOT, right ) -> retval := exprGeneric out_chan syms right
+| DOUBLE(D_ONEHOT0, right ) -> retval := exprGeneric out_chan syms right
+| DOUBLE(D_RANDOM, right ) -> retval := exprGeneric out_chan syms right
+| D_RANDOM -> retval := RANGE(INT 31, INT 0)
+| DOUBLE(D_SIGNED, right ) -> retval := exprGeneric out_chan syms right
+| D_STIME -> retval := RANGE(INT 31, INT 0)
+| D_TIME -> retval := RANGE(INT 31, INT 0)
+| DOUBLE(D_TEST_PLUSARGS, right ) -> retval := exprGeneric out_chan syms right
+| DOUBLE(D_UNSIGNED, right ) -> retval := exprGeneric out_chan syms right
 | TRIPLE(FUNCREF, func, TLIST arg3) -> ( match func with
   | ID funcname ->
   begin
@@ -400,26 +403,27 @@ and exprGeneric out_chan syms expr = Stack.push (288, expr) stk; ( match expr wi
 | BINNUM left -> ()
 | DECNUM left -> ()
 | HEXNUM left -> ()
-| ID arg1 -> enter_a_sig_attr out_chan syms expr DRIVER (find_ident out_chan syms expr).width syms anon
-| TRIPLE(BITSEL, arg1, arg3) -> enter_a_sig_attr out_chan syms arg1 DRIVER (RANGE(arg3,arg3)) syms anon
-| QUADRUPLE(PARTSEL, arg1 , arg3 , arg5 ) -> ()
+| ID arg1 -> retval := (find_ident out_chan syms expr).width; enter_a_sig_attr out_chan syms expr DRIVER !retval syms anon
+| TRIPLE(BITSEL, arg1, arg3) -> retval := RANGE(arg3,arg3); enter_a_sig_attr out_chan syms arg1 DRIVER !retval syms anon
+| QUADRUPLE(PARTSEL, arg1 , arg3 , arg5 ) -> retval := RANGE(arg3,arg5); enter_a_sig_attr out_chan syms arg1 DRIVER !retval syms anon
 | QUADRUPLE(P_PLUSCOLON, arg1 , arg3 , arg5 ) -> ()
 | QUADRUPLE(P_MINUSCOLON, arg1, arg3, arg5 ) -> ()
 | ASCNUM arg1 -> ()
 | FLOATNUM arg1 -> ()
-| DOTTED path -> () (*TBD*)
-| _ -> unhandled out_chan 321 expr );
-ignore(Stack.pop stk)
+| DOTTED path -> (*TBD*) retval := UNKNOWN
+| _ -> unhandled out_chan 321 expr; retval := UNKNOWN );
+ignore(Stack.pop stk);
+!retval
 
 and caseitems out_chan syms expr = Stack.push (369, expr) stk; ( match expr with
 (* Parse case statement *)
 | TRIPLE(CASECOND, TLIST thecases, stmt) ->
-iter (fun pattern -> exprGeneric out_chan syms pattern) thecases;
+iter (fun pattern -> ignore(exprGeneric out_chan syms pattern)) thecases;
 stmtBlock out_chan syms stmt
 | DOUBLE(DEFAULT, stmt) ->
 stmtBlock out_chan syms stmt
 | QUADRUPLE(P_LTE, dest, dly, exp) ->
-exprGeneric out_chan syms exp;
+ignore(exprGeneric out_chan syms exp);
 ignore(subexp out_chan RECEIVER syms dest)
 | ID id -> enter_a_sym out_chan syms id EMPTY EMPTY AttrOnly
 | PREPROC txt -> ()
@@ -499,17 +503,17 @@ and stmtBlock out_chan syms block = Stack.push (465, block) stk; ( match block w
    ignore(exprGeneric out_chan syms expr);
    stmtBlock out_chan syms stmt
 | TRIPLE(IF, expr, then_clause) ->
-exprGeneric out_chan syms expr;
+ignore(exprGeneric out_chan syms expr);
 stmtBlock out_chan syms then_clause
 | QUADRUPLE(IF, expr, then_clause, else_clause) ->
-exprGeneric out_chan syms expr;
+ignore(exprGeneric out_chan syms expr);
 stmtBlock out_chan syms then_clause;
 stmtBlock out_chan syms else_clause
 | QUINTUPLE(FOR, TRIPLE(ASSIGNMENT,ID idstart, start), test, TRIPLE(ASSIGNMENT,ID idinc,inc), clause) ->
 if idstart <> idinc then Printf.fprintf (fst out_chan) "For variable not consistent %s vs. %s\n" idstart idinc
 else for_stmt out_chan syms idstart start test inc clause
 | QUADRUPLE((CASE|CASEX|CASEZ), expr, caseAttr, TLIST caseList) ->
-exprGeneric out_chan syms expr;
+ignore(exprGeneric out_chan syms expr);
 iter (fun caseitem -> caseitems out_chan syms caseitem) caseList
 (* Parse task reference *)
 | TRIPLE(TASKREF, task, args) -> ( match task with
@@ -526,10 +530,10 @@ end
  )
 | TRIPLE((D_READMEMB|D_READMEMH), (ASCNUM file|ID file), args) -> ()
 | TRIPLE(D_FOPEN, dest, nam ) -> ignore(subexp out_chan RECEIVER syms dest);
-    exprGeneric out_chan syms nam
+    ignore(exprGeneric out_chan syms nam)
 | TRIPLE(D_WRITE, ASCNUM msg, args) -> ()
-| TRIPLE((D_FWRITE|D_FWRITEH), fd, TLIST args) -> iter (fun arg -> exprGeneric out_chan syms arg) args
-| DOUBLE(D_FCLOSE, fd) -> exprGeneric out_chan syms fd
+| TRIPLE((D_FWRITE|D_FWRITEH), fd, TLIST args) -> iter (fun arg -> ignore(exprGeneric out_chan syms arg)) args
+| DOUBLE(D_FCLOSE, fd) -> ignore(exprGeneric out_chan syms fd)
 | QUADRUPLE(D_FDISPLAY, fd, ASCNUM msg, args) -> ()
 | TRIPLE(D_FDISPLAY, fd, EMPTY) -> ()
 | TRIPLE(D_DISPLAY, ASCNUM msg, args) -> ()
@@ -542,7 +546,7 @@ ignore(Stack.pop stk)
 and subexp out_chan dir syms exp = Stack.push (475, exp) stk; match exp with
 | ID id -> enter_a_sig_attr out_chan syms exp dir (find_ident out_chan syms exp).width syms anon
 | TRIPLE(BITSEL, ID id, sel) -> enter_a_sig_attr out_chan syms (ID id) dir (RANGE (sel, sel)) syms anon
-| _ -> exprGeneric out_chan syms exp;
+| _ -> ignore(exprGeneric out_chan syms exp);
 ignore(Stack.pop stk)
 (*
 and expr_dyadic out_chan dir syms op left right = DYADIC(op, subexp2 out_chan dir syms left, subexp2 out_chan dir syms right)
@@ -664,7 +668,7 @@ and decls out_chan tree mode =
           | TLIST [RANGE (expr1, expr2)] ->
               enter_sym_attrs out_chan syms (ID id) [MEMORY] !width Create;
           | _ -> unhandled out_chan 582 arg5);
-          if (arg6 <> EMPTY) then exprGeneric out_chan syms arg6;
+          if (arg6 <> EMPTY) then ignore(exprGeneric out_chan syms arg6);
       | DOUBLE(id, EMPTY) -> enter_sym_attrs out_chan syms id [kind] !width Create
       | _ -> unhandled out_chan 534 x) arg3); end
 (* Parse real/integer/event decls *)
