@@ -35,6 +35,7 @@ val logfile : Setup.logt ref
 val trace_file : Setup.logt ref
 val mygetenv : string -> string
 val mygetenv_int : string -> int
+val verbose : int
 val yesno : bool -> string
 val quicksort : 'a list -> 'a list
 val qsort : 'a list -> 'a list

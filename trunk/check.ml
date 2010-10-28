@@ -36,9 +36,9 @@ let erc_chk_sig out_chan (syma:tset) siga id =
 	  else if (TokSet.mem OUTPUT syma) && not ((TokSet.mem RECEIVER siga) || (TokSet.mem SPECIAL syma)) then
 	    "Undriven output"
 	  else if (TokSet.mem INOUT syma) then
-	    "Is an inout"
+	    "Note: Inout"
 	  else if (TokSet.mem WIRE syma) && (TokSet.mem DRIVER siga) && not ((TokSet.mem RECEIVER siga) || (TokSet.mem SPECIFY syma)) then
-	    "Is a wire which drives but is not driven"
+	    "Undriven but driving wire"
 	  else let skip="SYNOPSYS_UNCONNECTED__" in if ((String.length id < String.length skip) || (skip <> String.sub id 0 (String.length skip))) && (TokSet.mem WIRE syma) && not ((TokSet.mem RECEIVER siga) || (TokSet.mem SPECIFY syma)) then
 	    "Unused wire"
           else ""
@@ -80,10 +80,11 @@ match s.width with
     cache_msgs msg_cache msg id
 | _ -> unhandled out_chan 791 s.width)
 | Sigparam x ->
-  if not (TokSet.mem PARAMUSED s.symattr) then (erch(); Printf.fprintf (fst out_chan) "Parameter %s is not used\n" id)
+  if not (TokSet.mem PARAMUSED s.symattr) then cache_msgs msg_cache "Unused Parameter" id
 | Sigtask x ->
-  if not (TokSet.mem TASKUSED s.symattr) then (erch(); Printf.fprintf (fst out_chan) "Task %s is not used\n" id)
+  if not (TokSet.mem TASKUSED s.symattr) then cache_msgs msg_cache "Unused Task" id
 | Sigfunc x ->
-  if not (TokSet.mem FUNCUSED s.symattr) then (erch(); Printf.fprintf (fst out_chan) "Function %s is not used\n" id)
-| _ -> unhandled out_chan 804 s.width
+  if not (TokSet.mem FUNCUSED s.symattr) then cache_msgs msg_cache "Unused Function" id
+| Signamed x -> ()
+| Sigundef -> ()
 ;;
