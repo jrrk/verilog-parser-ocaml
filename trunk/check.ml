@@ -45,16 +45,16 @@ let erc_chk_sig out_chan (syma:tset) siga id =
 	end
   end
 
-let cache_msgs msg id = if (String.length msg > 0) then begin
-if (Hashtbl.mem Globals.msg_cache msg) then begin
- let entry = Hashtbl.find Globals.msg_cache msg in
-  Hashtbl.replace Globals.msg_cache msg (id :: entry)
+let cache_msgs msg_cache msg id = if (String.length msg > 0) then begin
+if (Hashtbl.mem msg_cache msg) then begin
+ let entry = Hashtbl.find msg_cache msg in
+  Hashtbl.replace msg_cache msg (id :: entry)
  end
 else
- Hashtbl.add Globals.msg_cache msg [id]
+ Hashtbl.add msg_cache msg [id]
 end;;
 
-let erc_chk out_chan erch (gsyms:sentries) id s = match s.sigattr with
+let erc_chk out_chan msg_cache erch (gsyms:sentries) id s = match s.sigattr with
 | Sigarray attrs -> (
 match s.width with
 | RANGE range -> let (hi,lo) = iwidth out_chan (Shash {nxt=EndShash; syms=gsyms}) s.width in
@@ -64,20 +64,20 @@ match s.width with
 (*    if (String.length msg > 0) then
         Printf.fprintf (fst out_chan) "DBG: %s %s\n" (id^"["^(string_of_int i)^"]") msg;  *)
     if (msg <> !msg0) then (
-      cache_msgs !msg0 (id^"["^(string_of_int !i0)^":"^(string_of_int !i1)^"]");
+      cache_msgs msg_cache !msg0 (id^"["^(string_of_int !i0)^":"^(string_of_int !i1)^"]");
       i0 := i;
       i1 := i;
       msg0 := msg; )
     else if (i == lo) then (
       if (String.length msg > 0) then
-      cache_msgs !msg0 (id^"["^(string_of_int !i0)^":"^(string_of_int i)^"]"))
+      cache_msgs msg_cache !msg0 (id^"["^(string_of_int !i0)^":"^(string_of_int i)^"]"))
     else
       i1 := i;
     done
   with Invalid_argument("index out of bounds") -> (erch(); Printf.fprintf (fst out_chan) "Trying to access %s with index [%d:%d]\n" id hi lo))
 | SCALAR | EMPTY | UNKNOWN->
     let msg = erc_chk_sig out_chan s.symattr attrs.(0) id in
-    cache_msgs msg id
+    cache_msgs msg_cache msg id
 | _ -> unhandled out_chan 791 s.width)
 | Sigparam x ->
   if not (TokSet.mem PARAMUSED s.symattr) then (erch(); Printf.fprintf (fst out_chan) "Parameter %s is not used\n" id)
