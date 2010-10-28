@@ -20,7 +20,6 @@ val tmpnam : string
 val modprims: (string, modtree) Hashtbl.t
 val pending: (string, modtree) Hashtbl.t
 val black_box: (string, string) Hashtbl.t
-val msg_cache: (string, string list) Hashtbl.t
 val tsymbols : (string, Vparser.token) Hashtbl.t
 
 val get_table : string -> modtree

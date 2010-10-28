@@ -158,11 +158,11 @@ let enter_parameter out_chan syms id arg5 arg6 w =
 		       localsyms = syms;
      path=id}
 
-let sig_attr_extract out_chan syms inner = let rslt0 = (0,0,Array.make 1 TokSet.empty) in
+let sig_attr_extract out_chan isyms inner = let rslt0 = (0,0,Array.make 1 TokSet.empty) in
 let rslt = ref rslt0 in ( match inner.sigattr with
 | Sigarray attrs -> (
 match inner.width with
-| RANGE range -> let (hi,lo) = iwidth out_chan syms inner.width in rslt := (hi,lo,attrs)
+| RANGE range -> let (hi,lo) = iwidth out_chan isyms inner.width in rslt := (hi,lo,attrs)
 | SCALAR ->
     rslt := (0,0,attrs);
 | UNKNOWN -> (*TBD*)
@@ -194,8 +194,8 @@ let enter_range out_chan syms id sym attr wid inner high (low:int) inner_attr at
     (*with Invalid_argument("index out of bounds") -> Printf.fprintf (fst out_chan) "Trying to access %s with index [%d]\n" id i*)
     done
 
-let enter_a_sig_attr out_chan syms (tok:token) attr w isym = ( match tok with 
-| ID id -> let sym = find_ident out_chan syms tok and (high,low,inner_attr) = sig_attr_extract out_chan syms isym
+let enter_a_sig_attr out_chan syms (tok:token) attr w isyms isym = ( match tok with 
+| ID id -> let sym = find_ident out_chan syms tok and (high,low,inner_attr) = sig_attr_extract out_chan isyms isym
  in (match sym.sigattr with
 | Sigarray attrs -> enter_range out_chan syms id sym attr w isym high low inner_attr attrs
 | Sigparam x -> enter_sym_attrs out_chan syms tok [PARAMUSED] UNKNOWN AttrOnly
@@ -208,7 +208,7 @@ let enter_a_sig_attr out_chan syms (tok:token) attr w isym = ( match tok with
   (str_token tok) (str_token attr) (str_token w)
 ;;
 
-let inner_chk out_chan syms isym subcct outer wid = begin
+let inner_chk out_chan syms isyms isym subcct outer wid = begin
  if (!verbose >= 2) then Printf.fprintf (fst out_chan) "inner_chk out_chan syms isym {path:%s width:%s} subcct:%s outer:%s width:%s\n"
   isym.path (str_token isym.width) subcct outer (str_token wid);
   let hier = ID (outer) and compat=ref false in 
@@ -227,13 +227,13 @@ let inner_chk out_chan syms isym subcct outer wid = begin
       end
     end;
   if (TokSet.mem IOPORT isym.symattr == false) then Printf.fprintf (fst out_chan) "Instance port %s not an ioport\n" isym.path
-  else if (TokSet.mem INPUT isym.symattr) then ( enter_a_sig_attr out_chan syms hier DRIVER wid isym)
-  else if (TokSet.mem OUTPUT isym.symattr) then ( enter_a_sig_attr out_chan syms hier RECEIVER wid isym)
-  else if (TokSet.mem INOUT isym.symattr) then ( enter_a_sig_attr out_chan syms hier BIDIR wid isym)
+  else if (TokSet.mem INPUT isym.symattr) then ( enter_a_sig_attr out_chan syms hier DRIVER wid isyms isym)
+  else if (TokSet.mem OUTPUT isym.symattr) then ( enter_a_sig_attr out_chan syms hier RECEIVER wid isyms isym)
+  else if (TokSet.mem INOUT isym.symattr) then ( enter_a_sig_attr out_chan syms hier BIDIR wid isyms isym)
   end
 end
 
-let inner_chk_const out_chan syms isym subcct (tok:token) wid = begin
+let inner_chk_const out_chan syms isyms isym subcct (tok:token) wid = begin
   let compat=ref false in 
   begin
   if (isym.width <> wid) then
@@ -257,22 +257,22 @@ let inner_chk_const out_chan syms isym subcct (tok:token) wid = begin
 end
 
 let rec connect out_chan syms kind subcct (innert:token) tok = 
-let innersyms = (Hashtbl.find Globals.modprims kind).symbols in ( Stack.push (255, innert) stk; match innert with ID innerid -> begin
-if (Const.shash_chain_mem innersyms innerid) then
-let isym=Const.shash_chain_find innersyms innerid in match tok with
-| ID outer -> inner_chk out_chan syms isym subcct outer (find_ident out_chan syms tok).width
-| TRIPLE(BITSEL, ID outer, sel) -> if (Const.shash_chain_mem syms outer) then inner_chk out_chan syms isym subcct outer (RANGE (sel, sel)) else not_found out_chan syms outer
-| QUADRUPLE(PARTSEL, ID outer, INT hi, INT lo) -> if (Const.shash_chain_mem syms outer) then inner_chk out_chan syms isym subcct outer (RANGE(INT hi, INT lo)) else not_found out_chan syms outer
-| INT lev -> inner_chk_const out_chan syms isym subcct tok (RANGE(INT 31, INT 0))
-| BINNUM lev -> inner_chk_const out_chan syms isym subcct tok (RANGE(INT (fst(widthnum 2 lev)-1), INT 0))
+let isyms = (Hashtbl.find Globals.modprims kind).symbols in ( Stack.push (255, innert) stk; match innert with ID innerid -> begin
+if (Const.shash_chain_mem isyms innerid) then
+let isym=Const.shash_chain_find isyms innerid in match tok with
+| ID outer -> inner_chk out_chan syms isyms isym subcct outer (find_ident out_chan syms tok).width
+| TRIPLE(BITSEL, ID outer, sel) -> if (Const.shash_chain_mem syms outer) then inner_chk out_chan syms isyms isym subcct outer (RANGE (sel, sel)) else not_found out_chan syms outer
+| QUADRUPLE(PARTSEL, ID outer, INT hi, INT lo) -> if (Const.shash_chain_mem syms outer) then inner_chk out_chan syms isyms isym subcct outer (RANGE(INT hi, INT lo)) else not_found out_chan syms outer
+| INT lev -> inner_chk_const out_chan syms isyms isym subcct tok (RANGE(INT 31, INT 0))
+| BINNUM lev -> inner_chk_const out_chan syms isyms isym subcct tok (RANGE(INT (fst(widthnum 2 lev)-1), INT 0))
 | DOUBLE(CONCAT, TLIST concat) -> let idx = ref (fst(iwidth out_chan syms isym.width)) in iter (fun (item:token) -> 
 ( if (!verbose >= 3) then Printf.fprintf (fst out_chan) "Concat idx %d\n" !idx; match item with
   | ID id -> let wid = (find_ident out_chan syms item).width in
       let (hi,lo) = iwidth out_chan syms wid in let last = !idx + lo - hi in
-      begin inner_chk out_chan syms {symattr=isym.symattr; width=RANGE(INT !idx, INT last); sigattr = isym.sigattr; localsyms = EndShash; path=isym.path} subcct id wid; idx := last-1; end
-  | TRIPLE(BITSEL, ID id, INT sel) -> inner_chk out_chan syms {symattr=isym.symattr; width=RANGE(INT !idx, INT !idx); sigattr = isym.sigattr; localsyms = EndShash; path=isym.path} subcct id (RANGE(INT sel, INT sel)); idx := !idx-1
-  | QUADRUPLE(PARTSEL, ID id, INT hi, INT lo) -> inner_chk out_chan syms {symattr=isym.symattr; width=RANGE(INT !idx, INT (!idx+lo-hi)); sigattr = isym.sigattr; localsyms = EndShash; path=isym.path} subcct id (RANGE(INT hi, INT lo)); idx := !idx+lo-hi-1
-  | BINNUM lev -> let w = fst(widthnum 2 lev) in inner_chk_const out_chan syms {symattr=isym.symattr; width=RANGE(INT !idx, INT (!idx+1-w)); sigattr = isym.sigattr; localsyms = EndShash; path=isym.path} subcct tok (RANGE(INT (w-1), INT 0))
+      begin inner_chk out_chan syms isyms {symattr=isym.symattr; width=RANGE(INT !idx, INT last); sigattr = isym.sigattr; localsyms = EndShash; path=isym.path} subcct id wid; idx := last-1; end
+  | TRIPLE(BITSEL, ID id, INT sel) -> inner_chk out_chan syms isyms {symattr=isym.symattr; width=RANGE(INT !idx, INT !idx); sigattr = isym.sigattr; localsyms = EndShash; path=isym.path} subcct id (RANGE(INT sel, INT sel)); idx := !idx-1
+  | QUADRUPLE(PARTSEL, ID id, INT hi, INT lo) -> inner_chk out_chan syms isyms {symattr=isym.symattr; width=RANGE(INT !idx, INT (!idx+lo-hi)); sigattr = isym.sigattr; localsyms = EndShash; path=isym.path} subcct id (RANGE(INT hi, INT lo)); idx := !idx+lo-hi-1
+  | BINNUM lev -> let w = fst(widthnum 2 lev) in inner_chk_const out_chan syms isyms {symattr=isym.symattr; width=RANGE(INT !idx, INT (!idx+1-w)); sigattr = isym.sigattr; localsyms = EndShash; path=isym.path} subcct tok (RANGE(INT (w-1), INT 0))
   | _ -> unhandled out_chan 224 item)
 ) concat
 (* These patterns are temporary placeholders *)
@@ -382,8 +382,8 @@ let rec exprGeneric out_chan syms expr = Stack.push (288, expr) stk; ( match exp
 | BINNUM left -> ()
 | DECNUM left -> ()
 | HEXNUM left -> ()
-| ID arg1 -> enter_a_sig_attr out_chan syms expr DRIVER (find_ident out_chan syms expr).width anon
-| TRIPLE(BITSEL, arg1, arg3) -> enter_a_sig_attr out_chan syms arg1 DRIVER (RANGE(arg3,arg3)) anon
+| ID arg1 -> enter_a_sig_attr out_chan syms expr DRIVER (find_ident out_chan syms expr).width syms anon
+| TRIPLE(BITSEL, arg1, arg3) -> enter_a_sig_attr out_chan syms arg1 DRIVER (RANGE(arg3,arg3)) syms anon
 | QUADRUPLE(PARTSEL, arg1 , arg3 , arg5 ) -> ()
 | QUADRUPLE(P_PLUSCOLON, arg1 , arg3 , arg5 ) -> ()
 | QUADRUPLE(P_MINUSCOLON, arg1, arg3, arg5 ) -> ()
@@ -522,8 +522,8 @@ end
 ignore(Stack.pop stk)
 
 and subexp out_chan dir syms exp = Stack.push (475, exp) stk; match exp with
-| ID id -> enter_a_sig_attr out_chan syms exp dir (find_ident out_chan syms exp).width anon
-| TRIPLE(BITSEL, ID id, sel) -> enter_a_sig_attr out_chan syms (ID id) dir (RANGE (sel, sel)) anon
+| ID id -> enter_a_sig_attr out_chan syms exp dir (find_ident out_chan syms exp).width syms anon
+| TRIPLE(BITSEL, ID id, sel) -> enter_a_sig_attr out_chan syms (ID id) dir (RANGE (sel, sel)) syms anon
 | _ -> exprGeneric out_chan syms exp;
 ignore(Stack.pop stk)
 (*
@@ -621,9 +621,9 @@ and decls out_chan tree mode =
       | _ -> unhandled out_chan 510 arg3);
     ( match arg4 with
       | DOUBLE(id, arg5) -> enter_sym_attrs out_chan syms id !attr !width mode
-      | TRIPLE(id, TLIST arg5, TLIST arg6) -> enter_sym_attrs out_chan syms id !attr !width SizeOnly
+      | TRIPLE(id, TLIST arg5, TLIST arg6) -> enter_sym_attrs out_chan syms id !attr !width mode
       | TLIST arg9 ->  List.iter (fun x -> match x with
-        | TRIPLE(id, arg5, arg6) -> enter_sym_attrs out_chan syms id !attr !width SizeOnly
+        | TRIPLE(id, arg5, arg6) -> enter_sym_attrs out_chan syms id !attr !width mode
         | _ -> unhandled out_chan 514 x) arg9
       | EMPTY -> ()
       | _ -> unhandled out_chan 516 arg4); end
@@ -642,7 +642,7 @@ and decls out_chan tree mode =
       | TRIPLE(ID id, arg5, arg6) -> (match arg5 with
           | EMPTY ->
               enter_sym_attrs out_chan syms (ID id) [kind] !width Create;
-              enter_a_sig_attr out_chan syms (ID id) RECEIVER !width anon
+              enter_a_sig_attr out_chan syms (ID id) RECEIVER !width syms anon
           | TLIST [RANGE (expr1, expr2)] ->
               enter_sym_attrs out_chan syms (ID id) [MEMORY] !width Create;
           | _ -> unhandled out_chan 582 arg5);
@@ -853,7 +853,7 @@ ignore(Stack.pop stk)
 
 exception Error
 
-let check_syms out_chan key (gsyms:shash) = let h = ref false in match gsyms with
+let check_syms out_chan key (gsyms:shash) = let h = ref false and msg_cache = Hashtbl.create 256 in match gsyms with
 | Shash symr -> 
     let erch () = begin if not !h then Printf.fprintf (fst out_chan) "In %s:\n" key; h := true; end in
     if (List.length(!implicit_params) > 0) then
@@ -866,7 +866,7 @@ let check_syms out_chan key (gsyms:shash) = let h = ref false in match gsyms wit
         Printf.fprintf (fst out_chan) "Implicit wires:";
         List.iter (fun s -> Printf.fprintf (fst out_chan) " %s" s) !implicit_wires;
         Printf.fprintf (fst out_chan) "\n" );
-    shash_iter (fun nam s -> Check.erc_chk out_chan erch symr.syms nam s) gsyms;
+    shash_iter (fun nam s -> Check.erc_chk out_chan msg_cache erch symr.syms nam s) gsyms;
     let oc = (fst out_chan) in Hashtbl.iter (fun key contents -> 
         erch(); Printf.fprintf oc "%s: " key;
         let tab = ref (1 + String.length key) in List.iter (fun item ->

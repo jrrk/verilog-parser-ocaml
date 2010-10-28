@@ -31,7 +31,6 @@ let modprims = Hashtbl.create 256;;
 let pending = Hashtbl.create 256;;
 let black_box = Hashtbl.create 256;;
 let env_cache = Hashtbl.create 256;;
-let msg_cache = Hashtbl.create 256;;
 
 let tmpnam = "report."^(string_of_int(Unix.getpid()))^"."^Unix.gethostname()^".report";;
 let unresolved_list = ref [];;
