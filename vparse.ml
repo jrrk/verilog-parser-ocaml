@@ -51,8 +51,6 @@ let _ = List.iter (fun (str,key) -> Hashtbl.add tsymbols str key)
 ("`timescale", P_TIMESCALE "" );
 ];;
 
-let yesno cond = if cond then "true" else "false"
-
 let myflush strm =  match !strm with Open chan -> flush (fst chan) | Closed -> ();;
 
 let from_special1 out_chan macro_raw =
