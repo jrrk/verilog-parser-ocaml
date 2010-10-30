@@ -1,7 +1,7 @@
 (*val show_set : TokSet.t -> unit*)
 val show_token : Vparser.token -> unit
 val show_sym : string -> Setup.symtab -> unit
-val maxwidth : Setup.fmt -> string -> Setup.shash -> Vparser.token -> int
+val maxwidth : Setup.fmt -> Setup.shash -> Vparser.token -> int
 val exprBoolean :
   Setup.fmt ->
   Setup.shash ->
