@@ -1,0 +1,15 @@
+(  "within", WITHIN);
+(  "this", THIS);
+("$hold_timing_check", HOLD_TIMING_CHECK);
+("$width_timing_check", WIDTH_TIMING_CHECK);
+("$recovery_timing_check", RECOVERY_TIMING_CHECK);
+("$setuphold_timing_check", SETUPHOLD_TIMING_CHECK);
+("$fullskew_timing_check", FULLSKEW_TIMING_CHECK);
+("$timeskew_timing_check", TIMESKEW_TIMING_CHECK);
+("$setup_timing_check", SETUP_TIMING_CHECK);
+("\n", TOKEN_613);
+("$skew_timing_check", SKEW_TIMING_CHECK);
+("$nochange_timing_check", NOCHANGE_TIMING_CHECK);
+("$recrem_timing_check", RECREM_TIMING_CHECK);
+("$removal_timing_check", REMOVAL_TIMING_CHECK);
+("$period_timing_check", PERIOD_TIMING_CHECK);
