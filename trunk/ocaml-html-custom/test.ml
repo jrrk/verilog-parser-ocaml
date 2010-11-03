@@ -23,6 +23,7 @@ open Nethtml_scanner
 open Vparser
 
 let multiple x = match x with
+| 0 -> " "
 | 1 -> "("
 | 2 -> "DOUBLE("
 | 3 -> "TRIPLE("
@@ -31,7 +32,7 @@ let multiple x = match x with
 | 6 -> "SEXTUPLE("
 | 7 -> "SEPTUPLE("
 | 8 -> "OCTUPLE("
-| _ -> "UNKNOWN("
+| _ -> "UNKNOWN"^(string_of_int x)^"("
 
 let isalpha = function 'A'..'Z'|'a'..'z' -> true | _ -> false
 
@@ -105,6 +106,10 @@ let rec mygetstr2 tok = match tok with
 | TLIST lst | DOTTED lst -> let concat = ref "" in List.iter (fun item -> concat := !concat ^ " " ^ mygetstr2 item) lst; !concat
 | _ -> Ord.getstr tok
 
+let rec mygetstr3 tok cnt len = match tok with
+| ID id -> "$"^(string_of_int cnt)^(if cnt == len then ");" else ", ")
+| _ -> (Ord.getstr tok)^(if cnt == len then ");" else ", ")
+
 let rec unpack write_os tok = match tok with
     | VBAR -> write_os "| "
     | IS_DEFINED_AS -> write_os "::= "
@@ -115,18 +120,22 @@ let rec unpack write_os tok = match tok with
         fun item -> unpack (fun s -> concat := !concat ^ " " ^ s ^ " ") item) lst; write_os (!concat^" } ")
     | _ -> write_os ((mygetstr tok)^" ")
 
-let rec unpack2 write cnt key tok = match tok with
-    | VBAR -> write "{ } | "
-    | IS_DEFINED_AS -> write ": "
-    | ID id -> write (id^" ")
-    | TLIST lst -> pending := !pending @ [dump2 key (ID key :: IS_DEFINED_AS :: lst)]; write (key^" ")
-    | DOTTED lst -> pending := !pending @ [dump2 key (ID key :: IS_DEFINED_AS :: lst)]; write (key^" ")
-(*    | ANY_ASCII_CHAR -> write "ANY "  *)
-    | _ -> write ((mygetstr2 tok)^" ")
+let dumpargs2 write args = 
+    let len = List.length !args in write ("{ "^(multiple len)); 
+        let cnt = ref 0 in List.iter (fun item -> write (cnt := !cnt + 1; mygetstr3 item !cnt len)) !args; write " } | "; args := []
+
+let rec unpack2 write cnt key tok args = match tok with
+    | VBAR -> dumpargs2 write args
+    | IS_DEFINED_AS -> write ": "; args := []
+    | ID id -> write (id^" "); args := !args @ [tok]
+    | TLIST lst -> pending := !pending @ [dump2 key (ID key :: IS_DEFINED_AS :: lst)]; write (key^" "); args := !args @ [ID key]
+    | DOTTED lst -> pending := !pending @ [dump2 key (ID key :: IS_DEFINED_AS :: lst)]; write (key^" "); args := !args @ [ID key]
+    | _ -> write ((mygetstr2 tok)^" "); args := !args @ [tok]
 
 and dump2 (key:string) lst =
-let buffer = ref "" and cnt = ref 0 in
-List.iter (fun item -> let key2 = key^"_"^(string_of_int !cnt) in unpack2 (fun s -> buffer := !buffer^s) !cnt key2 item; cnt := !cnt + 1) lst;
+let buffer = ref "" and cnt = ref 0 and args = ref [] in
+List.iter (fun item -> let key2 = key^"_"^(string_of_int !cnt) in unpack2 (fun s -> buffer := !buffer^s) !cnt key2 item args; cnt := !cnt + 1) lst;
+dumpargs2(fun s -> buffer := !buffer^s) args;
 !buffer^" { };\n\n"
 
 let enter_keyword id keyword = 
