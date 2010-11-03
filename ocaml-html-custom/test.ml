@@ -34,23 +34,32 @@ to_write := !to_write @ [tok]
 let rec write_os_flush kind name write_os = 
 let cnt = ref 0 and nam = ref name in
 let fetch () = begin let tok = List.hd(!to_write) in ( to_write := List.tl(!to_write); cnt := !cnt+1; tok ) end in
-let fmt = ref (match kind with
-| EMPTY -> ""
-| LBRACK -> name^":\t/*empty*/ {EMPTY} | "
-| LCURLY -> name^":\t/*empty*/ {EMPTY} | "^name^" "
-| _ -> ""
-) and looping = ref true in
-let dump_alt () = fmt := !fmt^" { }" in
+let fmt = ref "" and looping = ref true and cnt0 = ref 0 and syn = ref "" in
+let multiple x = match x with
+| 1 -> "("
+| 2 -> "DOUBLE("
+| 3 -> "TRIPLE("
+| 4 -> "QUADRUPLE("
+| 5 -> "QUINTUPLE("
+| 6 -> "SEXTUPLE("
+| 7 -> "SEPTUPLE("
+| 8 -> "OCTUPLE("
+| _ -> "UNKNOWN("
+in let dump_alt () = fmt := !fmt^" { "^(multiple (!cnt - !cnt0 - 1))^ !syn ^") }"; cnt0 := !cnt; syn := "" in
+match kind with
+| LBRACK -> fmt := name^":\t/*empty*/ {EMPTY} | "
+| LCURLY -> fmt := name^":\t/*empty*/ {EMPTY} | "^name^" "; syn := name; cnt0 := 1
+| _ -> ();
 while !looping && (!to_write <> []) do
 let tok = fetch() in match tok with
-| ID s -> fmt := !fmt ^ s ^ " "; if !nam = "" then nam := s
-| IS_DEFINED_AS -> fmt := !fmt^":\t"
+| ID s -> fmt := !fmt ^ s ^ " "; if !nam = "" then nam := s; syn := !syn ^" $"^(string_of_int (!cnt - !cnt0))
+| IS_DEFINED_AS -> fmt := !fmt^":\t"; cnt0 := !cnt; syn := ""
 | VBAR -> dump_alt(); fmt := !fmt^"\n|\t"
-| LBRACK -> let nam = !nam^"_"^(string_of_int !cnt) in write_os_flush LBRACK nam (write_os); fmt := !fmt^nam^" "
+| LBRACK -> let nam = !nam^"_"^(string_of_int !cnt) in syn := !syn ^" $"^(string_of_int (!cnt - !cnt0)); write_os_flush LBRACK nam (write_os); fmt := !fmt^nam^" ";
 | RBRACK -> looping := false
-| LCURLY -> let nam = !nam^"_"^(string_of_int !cnt) in write_os_flush LCURLY nam (write_os); fmt := !fmt^nam^" "
+| LCURLY -> let nam = !nam^"_"^(string_of_int !cnt) in syn := !syn ^" $"^(string_of_int (!cnt - !cnt0)); write_os_flush LCURLY nam (write_os); fmt := !fmt^nam^" ";
 | RCURLY -> looping := false
-| _ -> fmt := !fmt ^ (Ord.getstr tok) ^ " "
+| _ -> fmt := !fmt ^ (Ord.getstr tok) ^ " "; syn := !syn ^ " " ^ (Ord.getstr tok)
 done;
 if (!cnt > 0) then dump_alt();
 write_os (!fmt^"\n;\n\n")
@@ -65,7 +74,7 @@ let ksymbols = Hashtbl.create 256
 
 let enter_keyword id keyword = 
 if Hashtbl.mem ksymbols id then
-  Printf.printf "Error: repeated keyword %s\n" id
+  Printf.printf "Error: repeated keyword **%s**\n" id
 else begin
 (*  Printf.printf "Enter %s\n" id; *)
   Hashtbl.add ksymbols id keyword
@@ -73,6 +82,8 @@ else begin
 
 let _ = List.iter (fun (str,key) -> enter_keyword str key)
 [
+(  "within", WITHIN);
+(  "this", THIS);
 (*
 ("$hold_timing_check", HOLD_TIMING_CHECK);
 ("$width_timing_check", WIDTH_TIMING_CHECK);
@@ -478,7 +489,9 @@ let _ = List.iter (fun (str,key) -> enter_keyword str key)
 ( "*" , (TIMES));
 ( "|" , (VBAR));
 ( "$" , (DOLLAR));
-( "'" , (SQUOTE))]
+( "'" , (SQUOTE));
+( "\\n", TOKEN_601)]
+
 
 let subst1 sub1 obuf outix = begin match sub1 with
 | "&LT;" -> String.set obuf !outix '<'; outix := !outix+1
