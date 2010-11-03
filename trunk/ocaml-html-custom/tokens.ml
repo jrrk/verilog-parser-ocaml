@@ -1,5 +1,3 @@
-(  "within", WITHIN);
-(  "this", THIS);
 ("$hold_timing_check", HOLD_TIMING_CHECK);
 ("$width_timing_check", WIDTH_TIMING_CHECK);
 ("$recovery_timing_check", RECOVERY_TIMING_CHECK);
@@ -7,7 +5,6 @@
 ("$fullskew_timing_check", FULLSKEW_TIMING_CHECK);
 ("$timeskew_timing_check", TIMESKEW_TIMING_CHECK);
 ("$setup_timing_check", SETUP_TIMING_CHECK);
-("\n", TOKEN_613);
 ("$skew_timing_check", SKEW_TIMING_CHECK);
 ("$nochange_timing_check", NOCHANGE_TIMING_CHECK);
 ("$recrem_timing_check", RECREM_TIMING_CHECK);

@@ -98,6 +98,7 @@
 %token TOKEN_634
 %token ENDFUNCTION
 %token AT
+%token TOKEN_601
 %token FOREVER
 %token P_SRIGHTEQ
 %token D_TEST_PLUSARGS
@@ -343,6 +344,7 @@
 %token P_SLEFTEQ
 %token OUTPUT
 %token FIRST_MATCH
+%token THIS
 %token LARGE
 %token ENDCASE
 %token TIMINGSPEC
@@ -383,16 +385,39 @@
 %token NOTIF1
 %token ALWAYS
 %token END
+%token WITHIN
 %token P_MODEQ
 %token CLASS
 %token STRUCT
-%token FILE_PATH
-%token WITHIN
+%token file_path
 %token X
-
-%type <unit> library_text
+%token x
+%token B
+%token b
+%token R
+%token r
+%token F
+%token f%token P
+%token p
+%token N
+%token n
+%token Z
+%token z
+%token S
+%token s
+%token MS
+%token US
+%token NS
+%token PS
+%token FS
+%token AS
+%token A B C D E
+%token H O d e a ZA Z_ zA Z0
+%token space tab newline eof
+%token <string> ASCNUM
 
 %start library_text
+%type <unit> library_text
 
 %%
 
@@ -532,7 +557,7 @@ library_declaration :	LIBRARY library_identifier file_path_spec library_declarat
 
 
  
-   file_path_spec :	FILE_PATH  { }
+   file_path_spec :	file_path  { }
 ;
 
 /* 
@@ -11713,8 +11738,8 @@ Operators
   
 
   
-/* 
-  
+
+/*   
 
  P_EQUAL  { }
 |	P_NOTEQUAL  { }
@@ -12343,8 +12368,10 @@ Strings
  */
 
 
+Any_ASCII_Character: ASCNUM { }
+
  
-  
+Any_ASCII_Characters: ASCNUM { }
 
     
 
@@ -12430,7 +12457,7 @@ A.9.2 Comments
  
   
 
-   one_line_comment :	TOKEN_704 comment_text   { }
+   one_line_comment :	TOKEN_704 comment_text TOKEN_601  { }
 ;
 
 /* 
@@ -12450,7 +12477,7 @@ A.9.2 Comments
 
 
  
-     comment_text_3:	/*empty*/ {EMPTY} | comment_text_3 Any_ASCII_character  { }
+     comment_text_3:	/*empty*/ {EMPTY} | comment_text_3  { }
 ;
 
 comment_text :	comment_text_3  { }
@@ -13210,7 +13237,7 @@ void functions, non integer type functions, and functions with a typedef type ca
 
 
  
-Open-array (  */
+Open-array ( 
 
  
         
@@ -13239,12 +13266,10 @@ Open-array (  */
 
 
  
-_1:	/*empty*/ {EMPTY} |  { }
+_1:	 {EMPTY} |  { }
 ;
 
-/*
-
-_1 RPAREN form shall only be used WITH dpi_proto_formal implicit_class_handle shall only appear within the scope of a class_declaration OR extern_method_declaration DOT In any one declaration, only one of PROTECTED OR LOCAL is allowed, only one of RAND OR RANDC is allowed, AND STATIC and/or VIRTUAL can appear only once.  { }
+_1 RPAREN form shall only be used WITH dpi_proto_formal implicit_class_handle shall only appear WITHIN the scope of a class_declaration OR extern_method_declaration DOT In any one declaration, only one of PROTECTED OR LOCAL is allowed, only one of RAND OR RANDC is allowed, AND STATIC and/or VIRTUAL can appear only once.  { }
 ;
 
 */
