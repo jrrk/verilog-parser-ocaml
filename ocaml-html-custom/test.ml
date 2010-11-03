@@ -22,19 +22,6 @@ open Netchannels
 open Nethtml_scanner
 open Vparser
 
-let isalpha = function 'A'..'Z'|'a'..'z' -> true | _ -> false
-
-let valid1 = ref false and valid2 = ref false and com = ref false and mask = ref false
-and superscript = ref false and optional = ref false and zlist = ref false and annotated = ref false
-and begin_clause = ref false and to_write = ref [] and myname = ref ""
-
-let write_os_pending (tok:token) = 
-to_write := !to_write @ [tok]
-
-let rec write_os_flush kind name write_os = 
-let cnt = ref 0 and nam = ref name in
-let fetch () = begin let tok = List.hd(!to_write) in ( to_write := List.tl(!to_write); cnt := !cnt+1; tok ) end in
-let fmt = ref "" and looping = ref true and cnt0 = ref 0 and syn = ref "" in
 let multiple x = match x with
 | 1 -> "("
 | 2 -> "DOUBLE("
@@ -45,36 +32,106 @@ let multiple x = match x with
 | 7 -> "SEPTUPLE("
 | 8 -> "OCTUPLE("
 | _ -> "UNKNOWN("
-in let dump_alt () = fmt := !fmt^" { "^(multiple (!cnt - !cnt0 - 1))^ !syn ^") }"; cnt0 := !cnt; syn := "" in
+
+let isalpha = function 'A'..'Z'|'a'..'z' -> true | _ -> false
+
+let valid1 = ref false and valid2 = ref false and com = ref false and mask = ref false
+and superscript = ref false and optional = ref false and zlist = ref false and annotated = ref false
+and begin_clause = ref false and to_write = ref [] and myname = ref "" and comment = ref "" and pending = ref []
+
+let write_os_pending (tok:token) = 
+to_write := !to_write @ [tok]
+
+let rec write_os_flush_old kind name write_os = 
+let cnt = ref 0 and nam = ref name in
+let fetch () = begin let tok = List.hd(!to_write) in ( to_write := List.tl(!to_write); cnt := !cnt+1; tok ) end in
+let fmt = ref "" and looping = ref true and cnt0 = ref 0 and syn = ref "" in
+let dump_alt () = begin fmt := !fmt^" { }"; cnt0 := !cnt; syn := "" end in
 match kind with
 | LBRACK -> fmt := name^":\t/*empty*/ {EMPTY} | "
 | LCURLY -> fmt := name^":\t/*empty*/ {EMPTY} | "^name^" "; syn := name; cnt0 := 1
-| _ -> ();
+| _ -> fmt := "";
 while !looping && (!to_write <> []) do
 let tok = fetch() in match tok with
 | ID s -> fmt := !fmt ^ s ^ " "; if !nam = "" then nam := s; syn := !syn ^" $"^(string_of_int (!cnt - !cnt0))
 | IS_DEFINED_AS -> fmt := !fmt^":\t"; cnt0 := !cnt; syn := ""
 | VBAR -> dump_alt(); fmt := !fmt^"\n|\t"
-| LBRACK -> let nam = !nam^"_"^(string_of_int !cnt) in syn := !syn ^" $"^(string_of_int (!cnt - !cnt0)); write_os_flush LBRACK nam (write_os); fmt := !fmt^nam^" ";
+| LBRACK -> let nam = !nam^"_"^(string_of_int !cnt) in begin syn := !syn ^" $"^(string_of_int (!cnt - !cnt0)); write_os_flush_old LBRACK nam (write_os); fmt := !fmt^nam^" " end
 | RBRACK -> looping := false
-| LCURLY -> let nam = !nam^"_"^(string_of_int !cnt) in syn := !syn ^" $"^(string_of_int (!cnt - !cnt0)); write_os_flush LCURLY nam (write_os); fmt := !fmt^nam^" ";
+| LCURLY -> let nam = !nam^"_"^(string_of_int !cnt) in begin syn := !syn ^" $"^(string_of_int (!cnt - !cnt0)); write_os_flush_old LCURLY nam (write_os); fmt := !fmt^nam^" " end
 | RCURLY -> looping := false
 | _ -> fmt := !fmt ^ (Ord.getstr tok) ^ " "; syn := !syn ^ " " ^ (Ord.getstr tok)
 done;
 if (!cnt > 0) then dump_alt();
 write_os (!fmt^"\n;\n\n")
 
+let rec write_os_flush name write_os = 
+let cnt = ref 0 and nam = ref name in
+let fetch () = begin let tok = List.hd(!to_write) in ( to_write := List.tl(!to_write); cnt := !cnt+1; tok ) end in
+let looping = ref true and sub_def = ref [] in
+while !looping && (!to_write <> []) do
+let tok = fetch() in match tok with
+| ID s -> sub_def := !sub_def @ [tok]
+| IS_DEFINED_AS -> sub_def := !sub_def @ [tok]
+| VBAR -> sub_def := !sub_def @ [tok]
+| LBRACK -> sub_def := !sub_def @ [TLIST (write_os_flush (!nam^"_"^(string_of_int !cnt)) (write_os))]
+| LCURLY -> sub_def := !sub_def @ [DOTTED (write_os_flush (!nam^"_"^(string_of_int !cnt)) (write_os))]
+| RBRACK | RCURLY -> looping := false
+| _ -> sub_def := !sub_def @ [tok]
+done;
+!sub_def
+
 let write_os_not str = ()
 
+let rules = Hashtbl.create 256
 let hsh2 = Hashtbl.create 256
 let cnt = ref 0
 let tc = open_out "tokens.ml"
 
 let ksymbols = Hashtbl.create 256
+let reverse = Hashtbl.create 256
+
+let rec mygetstr tok = match tok with
+| ID id -> id
+| TOKEN_BEGIN_COMMENT -> "'/' '*' "
+| TOKEN_END_COMMENT -> "'*' '/' "
+| TLIST lst | DOTTED lst -> let concat = ref "" in List.iter (fun item -> concat := !concat ^ " " ^ mygetstr item) lst; !concat
+| _ -> if (Hashtbl.mem reverse tok) then (Hashtbl.find reverse tok) else (Ord.getstr tok)
+
+let rec mygetstr2 tok = match tok with
+| ID id -> id
+| TOKEN_BEGIN_COMMENT -> "'/' '*' "
+| TOKEN_END_COMMENT -> "'*' '/' "
+| TLIST lst | DOTTED lst -> let concat = ref "" in List.iter (fun item -> concat := !concat ^ " " ^ mygetstr2 item) lst; !concat
+| _ -> Ord.getstr tok
+
+let rec unpack write_os tok = match tok with
+    | VBAR -> write_os "| "
+    | IS_DEFINED_AS -> write_os "::= "
+    | ID id -> write_os (id^" ")
+    | TLIST lst -> let concat = ref "[" in List.iter (
+        fun item -> unpack (fun s -> concat := !concat ^ " " ^ s ^ " ") item) lst; write_os (!concat^" ] ")
+    | DOTTED lst -> let concat = ref "{" in List.iter (
+        fun item -> unpack (fun s -> concat := !concat ^ " " ^ s ^ " ") item) lst; write_os (!concat^" } ")
+    | _ -> write_os ((mygetstr tok)^" ")
+
+let rec unpack2 write cnt key tok = match tok with
+    | VBAR -> write "{ } | "
+    | IS_DEFINED_AS -> write ": "
+    | ID id -> write (id^" ")
+    | TLIST lst -> pending := !pending @ [dump2 key (ID key :: IS_DEFINED_AS :: lst)]; write (key^" ")
+    | DOTTED lst -> pending := !pending @ [dump2 key (ID key :: IS_DEFINED_AS :: lst)]; write (key^" ")
+(*    | ANY_ASCII_CHAR -> write "ANY "  *)
+    | _ -> write ((mygetstr2 tok)^" ")
+
+and dump2 (key:string) lst =
+let buffer = ref "" and cnt = ref 0 in
+List.iter (fun item -> let key2 = key^"_"^(string_of_int !cnt) in unpack2 (fun s -> buffer := !buffer^s) !cnt key2 item; cnt := !cnt + 1) lst;
+!buffer^" { };\n\n"
 
 let enter_keyword id keyword = 
 if Hashtbl.mem ksymbols id then
-  Printf.printf "Error: repeated keyword **%s**\n" id
+  Printf.printf "Error: repeated keyword %s\n" id
 else begin
 (*  Printf.printf "Enter %s\n" id; *)
   Hashtbl.add ksymbols id keyword
@@ -82,8 +139,6 @@ else begin
 
 let _ = List.iter (fun (str,key) -> enter_keyword str key)
 [
-(  "within", WITHIN);
-(  "this", THIS);
 (*
 ("$hold_timing_check", HOLD_TIMING_CHECK);
 ("$width_timing_check", WIDTH_TIMING_CHECK);
@@ -98,6 +153,10 @@ let _ = List.iter (fun (str,key) -> enter_keyword str key)
 ("$removal_timing_check", REMOVAL_TIMING_CHECK);
 ("$period_timing_check", PERIOD_TIMING_CHECK);
 *)
+(  "Any_ASCII_Characters", ANY_ASCII_CHARS);
+(  "Any_ASCII_character", ANY_ASCII_CHAR);
+(  "within", WITHIN);
+(  "this", THIS);
 ("$nochange", NOCHANGE);
 ("$fullskew", FULLSKEW);
 (  "always_comb",	ALWAYS ) ;
@@ -127,7 +186,7 @@ let _ = List.iter (fun (str,key) -> enter_keyword str key)
 (  "disable",		DISABLE ) ;
 (  "$display",		D_DISPLAY ) ;
 (  "do",		DO ) ;
-(  "edge",		TIMINGSPEC ) ;
+(  "edge",		EDGE ) ;
 (  "else",		ELSE ) ;
 (  "endcase",		ENDCASE ) ;
 (  "endfunction",	ENDFUNCTION ) ;
@@ -158,9 +217,9 @@ let _ = List.iter (fun (str,key) -> enter_keyword str key)
 (  "$fwriteh",		D_FWRITEH ) ;
 (  "generate",		GENERATE ) ;
 (  "genvar",		GENVAR ) ;
-(  "$hold",		TIMINGSPEC ) ;
+(  "$hold",		D_HOLD ) ;
 (  "iff",		IFF ) ;
-(  "ifnone",		TIMINGSPEC ) ;
+(  "ifnone",		IF_NONE ) ;
 (  "if",		IF ) ;
 (  "$info",		D_INFO ) ;
 (  "initial",		INITIAL ) ;
@@ -188,26 +247,26 @@ let _ = List.iter (fun (str,key) -> enter_keyword str key)
 (  "parameter",		PARAMETER ) ;
 (  "pmos",		PMOS ) ;
 (  "pullup",		PULLUP ) ;
-(  "$period",		TIMINGSPEC ) ;
+(  "$period",		D_PERIOD ) ;
 (  "posedge",		POSEDGE ) ;
 (  "property",		PROPERTY ) ;
 (  "primitive",		PRIMITIVE ) ;
 (  "$readmemb",		D_READMEMB ) ;
 (  "$readmemh",		D_READMEMH ) ;
 (  "$realtime",		D_TIME ) ;
-(  "$recovery",		TIMINGSPEC ) ;
-(  "$recrem",		TIMINGSPEC ) ;
+(  "$recovery",		D_RECOVERY ) ;
+(  "$recrem",		D_RECREM ) ;
 (  "real",		REAL ) ;
 (  "reg",		REG ) ;
 (  "repeat",		REPEAT ) ;
-(  "$removal",		TIMINGSPEC ) ;
-(  "$setuphold",	TIMINGSPEC ) ;
-(  "$setup",		TIMINGSPEC ) ;
+(  "$removal",		D_REMOVAL ) ;
+(  "$setuphold",	D_SETUPHOLD ) ;
+(  "$setup",		D_SETUP ) ;
 (  "$signed",		D_SIGNED ) ;
 (  "signed",		SIGNED ) ;
-(  "$skew",		TIMINGSPEC ) ;
+(  "$skew",		D_SKEW ) ;
 (  "specify",		SPECIFY ) ;
-(  "specparam",		TIMINGSPEC ) ;
+(  "specparam",		SPECPARAM ) ;
 (  "static",            STATIC ) ;
 (  "$sscanf",		D_SSCANF ) ;
 (  "$stop",		D_STOP ) ;
@@ -216,7 +275,7 @@ let _ = List.iter (fun (str,key) -> enter_keyword str key)
 (  "table",		TABLE ) ;
 (  "task",		TASK ) ;
 (  "$test$plusargs",	D_TEST_PLUSARGS ) ;
-(  "$timeskew",		TIMINGSPEC ) ;
+(  "$timeskew",		D_TIMESKEW ) ;
 (  "$time",		D_TIME ) ;
 (  "tran",		TRAN ) ;
 (  "tri0",		TRI0 ) ;
@@ -227,7 +286,7 @@ let _ = List.iter (fun (str,key) -> enter_keyword str key)
 (  "vectored",		VECTORED ) ;
 (  "$warning",		D_WARNING ) ;
 (  "while",		WHILE ) ;
-(  "$width",		TIMINGSPEC ) ;
+(  "$width",		D_WIDTH ) ;
 (  "wire",		WIRE ) ;
 (  "$write",		D_WRITE ) ;
 (  "xnor",		XNOR ) ;
@@ -440,7 +499,7 @@ let _ = List.iter (fun (str,key) -> enter_keyword str key)
 ("\n", TOKEN_706);
 ("*)", TOKEN_699);
 ("|=>", TOKEN_328);
-("*/", TOKEN_708);
+("*/", TOKEN_END_COMMENT);
 ("!?=", TOKEN_650);
 ("++", TOKEN_652);
 ("'x", TOKEN_635);
@@ -452,7 +511,7 @@ let _ = List.iter (fun (str,key) -> enter_keyword str key)
 ("--", TOKEN_653);
 ("(*)", TOKEN_501);
 ("-incdir", INCDIR);
-("/*", TOKEN_707);
+("/*", TOKEN_BEGIN_COMMENT);
 ("//", TOKEN_704);
 ("||", TOKEN_651);
 ("01", TOKEN_587);
@@ -594,19 +653,28 @@ let mywrite_ ~dtd ~xhtml write_os doc =
                     | "span" -> if (!superscript) then superscript := false else
 		        (valid1 := !valid2; valid2 := false)
                     | "li" -> mask := false
-                    | "p" ->  write_os_flush EMPTY "" (write_os); valid1 := false; valid2 := false; begin_clause := false;
+                    | "p" ->  let l = write_os_flush "" (write_os) in if l <> [] then Hashtbl.add rules (List.hd l) l;
+		              write_os "/* "; List.iter (fun item -> unpack write_os item) l; write_os "*/\n";
+		              valid1 := false; valid2 := false; begin_clause := false;
                     | _ -> ()
 		  end
 	  )
       | Data s -> match s with
           | "\r\n" -> write_os s
 	  | _ -> if (!valid1) || (!valid2) then
-	      begin if !com then ( com := false; write_os " */\n"; ); 
+	      begin if !com then begin let meaningful = ref false in
+				  com := false;
+				      for i = 0 to (String.length !comment)-1 do if (isalpha !comment.[i]) then meaningful := true; done;
+				  if (!meaningful) then write_os (Printf.sprintf "/* %s */\n" !comment); end;
 				       if not (!superscript) then amp (write_os) s end
-	      else begin if not !com then ( com := true; write_os "/* "; ); write_os s end
+	      else begin if not !com then ( com := true; comment := ""; ); comment := !comment ^ s end
   in
   try
-    List.iter trav doc
+    List.iter trav doc;
+    write_os "\n";
+    Hashtbl.iter (fun key lst -> match key with ID id -> write_os (dump2 id lst) | _ -> ()) rules;
+    List.iter (fun item -> write_os item) !pending;
+    write_os "// END_OF_FILE\n"
   with
       Not_found -> failwith "write"
 
@@ -622,12 +690,45 @@ let _ =
   let chan = open_in "annexA_bnf_3_1_final.html" in
   let html = html_document chan in
   let ochan = open_out "other.mly" in
-  Hashtbl.iter (fun key item -> Printf.fprintf ochan "%%token %s\n" (Ord.getstr item)) ksymbols;
+
+  Hashtbl.iter (fun key item -> Hashtbl.add reverse item ("'"^key^"'"); Printf.fprintf ochan "%%token %s // %s\n" (Ord.getstr item) key) ksymbols;
+  Printf.fprintf ochan "%%token file_path\n";
+  Printf.fprintf ochan "%%token X\n";
+  Printf.fprintf ochan "%%token x\n";
+  Printf.fprintf ochan "%%token B\n";
+  Printf.fprintf ochan "%%token b\n";
+  Printf.fprintf ochan "%%token R\n";
+  Printf.fprintf ochan "%%token r\n";
+  Printf.fprintf ochan "%%token F\n";
+  Printf.fprintf ochan "%%token f%%token P\n";
+  Printf.fprintf ochan "%%token p\n";
+  Printf.fprintf ochan "%%token N\n";
+  Printf.fprintf ochan "%%token n\n";
+  Printf.fprintf ochan "%%token Z\n";
+  Printf.fprintf ochan "%%token z\n";
+  Printf.fprintf ochan "%%token S\n";
+  Printf.fprintf ochan "%%token s\n";
+  Printf.fprintf ochan "%%token MS\n";
+  Printf.fprintf ochan "%%token US\n";
+  Printf.fprintf ochan "%%token NS\n";
+  Printf.fprintf ochan "%%token PS\n";
+  Printf.fprintf ochan "%%token FS\n";
+  Printf.fprintf ochan "%%token AS\n";
+  Printf.fprintf ochan "%%token A B C D E\n";
+  Printf.fprintf ochan "%%token H O d e a ZA Z_ zA Z0\n";
+  Printf.fprintf ochan "%%token space tab newline eof\n";
+  Printf.fprintf ochan "%%token <string> ASCNUM\n";
+  Printf.fprintf ochan "\n";
+  Printf.fprintf ochan "%%start library_text\n";
+  Printf.fprintf ochan "%%type <unit> library_text\n";
+  Printf.fprintf ochan "\n";
   Printf.fprintf ochan "\n%%%%\n\n";
   with_out_obj_channel (new output_channel ochan) (fun ch -> mywrite ch html);
   close_in chan;
-  close_out ochan;
+  close_out ochan; (* I think this happened already *)
   Hashtbl.iter (fun key item -> if not (isalpha key.[0]) then
 		    begin let tok = if key.[0]='$' then String.uppercase (String.sub key 1 ((String.length key)-1)) else 
 		    ("TOKEN_"^(string_of_int item)) in Printf.fprintf tc "(\"%s\", %s);\n" key tok; end) hsh2;
   close_out tc
+
+
