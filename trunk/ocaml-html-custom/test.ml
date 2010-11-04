@@ -129,8 +129,10 @@ output_string tc (Printf.sprintf "%.2d %s\n" (!cnt) (mygetstr2 tok));
 done;
 !sub_def
 
+let thresh = 1
+
 let rec mygetstr3 tok cnt len = (if (cnt = 1) then "(" else "")^(match tok with
-| ID id -> (if String.length id > 1 then ("$"^(string_of_int cnt)) else "CHAR '"^id^"'")
+| ID id -> (if String.length id > thresh then ("$"^(string_of_int cnt)) else "CHAR '"^id^"'")
 | _ -> (mygetstr2 tok))^(if cnt == len then ");" else ", ")
 
 let rec unpack write_os tok = match tok with
@@ -155,7 +157,7 @@ done;
 let rec unpack2 write cnt key tok args = match tok with
     | VBAR -> dumpargs2 write args; write"\n\t| "; true
     | IS_DEFINED_AS -> write ": "; args := []; true
-    | ID id -> write (if String.length id > 1 then leprechaun(id)^" " else Printf.sprintf "'%s' " id); args := !args @ [tok]; true
+    | ID id -> write (if String.length id > thresh then leprechaun(id)^" " else Printf.sprintf "'%s' " id); args := !args @ [tok]; String.length id > thresh
     | TLIST lst -> pending := !pending @ [dump2 key (ID key :: IS_DEFINED_AS :: lst)]; write (key^" "); args := !args @ [ID key]; true
     | DOTTED lst -> pending := !pending @ [dump2 key (ID key :: IS_DEFINED_AS :: lst)]; write (key^" "); args := !args @ [ID key]; true
     | RANGE(left,right) -> false
@@ -210,9 +212,9 @@ let _ = List.iter (fun (str,key,prim) -> enter_keyword str key prim)
 (  "this", THIS, false);
 ("$nochange", NOCHANGE, false);
 ("$fullskew", FULLSKEW, false);
-(  "always_comb",	ALWAYS, false);
-(  "always_ff",		ALWAYS, false);
-(  "always_latch",	ALWAYS, false);
+(  "always_comb",	ALWAYS_COMB, false);
+(  "always_ff",		ALWAYS_FF, false);
+(  "always_latch",	ALWAYS_LATCH, false);
 (  "always",		ALWAYS, false);
 (  "and",		AND, false);
 (  "assert",		ASSERT, false);
@@ -229,7 +231,7 @@ let _ = List.iter (fun (str,key,prim) -> enter_keyword str key prim)
 (  "$clog2",		D_CLOG2, false);
 (  "$countdrivers",	D_COUNTDRIVERS, false);
 (  "$countones",	D_COUNTONES, false);
-(  "countones",		D_COUNTONES, false);
+(  "countones",		COUNTONES, false);
 (  "cover",		COVER, false);
 (  "deassign",		DEASSIGN, false);
 (  "default",		DEFAULT, false);
@@ -278,7 +280,7 @@ let _ = List.iter (fun (str,key,prim) -> enter_keyword str key prim)
 (  "input",		INPUT, false);
 (  "integer",		INTEGER, false);
 (  "$isunknown",	D_ISUNKNOWN, false);
-(  "isunknown",		D_ISUNKNOWN, false);
+(  "isunknown",		ISUNKNOWN, false);
 (  "localparam",	LOCALPARAM, false);
 (  "module",		MODULE, false);
 (  "$monitor",		D_MONITOR, false);
@@ -304,7 +306,7 @@ let _ = List.iter (fun (str,key,prim) -> enter_keyword str key prim)
 (  "primitive",		PRIMITIVE, false);
 (  "$readmemb",		D_READMEMB, false);
 (  "$readmemh",		D_READMEMH, false);
-(  "$realtime",		D_TIME, false);
+(  "$realtime",		D_REALTIME, false);
 (  "$recovery",		D_RECOVERY, false);
 (  "$recrem",		D_RECREM, false);
 (  "real",		REAL, false);
@@ -333,7 +335,7 @@ let _ = List.iter (fun (str,key,prim) -> enter_keyword str key prim)
 (  "tri1",		TRI1, false);
 (  "$unsigned",		D_UNSIGNED, false);
 (  "unsigned",		UNSIGNED, false);
-(  "uwire",		WIRE, false);
+(  "uwire",		U_WIRE, false);
 (  "vectored",		VECTORED, false);
 (  "$warning",		D_WARNING, false);
 (  "while",		WHILE, false);
@@ -495,19 +497,19 @@ let _ = List.iter (fun (str,key,prim) -> enter_keyword str key prim)
 (  "+="			, (P_PLUSEQ), false);
 (  "##"			, (P_POUNDPOUND), false);
 (  "**"			, (P_POW), false);
-(  "<<<"		, (P_SLEFT), false);
+(  "<<<"		, (P_SLEFT3), false);
 (  "<<"			, (P_SLEFT), false);
-(  "<<<="		, (P_SLEFTEQ), false);
+(  "<<<="		, (P_SLEFT3EQ), false);
 (  "<<="		, (P_SLEFTEQ), false);
 (  ">>"			, (P_SRIGHT), false);
 (  ">>="		, (P_SRIGHTEQ), false);
-(  ">>>"		, (P_SSRIGHT), false);
-(  ">>>="		, (P_SSRIGHTEQ), false);
+(  ">>>"		, (P_SSRIGHT3), false);
+(  ">>>="		, (P_SSRIGHT3EQ), false);
 (  "*="			, (P_TIMESEQ), false);
 (  "==?"		, (P_WILDEQUAL), false);
 (  "!=?"		, (P_WILDNOTEQUAL), false);
 (  "^~"			, (P_XNOR), false);
-(  "~^"			, (P_XNOR), false);
+(  "~^"			, (P_NXOR), false);
 (  "^="			, (P_XOREQ), false);
 ("[*->", TOKEN_349, false);
 ("|->", TOKEN_327, false);
@@ -789,8 +791,6 @@ let _ =
   Printf.fprintf ochan1 "%%token  BITSEL\n";
   Printf.fprintf ochan1 "%%token  CASECOND\n";
   Printf.fprintf ochan1 "%%token  CELLPIN\n";
-  Printf.fprintf ochan1 "%%token C_IDENTIFIER_2 \n";
-  Printf.fprintf ochan1 "%%token C_IDENTIFIER_3_2 \n";
   Printf.fprintf ochan1 "%%token  CONCAT\n";
   Printf.fprintf ochan1 "%%token  D_C\n";
   Printf.fprintf ochan1 "%%token <string> DECNUM\n";
@@ -852,15 +852,15 @@ let _ =
   Printf.fprintf ochan1 "%%token  SENSUSED\n";
   Printf.fprintf ochan1 "%%token SETUPHOLD_TIMING_CHECK\n";
   Printf.fprintf ochan1 "%%token SETUP_TIMING_CHECK\n";
-  Printf.fprintf ochan1 "%%token SIMPLE_IDENTIFIER_2 \n";
-  Printf.fprintf ochan1 "%%token SIMPLE_IDENTIFIER_3_2 \n";
   Printf.fprintf ochan1 "%%token SKEW_TIMING_CHECK\n";
   Printf.fprintf ochan1 "%%token  SPECIAL\n";
   Printf.fprintf ochan1 "%%token  SUBCCT\n";
   Printf.fprintf ochan1 "%%token  SUBMODULE\n";
   Printf.fprintf ochan1 "%%token SUBTRACTION\n";
+(*
   Printf.fprintf ochan1 "%%token SYSTEM_FUNCTION_IDENTIFIER_3 \n";
   Printf.fprintf ochan1 "%%token SYSTEM_TASK_IDENTIFIER_3 \n";
+*)
   Printf.fprintf ochan1 "%%token  TASKREF\n";
   Printf.fprintf ochan1 "%%token  TASKUSED\n";
   Printf.fprintf ochan1 "%%token TIMESKEW_TIMING_CHECK\n";
@@ -871,9 +871,10 @@ let _ =
   Printf.fprintf ochan1 "%%token  UNKNOWN\n";
   Printf.fprintf ochan1 "%%token WIDTH_TIMING_CHECK\n";
   Printf.fprintf ochan1 "\n";
-  Printf.fprintf ochan1 "%%start library_text\n";
-  Printf.fprintf ochan1 "%%type <token> library_text\n";
+  Printf.fprintf ochan1 "%%start start\n";
+  Printf.fprintf ochan1 "%%type <token> start\n";
   Printf.fprintf ochan1 "\n%%%%\n\n";
+  Printf.fprintf ochan1 "start: source_text { $1 };\n\n";
   Hashtbl.iter (fun key (item,prim) -> if prim then let x = Ord.getstr item in Printf.fprintf ochan1 "%s: %s { %s $1 };\n" key x x) ksymbols;
   with_out_obj_channel (new output_channel ochan1) (fun ch -> mywrite ch html1);
   close_in chan1;
