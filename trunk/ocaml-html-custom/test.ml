@@ -101,13 +101,11 @@ let rec mygetstr tok = match tok with
 
 let rec mygetstr2 tok = match tok with
 | ID id -> id
-| TOKEN_BEGIN_COMMENT -> "'/' '*' "
-| TOKEN_END_COMMENT -> "'*' '/' "
 | TLIST lst | DOTTED lst -> let concat = ref "" in List.iter (fun item -> concat := !concat ^ " " ^ mygetstr2 item) lst; !concat
 | _ -> Ord.getstr tok
 
 let rec mygetstr3 tok cnt len = match tok with
-| ID id -> "$"^(string_of_int cnt)^(if cnt == len then ");" else ", ")
+| ID id -> (if String.length id > 1 then ("$"^(string_of_int cnt)) else "CHAR '"^id^"'")^(if cnt == len then ");" else ", ")
 | _ -> (Ord.getstr tok)^(if cnt == len then ");" else ", ")
 
 let rec unpack write_os tok = match tok with
@@ -122,12 +120,12 @@ let rec unpack write_os tok = match tok with
 
 let dumpargs2 write args = 
     let len = List.length !args in write ("{ "^(multiple len)); 
-        let cnt = ref 0 in List.iter (fun item -> write (cnt := !cnt + 1; mygetstr3 item !cnt len)) !args; write " } | "; args := []
+        let cnt = ref 0 in List.iter (fun item -> write (cnt := !cnt + 1; mygetstr3 item !cnt len)) !args; write " }\n\t| "; args := []
 
 let rec unpack2 write cnt key tok args = match tok with
     | VBAR -> dumpargs2 write args
     | IS_DEFINED_AS -> write ": "; args := []
-    | ID id -> write (id^" "); args := !args @ [tok]
+    | ID id -> write (if String.length id > 1 then id^" " else Printf.sprintf "'%s' " id); args := !args @ [tok]
     | TLIST lst -> pending := !pending @ [dump2 key (ID key :: IS_DEFINED_AS :: lst)]; write (key^" "); args := !args @ [ID key]
     | DOTTED lst -> pending := !pending @ [dump2 key (ID key :: IS_DEFINED_AS :: lst)]; write (key^" "); args := !args @ [ID key]
     | _ -> write ((mygetstr2 tok)^" "); args := !args @ [tok]
@@ -696,45 +694,52 @@ let html_document chan =
     Nethtml.parse
 
 let _ = 
-  let chan = open_in "annexA_bnf_3_1_final.html" in
-  let html = html_document chan in
-  let ochan = open_out "other.mly" in
+  let chan1 = open_in Sys.argv.(1) in
+  let html1 = html_document chan1 in
+  let chan2 = open_in Sys.argv.(2) in
+  let html2 = html_document chan2 in
+  let ochan1 = open_out Sys.argv.(3) in
+  let ochan2 = open_out Sys.argv.(4) in
 
-  Hashtbl.iter (fun key item -> Hashtbl.add reverse item ("'"^key^"'"); Printf.fprintf ochan "%%token %s // %s\n" (Ord.getstr item) key) ksymbols;
-  Printf.fprintf ochan "%%token file_path\n";
-  Printf.fprintf ochan "%%token X\n";
-  Printf.fprintf ochan "%%token x\n";
-  Printf.fprintf ochan "%%token B\n";
-  Printf.fprintf ochan "%%token b\n";
-  Printf.fprintf ochan "%%token R\n";
-  Printf.fprintf ochan "%%token r\n";
-  Printf.fprintf ochan "%%token F\n";
-  Printf.fprintf ochan "%%token f%%token P\n";
-  Printf.fprintf ochan "%%token p\n";
-  Printf.fprintf ochan "%%token N\n";
-  Printf.fprintf ochan "%%token n\n";
-  Printf.fprintf ochan "%%token Z\n";
-  Printf.fprintf ochan "%%token z\n";
-  Printf.fprintf ochan "%%token S\n";
-  Printf.fprintf ochan "%%token s\n";
-  Printf.fprintf ochan "%%token MS\n";
-  Printf.fprintf ochan "%%token US\n";
-  Printf.fprintf ochan "%%token NS\n";
-  Printf.fprintf ochan "%%token PS\n";
-  Printf.fprintf ochan "%%token FS\n";
-  Printf.fprintf ochan "%%token AS\n";
-  Printf.fprintf ochan "%%token A B C D E\n";
-  Printf.fprintf ochan "%%token H O d e a ZA Z_ zA Z0\n";
-  Printf.fprintf ochan "%%token space tab newline eof\n";
-  Printf.fprintf ochan "%%token <string> ASCNUM\n";
-  Printf.fprintf ochan "\n";
-  Printf.fprintf ochan "%%start library_text\n";
-  Printf.fprintf ochan "%%type <unit> library_text\n";
-  Printf.fprintf ochan "\n";
-  Printf.fprintf ochan "\n%%%%\n\n";
-  with_out_obj_channel (new output_channel ochan) (fun ch -> mywrite ch html);
-  close_in chan;
-  close_out ochan; (* I think this happened already *)
+  Hashtbl.iter (fun key item -> Hashtbl.add reverse item ("'"^key^"'"); Printf.fprintf ochan1 "%%token %s // %s\n" (Ord.getstr item) key) ksymbols;
+  Printf.fprintf ochan1 "%%token <string> file_path\n";
+(*
+  Printf.fprintf ochan1 "%%token <string> X\n";
+  Printf.fprintf ochan1 "%%token <string> x\n";
+  Printf.fprintf ochan1 "%%token <string> R\n";
+  Printf.fprintf ochan1 "%%token <string> r\n";
+  Printf.fprintf ochan1 "%%token <string> f\n";
+  Printf.fprintf ochan1 "%%token <string> P\n";
+  Printf.fprintf ochan1 "%%token <string> p\n";
+  Printf.fprintf ochan1 "%%token <string> N\n";
+  Printf.fprintf ochan1 "%%token <string> n\n";
+  Printf.fprintf ochan1 "%%token <string> Z\n";
+  Printf.fprintf ochan1 "%%token <string> z\n";
+  Printf.fprintf ochan1 "%%token <string> S\n";
+  Printf.fprintf ochan1 "%%token <string> s\n";
+  Printf.fprintf ochan1 "%%token <string> a b c d e f A B C D E F\n";
+  Printf.fprintf ochan1 "%%token <string> H O d e a\n";
+*)
+  Printf.fprintf ochan1 "%%token <string> ZA Z_ zA Z0\n";
+  Printf.fprintf ochan1 "%%token <string> MS\n";
+  Printf.fprintf ochan1 "%%token <string> US\n";
+  Printf.fprintf ochan1 "%%token <string> NS\n";
+  Printf.fprintf ochan1 "%%token <string> PS\n";
+  Printf.fprintf ochan1 "%%token <string> FS\n";
+  Printf.fprintf ochan1 "%%token <string> AS\n";
+  Printf.fprintf ochan1 "%%token <string> space tab newline eof\n";
+  Printf.fprintf ochan1 "%%token <string> ASCNUM\n";
+  Printf.fprintf ochan1 "\n";
+  Printf.fprintf ochan1 "%%start library_text\n";
+  Printf.fprintf ochan1 "%%type <unit> library_text\n";
+  Printf.fprintf ochan1 "\n";
+  Printf.fprintf ochan1 "\n%%%%\n\n";
+  with_out_obj_channel (new output_channel ochan1) (fun ch -> mywrite ch html1);
+  close_in chan1;
+  close_out ochan1; (* I think this happened already *)
+  with_out_obj_channel (new output_channel ochan2) (fun ch -> write ch html2);
+  close_in chan2;
+  close_out ochan2; (* I think this happened already *)
   Hashtbl.iter (fun key item -> if not (isalpha key.[0]) then
 		    begin let tok = if key.[0]='$' then String.uppercase (String.sub key 1 ((String.length key)-1)) else 
 		    ("TOKEN_"^(string_of_int item)) in Printf.fprintf tc "(\"%s\", %s);\n" key tok; end) hsh2;

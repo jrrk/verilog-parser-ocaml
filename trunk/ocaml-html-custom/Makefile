@@ -18,5 +18,8 @@ ord.ml: vparser.mli
 	grep \| vparser.mli | cut -d\( -f1 | tr '\011' ' ' |\
 	sed -e 's=|[\ ]*\([A-Z0-9_\ of]*\)=|\ Vparser.\1 -> uppercase(\"\1\")=' -e 's= of= arg=' -e 's= of ==' >> $@
 
+convert: test
+	./test "annexA_bnf_3_1_final.html" "htmlcodes.htm" "other.mly" "junk"
+
 clean:
 	rm -f test.mli test.cmi test.cmo test ord.ml
