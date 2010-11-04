@@ -21,6 +21,9 @@ ord.ml: other.cmi
 ord.mli: ord.ml
 	ocamlfind ocamlc -i -package "str,netstring" $< > $@
 
+other.mli: grammar_sysver.mli
+	cp $< $@
+
 vlexer.ml vlexer.mli : vlexer.mll
 	ocamllex $<
 
@@ -33,3 +36,5 @@ svparser: other.cmi ord.ml ord.cmi ord.cmo setup.cmi setup.cmo globals.cmi globa
 
 clean:
 	rm -f test.mli test.cmi test.cmo test ord.ml
+
+ord.cmo: ord.cmi

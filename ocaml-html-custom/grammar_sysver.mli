@@ -13,6 +13,7 @@ type token =
   | TOKEN_706
   | PRIMITIVE
   | WIRE
+  | U_WIRE
   | D_FFLUSH
   | P_ANDEQ
   | EOF
@@ -42,6 +43,9 @@ type token =
   | HASH
   | PULLDOWN
   | ALWAYS
+  | ALWAYS_COMB
+  | ALWAYS_LATCH
+  | ALWAYS_FF
   | DOLLAR
   | P_ORMINUSGT
   | SHOWCANCELLED
@@ -109,6 +113,7 @@ type token =
   | P_SRIGHTEQ
   | D_TEST_PLUSARGS
   | P_SSRIGHT
+  | P_SSRIGHT3
   | INPUT
   | TOKEN_699
   | BUF
@@ -121,9 +126,11 @@ type token =
   | FORCE
   | D_FGETC
   | P_SLEFT
+  | P_SLEFT3
   | TOKEN_END_COMMENT
   | TOKEN_504
   | P_SLEFTEQ
+  | P_SLEFT3EQ
   | P_CASENOTEQUAL
   | P_WILDNOTEQUAL
   | INCDIR
@@ -174,6 +181,7 @@ type token =
   | P_PLUSEQ
   | D_SKEW
   | P_SSRIGHTEQ
+  | P_SSRIGHT3EQ
   | JOIN_ANY
   | REPEAT
   | TOKEN_471
@@ -189,9 +197,11 @@ type token =
   | D_DISPLAY
   | TOKEN_430
   | P_XNOR
+  | P_NXOR
   | RCMOS
   | ENDPROPERTY
   | D_COUNTONES
+  | COUNTONES
   | STATIC
   | LCURLY
   | CONTINUE
@@ -204,6 +214,7 @@ type token =
   | WOR
   | P_NAND
   | D_ISUNKNOWN
+  | ISUNKNOWN
   | P_NOR
   | AUTOMATIC
   | TOKEN_653
@@ -291,6 +302,7 @@ type token =
   | D_RECREM
   | LOCALPARAM
   | D_TIME
+  | D_REALTIME
   | SIGNED
   | D_ATTRIBUTE
   | TOKEN_587
@@ -511,6 +523,3 @@ type token =
   | TOKEN_708
   | UNKNOWN
   | WIDTH_TIMING_CHECK
-
-val library_text :
-  (Lexing.lexbuf  -> token) -> Lexing.lexbuf -> token
