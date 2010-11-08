@@ -523,3 +523,22 @@ type token =
   | TOKEN_708
   | UNKNOWN
   | WIDTH_TIMING_CHECK
+  | Z_DIGIT of (string)
+  | DECIMAL_BASE of (string)
+  | BINARY_BASE of (string)
+  | TIME_UNIT of (string)
+  | HEX_DIGIT of (string)
+  | X_DIGIT of (string)
+  | LEVEL_SYMBOL of (string)
+  | OUTPUT_SYMBOL of (string)
+  | Z_OR_X of (string)
+  | OCTAL_BASE of (string)
+  | HEX_BASE of (string)
+  | EDGE_SYMBOL of (string)
+  | DECIMAL_BASE_3 of (string)
+  | BINARY_BASE_3 of (string)
+  | OCTAL_BASE_3 of (string)
+  | HEX_BASE_3 of (string)
+  | EXP of (string)
+
+val getstr : token -> string
