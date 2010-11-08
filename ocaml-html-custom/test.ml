@@ -20,7 +20,7 @@
 open Nethtml
 open Netchannels
 open Nethtml_scanner
-open Other
+open Grammar_sysver
 
 let multiple x = match x with
 | 0 -> " "
@@ -84,7 +84,7 @@ let rec mygetstr tok = match tok with
 | TOKEN_BEGIN_COMMENT -> "'/' '*' "
 | TOKEN_END_COMMENT -> "'*' '/' "
 | TLIST lst | DOTTED lst -> let concat = ref "" in List.iter (fun item -> concat := !concat ^ " " ^ mygetstr item) lst; !concat
-| _ -> if (Hashtbl.mem reverse tok) then (Hashtbl.find reverse tok) else (Ord.getstr tok)
+| _ -> if (Hashtbl.mem reverse tok) then (let (x,p) = Hashtbl.find reverse tok in x) else (Grammar_sysver.getstr tok)
 
 let rec mygetstr2 tok = match tok with
 | ID id -> id
@@ -96,7 +96,7 @@ let rec mygetstr2 tok = match tok with
 | RIGHT_CURLY -> "RCURLY"
 | SUBTRACTION -> "MINUS"
 | RANGE(left,right) -> Format.sprintf "\"%s\" .. \"%s\"" (mygetstr2 left) (mygetstr2 right)
-| _ -> Ord.getstr tok
+| _ -> Grammar_sysver.getstr tok
 
 let write_os_pending (tok0:token) = 
 let tok = if !valid2 then match tok0 with 
@@ -133,7 +133,9 @@ let thresh = 1
 
 let rec mygetstr3 tok cnt len = (if (cnt = 1) then "(" else "")^(match tok with
 | ID id -> (if String.length id > thresh then ("$"^(string_of_int cnt)) else "CHAR '"^id^"'")
-| _ -> (mygetstr2 tok))^(if cnt == len then ");" else ", ")
+| _ -> if (Hashtbl.mem reverse tok) then
+  (if snd(Hashtbl.find reverse tok) then ((mygetstr2 tok)^" $"^(string_of_int cnt)) else mygetstr2 tok)
+else (mygetstr2 tok))^(if cnt == len then ");" else ", ")
 
 let rec unpack write_os tok = match tok with
     | VBAR -> write_os "| "
@@ -201,6 +203,25 @@ let _ = List.iter (fun (str,key,prim) -> enter_keyword str key prim)
 ( "simple_identifier_3_2", SIMPLE_IDENTIFIER_3_2 "", true);
 ( "system_task_identifier_3", SYSTEM_TASK_IDENTIFIER_3 "", true);
 ( "system_function_identifier_3", SYSTEM_FUNCTION_IDENTIFIER_3 "", true);
+
+( "z_digit", Z_DIGIT "", true);
+( "decimal_base", DECIMAL_BASE "", true);
+( "binary_base", BINARY_BASE "", true);
+( "time_unit", TIME_UNIT "", true);
+( "hex_digit", HEX_DIGIT "", true);
+( "x_digit", X_DIGIT "", true);
+( "level_symbol", LEVEL_SYMBOL "", true);
+( "output_symbol", OUTPUT_SYMBOL "", true);
+( "z_or_x", Z_OR_X "", true);
+( "octal_base", OCTAL_BASE "", true);
+( "exp", EXP "", true);
+( "hex_base", HEX_BASE "", true);
+( "edge_symbol", EDGE_SYMBOL "", true);
+( "decimal_base_3", DECIMAL_BASE_3 "", true);
+( "binary_base_3", BINARY_BASE_3 "", true);
+( "octal_base_3", OCTAL_BASE_3 "", true);
+( "hex_base_3", HEX_BASE_3 "", true);
+
 (  "file_path", FILE_PATH, false);
 (  "space", SPACE, false);
 (  "tab", TAB, false);
@@ -291,10 +312,6 @@ let _ = List.iter (fun (str,key,prim) -> enter_keyword str key prim)
 (  "not",		NOT, false);
 (  "$onehot0",		D_ONEHOT0, false);
 (  "$onehot",		D_ONEHOT, false);
-(*
-(  "onehot0",		D_ONEHOT0, false);
-(  "onehot",		D_ONEHOT, false);
-*)
 (  "or",		OR, false);
 (  "output",		OUTPUT, false);
 (  "parameter",		PARAMETER, false);
@@ -747,8 +764,8 @@ let _ =
   let ochan1 = open_out Sys.argv.(3) in
   let ochan2 = open_out Sys.argv.(4) in
 
-  Hashtbl.iter (fun key (item,prim) -> Hashtbl.add reverse item ("'"^key^"'");
-    Printf.fprintf ochan1 "%%token%s %s // %s\n" (if prim then "<string>" else "") (Ord.getstr item) key) ksymbols;
+  Hashtbl.iter (fun key (item,(prim:bool)) -> Hashtbl.add reverse item ("'"^key^"'", prim);
+    Printf.fprintf ochan1 "%%token%s %s // %s\n" (if prim then "<string>" else "") (Grammar_sysver.getstr item) key) ksymbols;
 (*
   Printf.fprintf ochan1 "%%token <string> X\n";
   Printf.fprintf ochan1 "%%token <string> x\n";
@@ -875,7 +892,7 @@ let _ =
   Printf.fprintf ochan1 "%%type <token> start\n";
   Printf.fprintf ochan1 "\n%%%%\n\n";
   Printf.fprintf ochan1 "start: source_text { $1 };\n\n";
-  Hashtbl.iter (fun key (item,prim) -> if prim then let x = Ord.getstr item in Printf.fprintf ochan1 "%s: %s { %s $1 };\n" key x x) ksymbols;
+  Hashtbl.iter (fun key (item,prim) -> if prim then let x = Grammar_sysver.getstr item in Printf.fprintf ochan1 "%s: %s { %s $1 };\n" key x x) ksymbols;
   with_out_obj_channel (new output_channel ochan1) (fun ch -> mywrite ch html1);
   close_in chan1;
   close_out ochan1; (* I think this happened already *)
