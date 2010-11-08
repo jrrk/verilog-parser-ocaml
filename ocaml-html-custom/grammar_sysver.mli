@@ -1,544 +1,545 @@
-type token =
-  | P_ATAT
-  | MACROMODULE
-  | FILE_PATH
-  | D_CLOG2
-  | D_READMEMB
-  | INSTANCE
-  | CONSTRAINT
-  | TOKEN_46
-  | PACKED
-  | D_READMEMH
-  | IFF
-  | TOKEN_706
-  | PRIMITIVE
+exception Error
+
+type token = 
+  | Z_OR_X of (string)
+  | Z_DIGIT of (string)
+  | X_DIGIT of (string)
+  | XOR
+  | XNOR
+  | WOR
+  | WITHIN
+  | WITH
   | WIRE
+  | WIDTH_TIMING_CHECK
+  | WHILE
+  | WEAK1
+  | WEAK0
+  | WAND
+  | WAIT_ORDER
+  | WAIT
+  | VOID
+  | VIRTUAL
+  | VIGENUPLE of (token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token)
+  | VECTORED
+  | VBAR
   | U_WIRE
-  | D_FFLUSH
-  | P_ANDEQ
-  | EOF
-  | BEGIN
-  | ENDCLOCKING
-  | NEW
-  | D_FOPEN
-  | C_IDENTIFIER_3_2 of (string)
-  | TOKEN_597
-  | TOKEN_631
-  | D_FWRITE
-  | TOKEN_598
-  | TOKEN_632
-  | ENDSPECIFY
-  | TOKEN_434
-  | PRIORITY
-  | SOLVE
-  | REALTIME
-  | PROPERTY
-  | P_OROR
-  | BUFIF0
-  | PLING
-  | BUFIF1
-  | D_PERIOD
+  | USE
+  | US of (token)
+  | UNVIGENUPLE of (token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token)
+  | UNSIGNED
+  | UNKNOWN
+  | UNIQUE
+  | UNION
+  | UNDECUPLE of (token * token * token * token * token * token * token * token * token * token * token)
+  | TYPEDEF
+  | TYPE
+  | TRIREG
+  | TRIPLE of (token * token * token)
+  | TRIOR
+  | TRIAND
+  | TRI1
+  | TRI0
+  | TRI
+  | TREVIGENUPLE of (token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token)
+  | TREDECUPLE of (token * token * token * token * token * token * token * token * token * token * token * token * token)
+  | TRANIF1
+  | TRANIF0
+  | TRAN
+  | TOKEN_END_COMMENT
+  | TOKEN_BEGIN_COMMENT
+  | TOKEN_724
+  | TOKEN_723
+  | TOKEN_719
+  | TOKEN_718
+  | TOKEN_713
+  | TOKEN_708
+  | TOKEN_707
+  | TOKEN_706
+  | TOKEN_704
+  | TOKEN_699
   | TOKEN_697
   | TOKEN_695
-  | HASH
-  | PULLDOWN
-  | ALWAYS
-  | ALWAYS_COMB
-  | ALWAYS_LATCH
-  | ALWAYS_FF
-  | DOLLAR
-  | P_ORMINUSGT
-  | SHOWCANCELLED
-  | ENDSEQUENCE
-  | PULLUP
-  | MODULO
-  | EDGE
-  | AMPERSAND
-  | SQUOTE
-  | LIBRARY
-  | LPAREN
-  | TRANIF0
-  | RPAREN
-  | TRANIF1
-  | PARAMETER
-  | TAB
-  | EMPTY
-  | TIMES
-  | PLUS
-  | COMMA
-  | MINUS
-  | P_OREQGT
-  | DOT
-  | DIVIDE
+  | TOKEN_691
+  | TOKEN_690
+  | TOKEN_689
+  | TOKEN_688
+  | TOKEN_687
+  | TOKEN_661
+  | TOKEN_653
+  | TOKEN_652
+  | TOKEN_651
+  | TOKEN_650
+  | TOKEN_649
+  | TOKEN_648
+  | TOKEN_639
+  | TOKEN_636
+  | TOKEN_635
+  | TOKEN_634
+  | TOKEN_633
+  | TOKEN_632
+  | TOKEN_631
+  | TOKEN_601
+  | TOKEN_598
+  | TOKEN_597
+  | TOKEN_596
+  | TOKEN_595
+  | TOKEN_588
+  | TOKEN_587
+  | TOKEN_504
+  | TOKEN_501
+  | TOKEN_500
+  | TOKEN_471
+  | TOKEN_46
   | TOKEN_436
   | TOKEN_435
-  | RNMOS
-  | SUPPLY0
-  | IF
-  | TOKEN_687
-  | SUPPLY1
-  | D_MONITOR
-  | TOKEN_688
-  | D_FSCANF
-  | TOKEN_689
-  | PROGRAM
-  | TOKEN_690
-  | P_OREQ
-  | PMOS
-  | TOKEN_691
-  | PROTECTED
-  | DESIGN
-  | VECTORED
-  | TOKEN_639
-  | P_XOREQ
+  | TOKEN_434
   | TOKEN_433
+  | TOKEN_432
+  | TOKEN_431
+  | TOKEN_430
+  | TOKEN_429
+  | TOKEN_428
+  | TOKEN_427
+  | TOKEN_349
+  | TOKEN_348
+  | TOKEN_346
+  | TOKEN_328
+  | TOKEN_327
+  | TOKEN_287
   | TOKEN_272
-  | CASE
   | TOKEN_266
-  | COLON
-  | TABLE
-  | D_BITS
-  | SEMICOLON
-  | LESS
-  | EQUALS
-  | TOKEN_636
+  | TOKEN_176
+  | TLIST of (token list)
+  | TIMINGSPEC
+  | TIME_UNIT of (string)
   | TIMEUNIT
-  | GREATER
-  | QUERY
-  | TOKEN_634
-  | ENDFUNCTION
-  | AT
-  | TOKEN_601
-  | FOREVER
-  | P_SRIGHTEQ
-  | D_TEST_PLUSARGS
-  | P_SSRIGHT
-  | P_SSRIGHT3
-  | INPUT
-  | TOKEN_699
-  | BUF
-  | P_POW
-  | VOID
-  | FORK
+  | TIMESKEW_TIMING_CHECK
+  | TIMES
+  | TIMEPRECISION
+  | TIME
+  | TILDE
+  | THROUGHOUT
+  | THIS
+  | TASKUSED
+  | TASKREF
+  | TASK
+  | TABLE
+  | TAB
+  | SYSTEM_TASK_IDENTIFIER_3 of (string)
+  | SYSTEM_FUNCTION_IDENTIFIER_3 of (string)
+  | SVINT
+  | SUPPLY1
+  | SUPPLY0
   | SUPER
+  | SUBTRACTION
+  | SUBMODULE
+  | SUBCCT
+  | STRUCT
+  | STRONG1
+  | STRONG0
+  | STRING
+  | STEP
+  | STATIC
+  | SQUOTE
+  | SPECPARAM
+  | SPECIFY
+  | SPECIAL
+  | SPACE
+  | SOLVE
   | SMALL
+  | SKEW_TIMING_CHECK
+  | SIMPLE_IDENTIFIER_3_2 of (string)
+  | SIMPLE_IDENTIFIER_2 of (string)
+  | SIGNED
+  | SHOWCANCELLED
+  | SHORTREAL
+  | SHORTINT
+  | SEXTUPLE of (token * token * token * token * token * token)
+  | SEXDECUPLE of (token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token)
+  | SETUP_TIMING_CHECK
+  | SETUPHOLD_TIMING_CHECK
+  | SEQUENCE
+  | SEPTUPLE of (token * token * token * token * token * token * token)
+  | SEPTENDECUPLE of (token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token)
+  | SENSUSED
+  | SEMICOLON
+  | SCALARED
+  | SCALAR
+  | RTRANIF1
+  | RTRANIF0
+  | RTRAN
+  | RPMOS
+  | RPAREN
+  | RNMOS
+  | RIGHT_CURLY
+  | RIGHT_BRACKET
+  | RETURN
+  | REPEAT
+  | REMOVAL_TIMING_CHECK
   | RELEASE
-  | FORCE
-  | D_FGETC
-  | P_SLEFT
-  | P_SLEFT3
-  | TOKEN_END_COMMENT
-  | TOKEN_504
+  | REG
+  | REF
+  | RECREM_TIMING_CHECK
+  | RECOVERY_TIMING_CHECK
+  | RECEIVER
+  | REALTIME
+  | REAL
+  | RCURLY
+  | RCMOS
+  | RBRACK
+  | RANGE of (token * token )
+  | RANDOMIZE
+  | RANDC
+  | RAND
+  | QUINVIGENUPLE of (token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token)
+  | QUINTUPLE of (token * token * token * token * token)
+  | QUINDECUPLE of (token * token * token * token * token * token * token * token * token * token * token * token * token * token * token)
+  | QUERY
+  | QUATTUORVIGENUPLE of (token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token)
+  | QUATTUORDECUPLE of (token * token * token * token * token * token * token * token * token * token * token * token * token * token)
+  | QUADRUPLE of (token * token * token * token)
+  | P_XOREQ
+  | P_XNOR
+  | P_WILDNOTEQUAL
+  | P_WILDEQUAL
+  | P_TIMESEQ
+  | P_TIMESCALE of (string)
+  | P_SUPPRESS_FAULTS
+  | P_SSRIGHT3EQ
+  | P_SSRIGHT3
+  | P_SRIGHTEQ
+  | P_SRIGHT
   | P_SLEFTEQ
   | P_SLEFT3EQ
-  | P_CASENOTEQUAL
-  | P_WILDNOTEQUAL
-  | INCDIR
-  | TOKEN_427
-  | D_FATAL
-  | TOKEN_428
-  | ENUM
-  | ELSE
-  | SIMPLE_IDENTIFIER_2 of (string)
-  | TYPE
-  | EVENT
-  | IS_DEFINED_AS
-  | BIND
-  | D_FEOF
-  | AND
-  | BYTE
-  | NOCHANGE
-  | DIST
-  | LBRACK
-  | P_TIMESEQ
-  | D_FGETS
-  | ASSIGN
-  | TOKEN_652
-  | TOKEN_718
-  | P_ASTGT
-  | RBRACK
-  | TOKEN_635
-  | CARET
-  | CELL
-  | TOKEN_633
-  | TOKEN_661
-  | TRAN
-  | D_COUNTDRIVERS
-  | TOKEN_724
-  | ENDINTERFACE
-  | D_FCLOSE
-  | ENDTASK
-  | WAIT
-  | RETURN
-  | NEGEDGE
-  | GENERATE
-  | RANDC
-  | P_PLUSCOLON
-  | VIRTUAL
-  | LOCAL
-  | CONTEXT
-  | EXTENDS
-  | P_PLUSEQ
-  | D_SKEW
-  | P_SSRIGHTEQ
-  | P_SSRIGHT3EQ
-  | JOIN_ANY
-  | REPEAT
-  | TOKEN_471
-  | TOKEN_327
-  | BIT
-  | WITH
-  | REAL
-  | TOKEN_650
-  | TRI
-  | PULSESTYLE_ONEVENT
-  | TOKEN_595
-  | TOKEN_596
-  | D_DISPLAY
-  | TOKEN_430
-  | P_XNOR
-  | P_NXOR
-  | RCMOS
-  | ENDPROPERTY
-  | D_COUNTONES
-  | COUNTONES
-  | STATIC
-  | LCURLY
-  | CONTINUE
-  | ANY_ASCII_CHARS
-  | VBAR
-  | RCURLY
-  | P_COLONDIV
-  | SPECIFY
-  | TILDE
-  | WOR
-  | P_NAND
-  | D_ISUNKNOWN
-  | ISUNKNOWN
-  | P_NOR
-  | AUTOMATIC
-  | TOKEN_653
-  | FOR
-  | SPECPARAM
-  | P_COLONCOLON
-  | TRIAND
-  | TIME
-  | JOIN_NONE
-  | CONFIG
-  | TOKEN_287
-  | P_COLONEQ
-  | C_IDENTIFIER_2 of (string)
-  | D_ONEHOT0
-  | P_ANDANDAND
-  | ASSERT
-  | NOSHOWCANCELLED
-  | INITIAL
-  | P_MINUSCOLON
-  | NAND
-  | IF_NONE
-  | TOKEN_723
-  | P_MINUSEQ
-  | P_DOTSTAR
-  | P_MINUSGT
-  | TOKEN_429
-  | MODULE
-  | NEWLINE
-  | D_UNSIGNED
-  | TOKEN_713
-  | D_SSCANF
-  | CHANDLE
-  | TOKEN_719
-  | UNIQUE
-  | PULSESTYLE_ONDETECT
-  | LOGIC
-  | D_WIDTH
-  | BEFORE
-  | NMOS
-  | CASEX
-  | TOKEN_328
-  | INTERFACE
-  | CASEZ
-  | INTERSECT
-  | DEASSIGN
-  | BOLD
-  | TOKEN_BEGIN_COMMENT
-  | REF
-  | NULL
-  | PURE
-  | EXPORT
-  | REG
-  | SCALARED
-  | TOKEN_704
-  | ENDCONFIG
-  | ENDCLASS
-  | TOKEN_348
-  | TOKEN_501
-  | SVINT
-  | OR
-  | TOKEN_651
-  | P_NOTEQUAL
-  | P_LTE
-  | SHORTINT
-  | CONST
-  | WAND
-  | STEP
-  | EXTERN
-  | MEDIUM
-  | PULL0
-  | PULL1
-  | FORKJOIN
-  | DEFPARAM
-  | CLOCKING
-  | TRI0
-  | TASK
-  | P_DIVEQ
-  | TRI1
-  | UNION
-  | LIBLIST
-  | ENDMODULE
-  | P_POUNDPOUND
-  | RAND
-  | SHORTREAL
-  | D_RECREM
-  | LOCALPARAM
-  | D_TIME
-  | D_REALTIME
-  | SIGNED
-  | D_ATTRIBUTE
-  | TOKEN_587
-  | STRONG0
-  | STRONG1
-  | LONGINT
-  | P_EQUAL
-  | HIGHZ0
-  | D_SIGNED
-  | ENDGENERATE
-  | P_EQGT
-  | HIGHZ1
-  | POSEDGE
-  | D_INFO
-  | FINAL
-  | RPMOS
-  | D_TIMESKEW
-  | SYSTEM_FUNCTION_IDENTIFIER_3 of (string)
-  | P_CASEEQUAL
-  | SEQUENCE
-  | RANDOMIZE
-  | P_WILDEQUAL
-  | D_WRITE
-  | D_HOLD
-  | ALIAS
-  | ENDPRIMITIVE
-  | TIMEPRECISION
-  | ENDPROGRAM
-  | NOR
-  | JOIN
-  | D_ONEHOT
-  | NOT
-  | D_SETUPHOLD
-  | D_FDISPLAY
-  | TOKEN_588
-  | TOKEN_176
-  | WAIT_ORDER
-  | STRING
-  | TOKEN_648
-  | D_STOP
-  | P_GTE
-  | P_SRIGHT
-  | TRIREG
-  | THROUGHOUT
-  | WHILE
-  | D_SETUP
-  | DEFAULT
-  | TRIOR
-  | DO
-  | PATHPULSE
-  | INSIDE
-  | D_WARNING
-  | D_RECOVERY
-  | INOUT
-  | OUTPUT
-  | SIMPLE_IDENTIFIER_3_2 of (string)
-  | FIRST_MATCH
-  | THIS
-  | LARGE
-  | ENDCASE
-  | D_REMOVAL
-  | FUNCTION
-  | CMOS
-  | INTEGER
-  | XOR
-  | SYSTEM_TASK_IDENTIFIER_3 of (string)
-  | WEAK0
-  | DISABLE
-  | WEAK1
-  | TOKEN_500
-  | TOKEN_346
-  | USE
-  | D_FINISH
-  | ENDTABLE
-  | FULLSKEW
-  | RTRANIF0
-  | TOKEN_649
-  | TYPEDEF
-  | RTRANIF1
-  | GENVAR
-  | COVER
-  | TOKEN_431
-  | INCLUDE
-  | TOKEN_432
-  | RTRAN
-  | BREAK
-  | XNOR
-  | UNSIGNED
-  | MODPORT
-  | D_FWRITEH
-  | TOKEN_349
-  | P_ANDAND
-  | NOTIF0
-  | D_ERROR
-  | ANY_ASCII_CHAR
-  | IMPORT
-  | NOTIF1
-  | SPACE
-  | END
-  | WITHIN
-  | P_MODEQ
-  | CLASS
-  | STRUCT
-  | MS of (token)
-  | US of (token)
-  | NS of (token)
-  | PS of (token)
-  | FS of (token)
-  | AS of (token)
-  | ASCNUM of (string)
-  | CHAR of (char)
-  | ID of (string)
-  | RANGE of (token * token )
-  | INT of (int)
-  | DOUBLE of (token * token)
-  | TRIPLE of (token * token * token)
-  | QUADRUPLE of (token * token * token * token)
-  | QUINTUPLE of (token * token * token * token * token)
-  | SEXTUPLE of (token * token * token * token * token * token)
-  | SEPTUPLE of (token * token * token * token * token * token * token)
-  | OCTUPLE of (token * token * token * token * token * token * token * token)
-  | NONUPLE of (token * token * token * token * token * token * token * token * token)
-  | DECUPLE of (token * token * token * token * token * token * token * token * token * token)
-  | UNDECUPLE of (token * token * token * token * token * token * token * token * token * token * token)
-  | DUODECUPLE of (token * token * token * token * token * token * token * token * token * token * token * token)
-  | TREDECUPLE of (token * token * token * token * token * token * token * token * token * token * token * token * token)
-  | QUATTUORDECUPLE of (token * token * token * token * token * token * token * token * token * token * token * token * token * token)
-  | QUINDECUPLE of (token * token * token * token * token * token * token * token * token * token * token * token * token * token * token)
-  | SEXDECUPLE of (token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token)
-  | SEPTENDECUPLE of (token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token)
-  | OCTODECUPLE of (token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token)
-  | NOVEMDECUPLE of (token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token)
-  | VIGENUPLE of (token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token)
-  | UNVIGENUPLE of (token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token)
-  | DUOVIGENUPLE of (token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token)
-  | TREVIGENUPLE of (token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token)
-  | QUATTUORVIGENUPLE of (token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token)
-  | QUINVIGENUPLE of (token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token)
-  | ALTERNATIVE
-  | ASSIGNMENT
-  | BIDIR
-  | BINNUM of (string)
-  | BITSEL
-  | CASECOND
-  | CELLPIN
-  | CONCAT
-  | D_C
-  | DECNUM of (string)
-  | DLYASSIGNMENT
-  | DOTTED of (token list)
-  | D_RANDOM
-  | DRIVER
-  | D_STIME
-  | ENDLABEL
-  | ENDOFFILE
-  | FLOATNUM of (float)
-  | FULLSKEW_TIMING_CHECK
-  | FUNCREF
-  | FUNCUSED
-  | GENCASE
-  | GENCASECOND
-  | HEXNUM of (string)
-  | HOLD_TIMING_CHECK
-  | IMPLICIT
-  | INTNUM of (string)
-  | IOPORT
-  | LEFT_BRACKET
-  | LEFT_CURLY
-  | MEMORY
-  | MINTYPMAX
-  | MODINST
-  | NAMED
-  | NOCHANGE_TIMING_CHECK
-  | OCTNUM of (string)
-  | PARAMUSED
-  | PARTSEL
-  | P_CELLDEFINE
-  | P_DEFINE
-  | P_DELAY_MODE_PATH
-  | P_DISABLE_PORTFAULTS
-  | P_ELSE
-  | P_ENABLE_PORTFAULTS
-  | P_ENDCELLDEFINE
-  | P_ENDIF
-  | P_ENDPROTECT
-  | PERIOD_TIMING_CHECK
-  | P_IFDEF
-  | P_INCLUDE of (string)
-  | P_NOSUPPRESS_FAULTS
-  | P_PROTECT
-  | PRAGMATIC of (string)
-  | PREPROC of (string)
+  | P_SLEFT3
+  | P_SLEFT
   | P_RESETALL
+  | P_PROTECT
+  | P_POW
+  | P_POUNDPOUND
+  | P_PLUSEQ
+  | P_PLUSCOLON
+  | P_OROR
+  | P_ORMINUSGT
+  | P_OREQGT
+  | P_OREQ
+  | P_NXOR
+  | P_NOTEQUAL
+  | P_NOSUPPRESS_FAULTS
+  | P_NOR
+  | P_NAND
+  | P_MODEQ
+  | P_MINUSGT
+  | P_MINUSEQ
+  | P_MINUSCOLON
+  | P_LTE
+  | P_INCLUDE of (string)
+  | P_IFDEF
+  | P_GTE
+  | P_EQUAL
+  | P_EQGT
+  | P_ENDPROTECT
+  | P_ENDIF
+  | P_ENDCELLDEFINE
+  | P_ENABLE_PORTFAULTS
+  | P_ELSE
+  | P_DOTSTAR
+  | P_DIVEQ
+  | P_DISABLE_PORTFAULTS
+  | P_DELAY_MODE_PATH
+  | P_DEFINE
+  | P_COLONEQ
+  | P_COLONDIV
+  | P_COLONCOLON
+  | P_CELLDEFINE
+  | P_CASENOTEQUAL
+  | P_CASEEQUAL
+  | P_ATAT
+  | P_ASTGT
+  | P_ANDEQ
+  | P_ANDANDAND
+  | P_ANDAND
+  | PURE
+  | PULSESTYLE_ONEVENT
+  | PULSESTYLE_ONDETECT
+  | PULLUP
+  | PULLDOWN
+  | PULL1
+  | PULL0
+  | PS of (token)
+  | PROTECTED
+  | PROPERTY
+  | PROGRAM
+  | PRIORITY
+  | PRIMITIVE
   | PRIMINST
-  | P_SUPPRESS_FAULTS
-  | P_TIMESCALE of (string)
-  | RECEIVER
-  | RECOVERY_TIMING_CHECK
-  | RECREM_TIMING_CHECK
-  | REMOVAL_TIMING_CHECK
-  | RIGHT_BRACKET
-  | RIGHT_CURLY
-  | SCALAR
-  | SENSUSED
-  | SETUPHOLD_TIMING_CHECK
-  | SETUP_TIMING_CHECK
-  | SKEW_TIMING_CHECK
-  | SPECIAL
-  | SUBCCT
-  | SUBMODULE
-  | SUBTRACTION
-  | TASKREF
-  | TASKUSED
-  | TIMESKEW_TIMING_CHECK
-  | TIMINGSPEC
-  | TLIST of (token list)
-  | TOKEN_707
-  | TOKEN_708
-  | UNKNOWN
-  | WIDTH_TIMING_CHECK
-  | Z_DIGIT of (string)
-  | DECIMAL_BASE of (string)
-  | BINARY_BASE of (string)
-  | TIME_UNIT of (string)
-  | HEX_DIGIT of (string)
-  | X_DIGIT of (string)
-  | LEVEL_SYMBOL of (string)
+  | PREPROC of (string)
+  | PRAGMATIC of (string)
+  | POSEDGE
+  | PMOS
+  | PLUS
+  | PLING
+  | PERIOD_TIMING_CHECK
+  | PATHPULSE
+  | PARTSEL
+  | PARAMUSED
+  | PARAMETER
+  | PACKED
   | OUTPUT_SYMBOL of (string)
-  | Z_OR_X of (string)
-  | OCTAL_BASE of (string)
-  | HEX_BASE of (string)
-  | EDGE_SYMBOL of (string)
-  | DECIMAL_BASE_3 of (string)
-  | BINARY_BASE_3 of (string)
+  | OUTPUT
+  | OR
+  | OCTUPLE of (token * token * token * token * token * token * token * token)
+  | OCTODECUPLE of (token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token)
+  | OCTNUM of (string)
   | OCTAL_BASE_3 of (string)
+  | OCTAL_BASE of (string)
+  | NULL
+  | NS of (token)
+  | NOVEMDECUPLE of (token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token)
+  | NOTIF1
+  | NOTIF0
+  | NOT
+  | NOSHOWCANCELLED
+  | NOR
+  | NONUPLE of (token * token * token * token * token * token * token * token * token)
+  | NOCHANGE_TIMING_CHECK
+  | NOCHANGE
+  | NMOS
+  | NEWLINE
+  | NEW
+  | NEGEDGE
+  | NAND
+  | NAMED
+  | MS of (token)
+  | MODULO
+  | MODULE
+  | MODPORT
+  | MODINST
+  | MINUS
+  | MINTYPMAX
+  | MEMORY
+  | MEDIUM
+  | MACROMODULE
+  | LPAREN
+  | LONGINT
+  | LOGIC
+  | LOCALPARAM
+  | LOCAL
+  | LIBRARY
+  | LIBLIST
+  | LEVEL_SYMBOL of (string)
+  | LESS
+  | LEFT_CURLY
+  | LEFT_BRACKET
+  | LCURLY
+  | LBRACK
+  | LARGE
+  | JOIN_NONE
+  | JOIN_ANY
+  | JOIN
+  | IS_DEFINED_AS
+  | ISUNKNOWN
+  | IOPORT
+  | INTNUM of (string)
+  | INTERSECT
+  | INTERFACE
+  | INTEGER
+  | INT of (int)
+  | INSTANCE
+  | INSIDE
+  | INPUT
+  | INOUT
+  | INITIAL
+  | INCLUDE
+  | INCDIR
+  | IMPORT
+  | IMPLICIT
+  | IF_NONE
+  | IFF
+  | IF
+  | ID of (string)
+  | HOLD_TIMING_CHECK
+  | HIGHZ1
+  | HIGHZ0
+  | HEX_DIGIT of (string)
   | HEX_BASE_3 of (string)
+  | HEX_BASE of (string)
+  | HEXNUM of (string)
+  | HASH
+  | GREATER
+  | GENVAR
+  | GENERATE
+  | GENCASECOND
+  | GENCASE
+  | FUNCUSED
+  | FUNCTION
+  | FUNCREF
+  | FULLSKEW_TIMING_CHECK
+  | FULLSKEW
+  | FS of (token)
+  | FORKJOIN
+  | FORK
+  | FOREVER
+  | FORCE
+  | FOR
+  | FLOATNUM of (float)
+  | FIRST_MATCH
+  | FINAL
+  | FILE_PATH
+  | EXTERN
+  | EXTENDS
+  | EXPORT
   | EXP of (string)
+  | EVENT
+  | EQUALS
+  | EOF
+  | ENUM
+  | ENDTASK
+  | ENDTABLE
+  | ENDSPECIFY
+  | ENDSEQUENCE
+  | ENDPROPERTY
+  | ENDPROGRAM
+  | ENDPRIMITIVE
+  | ENDOFFILE
+  | ENDMODULE
+  | ENDLABEL
+  | ENDINTERFACE
+  | ENDGENERATE
+  | ENDFUNCTION
+  | ENDCONFIG
+  | ENDCLOCKING
+  | ENDCLASS
+  | ENDCASE
+  | END
+  | EMPTY
+  | ELSE
+  | EDGE_SYMBOL of (string)
+  | EDGE
+  | D_WRITE
+  | D_WIDTH
+  | D_WARNING
+  | D_UNSIGNED
+  | D_TIMESKEW
+  | D_TIME
+  | D_TEST_PLUSARGS
+  | D_STOP
+  | D_STIME
+  | D_SSCANF
+  | D_SKEW
+  | D_SIGNED
+  | D_SETUPHOLD
+  | D_SETUP
+  | D_REMOVAL
+  | D_RECREM
+  | D_RECOVERY
+  | D_REALTIME
+  | D_READMEMH
+  | D_READMEMB
+  | D_RANDOM
+  | D_PERIOD
+  | D_ONEHOT0
+  | D_ONEHOT
+  | D_MONITOR
+  | D_ISUNKNOWN
+  | D_INFO
+  | D_HOLD
+  | D_FWRITEH
+  | D_FWRITE
+  | D_FSCANF
+  | D_FOPEN
+  | D_FINISH
+  | D_FGETS
+  | D_FGETC
+  | D_FFLUSH
+  | D_FEOF
+  | D_FDISPLAY
+  | D_FCLOSE
+  | D_FATAL
+  | D_ERROR
+  | D_DISPLAY
+  | D_COUNTONES
+  | D_COUNTDRIVERS
+  | D_CLOG2
+  | D_C
+  | D_BITS
+  | D_ATTRIBUTE
+  | DUOVIGENUPLE of (token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token * token)
+  | DUODECUPLE of (token * token * token * token * token * token * token * token * token * token * token * token)
+  | DRIVER
+  | DOUBLE of (token * token)
+  | DOTTED of (token list)
+  | DOT
+  | DOLLAR
+  | DO
+  | DLYASSIGNMENT
+  | DIVIDE
+  | DIST
+  | DISABLE
+  | DESIGN
+  | DEFPARAM
+  | DEFAULT
+  | DECUPLE of (token * token * token * token * token * token * token * token * token * token)
+  | DECNUM of (string)
+  | DECIMAL_BASE_3 of (string)
+  | DECIMAL_BASE of (string)
+  | DEASSIGN
+  | C_IDENTIFIER_3_2 of (string)
+  | C_IDENTIFIER_2 of (string)
+  | COVER
+  | COUNTONES
+  | CONTINUE
+  | CONTEXT
+  | CONSTRAINT
+  | CONST
+  | CONFIG
+  | CONCAT
+  | COMMA
+  | COLON
+  | CMOS
+  | CLOCKING
+  | CLASS
+  | CHAR of (char)
+  | CHANDLE
+  | CELLPIN
+  | CELL
+  | CASEZ
+  | CASEX
+  | CASECOND
+  | CASE
+  | CARET
+  | BYTE
+  | BUFIF1
+  | BUFIF0
+  | BUF
+  | BREAK
+  | BOLD
+  | BITSEL
+  | BIT
+  | BINNUM of (string)
+  | BIND
+  | BINARY_BASE_3 of (string)
+  | BINARY_BASE of (string)
+  | BIDIR
+  | BEGIN
+  | BEFORE
+  | AUTOMATIC
+  | AT
+  | ASSIGNMENT
+  | ASSIGN
+  | ASSERT
+  | ASCNUM of (string)
+  | AS of (token)
+  | ANY_ASCII_CHARS
+  | ANY_ASCII_CHAR
+  | AND
+  | AMPERSAND
+  | ALWAYS_LATCH
+  | ALWAYS_FF
+  | ALWAYS_COMB
+  | ALWAYS
+  | ALTERNATIVE
+  | ALIAS
+  | TYPE_DECLARATION_IDENTIFIER of (string)
 
 val getstr : token -> string

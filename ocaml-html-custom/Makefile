@@ -19,27 +19,20 @@ grammar_sysver.ml: grammar_sysver.cmi
 	grep \| grammar_sysver.mli | cut -d\( -f1 | tr '\011' ' ' |\
 	sed -e 's=|[\ ]*\([A-Z0-9_\ of]*\)=|\ \1 -> uppercase(\"\1\")=' -e 's= of= arg=' -e 's= of ==' >> $@
 
-ord.ml: other.cmi
-	echo open String > $@
-	echo let getstr tok = match tok with >> $@
-	grep \| other.mli | cut -d\( -f1 | tr '\011' ' ' |\
-	sed -e 's=|[\ ]*\([A-Z0-9_\ of]*\)=|\ Other.\1 -> uppercase(\"\1\")=' -e 's= of= arg=' -e 's= of ==' >> $@
+other.ml: other.mly
+	menhir -v --trace --table other.mly --external-tokens Grammar_sysver 2> other.warnings
 
-ord.mli: ord.ml
-	ocamlfind ocamlc -i -package "str,netstring" $< > $@
-
-other.mli: grammar_sysver.mli
-	cp $< $@
+other.cmo: other.ml
+	ocamlc -c -I /home/jrrk/cmd/src/menhir-20080912/src $<
 
 vlexer.ml vlexer.mli : vlexer.mll
 	ocamllex $<
 
 convert: test
 	./test "annexA_bnf_3_1_final.html" "htmlcodes.htm" "other.mly" "junk"
-	menhir -v other.mly 2> other.warnings
 
-svparser: other.cmi ord.ml ord.cmi ord.cmo setup.cmi setup.cmo globals.cmi globals.cmo other.cmo vlexer.cmo vparse.cmi vparse.cmo
-	ocamlfind ocamlmktop -g -package "unix" -linkpkg -o $@ ord.cmo setup.cmo globals.cmo other.cmo vlexer.cmo vparse.cmo
+svparser: other.cmi grammar_sysver.cmo setup.cmi setup.cmo globals.cmi globals.cmo other.cmo vlexer.cmo vparse.cmi vparse.cmo main.cmo
+	ocamlfind ocamlc -g -package "unix" -linkpkg -o $@ /home/jrrk/cmd/src/menhir-20080912/src/menhirLib.cmo grammar_sysver.cmo setup.cmo globals.cmo other.cmo vlexer.cmo vparse.cmo main.cmo
 
 clean:
 	rm -f test.mli test.cmi test.cmo test ord.ml
