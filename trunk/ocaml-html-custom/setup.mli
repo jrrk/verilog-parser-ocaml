@@ -1,27 +1,27 @@
 module type Ordered =
   sig
     type t
-    val compare : Other.token -> Other.token -> int
+    val compare : Grammar_sysver.token -> Grammar_sysver.token -> int
   end
 
 module OrdTok :
   sig
-    type t = Other.token
-    val compare : Other.token -> Other.token -> int
+    type t = Grammar_sysver.token
+    val compare : Grammar_sysver.token -> Grammar_sysver.token -> int
   end
 
 type tset = Set.Make(OrdTok).t
 
 type tsigattr = Sigundef |
         Sigarray of tset array |
-        Sigparam of Other.token |
-        Sigtask of Other.token |
-        Sigfunc of Other.token |
-	Signamed of Other.token
+        Sigparam of Grammar_sysver.token |
+        Sigtask of Grammar_sysver.token |
+        Sigfunc of Grammar_sysver.token |
+	Signamed of Grammar_sysver.token
 
 and symtab = {
   symattr : tset;
-  width : Other.token;
+  width : Grammar_sysver.token;
   path : string;
   sigattr : tsigattr;
   localsyms : shash;
@@ -69,7 +69,7 @@ module TokSet :
 
 val hsiz : int
 val histcnt : int ref
-type hist = { tok : Other.token; strt : int; stop : int; key : bool; }
+type hist = { tok : Grammar_sysver.token; strt : int; stop : int; key : bool; }
 val history : hist ref array
 val psuccess : bool ref
-val str_token : Other.token -> string
+val str_token : Grammar_sysver.token -> string

@@ -18,7 +18,7 @@
 *******************************************************************************)
 
 open Other
-open Ord
+open Grammar_sysver
 
 let compare_tok (a:token) (b:token) = if (a > b) then 1 else if (a < b) then -1 else 0;;
 
@@ -38,10 +38,10 @@ type tset = Set.Make(OrdTok).t
 
 type tsigattr = Sigundef |
         Sigarray of tset array |
-        Sigparam of Other.token |
-        Sigtask of Other.token |
-        Sigfunc of Other.token |
-	Signamed of Other.token
+        Sigparam of Grammar_sysver.token |
+        Sigtask of Grammar_sysver.token |
+        Sigfunc of Grammar_sysver.token |
+	Signamed of Grammar_sysver.token
 
 and symtab = {
   symattr : tset;
@@ -73,7 +73,19 @@ let one_elm = TokSet.add EMPTY TokSet.empty;;
 
 let rec str_token (e:token) = match e with
 | ID id -> id
+| SIMPLE_IDENTIFIER_2 id -> id
 | RANGE (INT hi,INT lo) -> "[" ^ (string_of_int hi) ^ ":" ^ (string_of_int lo) ^ "] "
 | RANGE (hi, lo) -> "[" ^ (str_token hi) ^ ":" ^ (str_token lo) ^ "] "
 | TRIPLE (DOT, inner, tok) -> "."^(str_token inner)^"("^(str_token tok)^")"
-| _ -> (Ord.getstr e)
+| DOUBLE(arg1, arg2) -> (str_token arg1)^" "^(str_token arg2)
+| TRIPLE(arg1,arg2,arg3) -> (str_token arg1)^" "^(str_token arg2)^" "^(str_token arg3)
+| QUADRUPLE(arg1,arg2,arg3,arg4) -> (str_token arg1)^" "^(str_token arg2)^" "^(str_token arg3)^" "^(str_token arg4)
+| QUINTUPLE(arg1,arg2,arg3,arg4,arg5) -> (str_token arg1)^" "^(str_token arg2)^" "^(str_token arg3)^" "^(str_token arg4)^" "^(str_token arg5)
+| SEXTUPLE(arg1,arg2,arg3,arg4,arg5,arg6) -> (str_token arg1)^" "^(str_token arg2)^" "^(str_token arg3)^" "^(str_token arg4)^" "^(str_token arg5)^" "^(str_token arg6)
+| SEPTUPLE(arg1,arg2,arg3,arg4,arg5,arg6,arg7) -> (str_token arg1)^" "^(str_token arg2)^" "^(str_token arg3)^" "^(str_token arg4)^" "^(str_token arg5)^" "^(str_token arg6)^" "^(str_token arg7)
+| OCTUPLE(arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8) -> (str_token arg1)^" "^(str_token arg2)^" "^(str_token arg3)^" "^(str_token arg4)^" "^(str_token arg5)^" "^(str_token arg6)^" "^(str_token arg7)^" "^(str_token arg8)
+| NONUPLE(arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9) -> (str_token arg1)^" "^(str_token arg2)^" "^(str_token arg3)^" "^(str_token arg4)^" "^(str_token arg5)^" "^(str_token arg6)^" "^(str_token arg7)^" "^(str_token arg8)^" "^(str_token arg9)
+| DECUPLE(arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9,arg10) -> (str_token arg1)^" "^(str_token arg2)^" "^(str_token arg3)^" "^(str_token arg4)^" "^(str_token arg5)^" "^(str_token arg6)^" "^(str_token arg7)^" "^(str_token arg8)^" "^(str_token arg9)^" "^(str_token arg10)
+| UNDECUPLE(arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9,arg10,arg11) -> (str_token arg1)^" "^(str_token arg2)^" "^(str_token arg3)^" "^(str_token arg4)^" "^(str_token arg5)^" "^(str_token arg6)^" "^(str_token arg7)^" "^(str_token arg8)^" "^(str_token arg9)^" "^(str_token arg10)^" "^(str_token arg11)
+| DUODECUPLE(arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9,arg10,arg11,arg12) -> (str_token arg1)^" "^(str_token arg2)^" "^(str_token arg3)^" "^(str_token arg4)^" "^(str_token arg5)^" "^(str_token arg6)^" "^(str_token arg7)^" "^(str_token arg8)^" "^(str_token arg9)^" "^(str_token arg10)^" "^(str_token arg11)^" "^(str_token arg12)
+| _ -> (Grammar_sysver.getstr e)

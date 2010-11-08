@@ -22,6 +22,7 @@ exception Error
 open Setup
 open Other
 open Globals
+open Grammar_sysver
 
 type dmode = Pundef | PATH;;
 
@@ -195,7 +196,7 @@ let parse str = begin
   try
     let lexbuf = Lexing.from_function (fun dst cnt -> from_func out_chan dst cnt) in
     let looping = ref true in while !looping do
-      let rslt = Other.library_text Vlexer.token lexbuf in match rslt with
+      let rslt = Other.start Vlexer.token lexbuf in match rslt with
       | QUINTUPLE((MODULE|PRIMITIVE), ID id, _, _, _) ->
       ( (* Printf.fprintf (fst out_chan) "%s\n" id; Semantics.prescan out_chan rslt *) )
       | PRAGMATIC str ->
@@ -219,14 +220,14 @@ let parse str = begin
       | P_ENDPROTECT        		-> protect := false;
       | P_DELAY_MODE_PATH                   -> delay_mode := PATH
       | ENDOFFILE -> looping := false
-      | _ -> Globals.unhandled (stderr,Format.err_formatter) 191 rslt
+      | _ -> Globals.unhandled (stdout,Format.std_formatter) 191 rslt
     done
   with Stack.Empty -> ()
     | Parsing.Parse_error
     | Error ->
     begin
     psuccess := false;
-    Printf.fprintf stderr "Parse Error in %s\n" (fst(Stack.top includes));
+    Printf.fprintf stdout "Parse Error in %s\n" (fst(Stack.top includes));
     Printf.fprintf (fst out_chan) "Parse Error in %s\n" (fst(Stack.top includes));
     for i = 1 to hsiz do let idx = (hsiz-i+(!histcnt))mod hsiz in let item = !(history.(idx)) in
         Printf.fprintf (fst out_chan) "Backtrace %d : %s (%d-%d)\n"  i (str_token (item.tok)) item.strt item.stop;

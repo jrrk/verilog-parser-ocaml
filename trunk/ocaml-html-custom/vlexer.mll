@@ -18,6 +18,7 @@
 ******************************************************************************)
 
 {
+open Grammar_sysver
 open Lexing
 open Other
 open Setup
@@ -33,7 +34,9 @@ else begin
   end
 
 let hlog lexbuf ktok:token = begin
-history.(!histcnt) := {tok=ktok;strt=(Lexing.lexeme_start lexbuf);stop=(Lexing.lexeme_end lexbuf);key=true};
+let item = {tok=ktok;strt=(Lexing.lexeme_start lexbuf);stop=(Lexing.lexeme_end lexbuf);key=true} in
+history.(!histcnt) := item;
+Printf.printf "Trace %d : %s (%d-%d)\n"  !histcnt (str_token (item.tok)) item.strt item.stop;
 ignore(histcnt := (!histcnt+1)mod hsiz);
 ktok
 end
@@ -227,8 +230,8 @@ rule token = parse
 |  "<<="		{ hlog lexbuf (P_SLEFTEQ) }
 |  ">>"			{ hlog lexbuf (P_SRIGHT) }
 |  ">>="		{ hlog lexbuf (P_SRIGHTEQ) }
-|  ">>>"		{ hlog lexbuf (P_SSRIGHT) }
-|  ">>>="		{ hlog lexbuf (P_SSRIGHTEQ) }
+|  ">>>"		{ hlog lexbuf (P_SSRIGHT3) }
+|  ">>>="		{ hlog lexbuf (P_SSRIGHT3EQ) }
 |  "*="			{ hlog lexbuf (P_TIMESEQ) }
 |  "==?"		{ hlog lexbuf (P_WILDEQUAL) }
 |  "!=?"		{ hlog lexbuf (P_WILDNOTEQUAL) }
@@ -278,7 +281,7 @@ if Hashtbl.mem ksymbols word then hlog lexbuf (Hashtbl.find ksymbols word) else 
   else hlog lexbuf (PREPROC presym)
 }
 | ident ident_num* as word {
-if Hashtbl.mem ksymbols word then hlog lexbuf (Hashtbl.find ksymbols word) else hlog lexbuf (ID word)
+if Hashtbl.mem ksymbols word then hlog lexbuf (Hashtbl.find ksymbols word) else hlog lexbuf (SIMPLE_IDENTIFIER_2 word)
 }
   | [' ' '\t' ]		{token lexbuf }
   | ['\r' '\n' ]	{token lexbuf }

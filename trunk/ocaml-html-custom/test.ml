@@ -131,6 +131,8 @@ done;
 
 let thresh = 1
 
+(* version of getstr for arguments inside { } in resulting description *)
+
 let rec mygetstr3 tok cnt len = (if (cnt = 1) then "(" else "")^(match tok with
 | ID id -> (if String.length id > thresh then ("$"^(string_of_int cnt)) else "CHAR '"^id^"'")
 | _ -> if (Hashtbl.mem reverse tok) then
@@ -147,28 +149,44 @@ let rec unpack write_os tok = match tok with
         fun item -> unpack (fun s -> concat := !concat ^ " " ^ s ^ " ") item) lst; write_os (!concat^" } ")
     | _ -> write_os ((mygetstr tok)^" ")
 
-let dumpargs2 write args = 
-    let len = List.length !args in write ("{ "^(multiple len)); 
-        let cnt = ref 0 in List.iter (fun item -> write (cnt := !cnt + 1; mygetstr3 item !cnt len)) !args; write " }"; args := []
+let dumpargs2 write key args = 
+    let len = List.length !args in write ("{ Globals.grdbg \""^key^"\" ("^(multiple len)); 
+        let cnt = ref 0 in
+        List.iter (fun item -> write (cnt := !cnt + 1; mygetstr3 item !cnt len)) !args;
+        write (if !cnt <> 0 then ") }" else  "EMPTY) }"); args := []
 
-let leprechaun s = let esc = ref "" in for i = 0 to (String.length s)-1 do
+(* steal any $ from the original name specification *)
+
+let leprechaun s = 
+let esc = ref "" in for i = 0 to (String.length s)-1 do
 if s.[i] = '$' then esc := !esc ^ (if i = 0 then "d_" else "_dollar_") else esc := !esc ^ (String.make 1 s.[i])
 done;
-!esc
+!esc;;
+
+(* If one-to-one substitute, get rid of it to stop confusing the parser *)
+
+let simplify id =
+if Hashtbl.mem rules (ID id) then
+    begin
+    let lst = Hashtbl.find rules (ID id) in
+      if (List.length lst = 3) && (ID id = (List.hd lst)) then ( match (List.nth lst 2) with ID subst -> subst | _ -> id) else id
+    end
+else
+    id
 
 let rec unpack2 write cnt key tok args = match tok with
-    | VBAR -> dumpargs2 write args; write"\n\t| "; true
+    | VBAR -> dumpargs2 write key args; write"\n\t| "; true
     | IS_DEFINED_AS -> write ": "; args := []; true
-    | ID id -> write (if String.length id > thresh then leprechaun(id)^" " else Printf.sprintf "'%s' " id); args := !args @ [tok]; String.length id > thresh
-    | TLIST lst -> pending := !pending @ [dump2 key (ID key :: IS_DEFINED_AS :: lst)]; write (key^" "); args := !args @ [ID key]; true
-    | DOTTED lst -> pending := !pending @ [dump2 key (ID key :: IS_DEFINED_AS :: lst)]; write (key^" "); args := !args @ [ID key]; true
+    | ID id -> write (if String.length id > thresh then leprechaun(if cnt >= 2 then simplify id else id)^" " else Printf.sprintf "'%s' " id); args := !args @ [tok]; String.length id > thresh
+    | TLIST lst -> pending := !pending @ [dump2 key (ID key :: IS_DEFINED_AS :: VBAR :: lst)]; write (key^" "); args := !args @ [ID key]; true
+    | DOTTED lst -> pending := !pending @ [dump2 key (ID key :: IS_DEFINED_AS :: VBAR :: ID key :: lst)]; write (key^" "); args := !args @ [ID key]; true
     | RANGE(left,right) -> false
     | _ -> write ((mygetstr2 tok)^" "); args := !args @ [tok]; true
 
 and dump2 key0 lst =
 let key = leprechaun key0 and buffer = ref "" and cnt = ref 0 and args = ref [] and retval = ref true in
 List.iter (fun item -> let key2 = key^"_"^(string_of_int !cnt) in retval := !retval && unpack2 (fun s -> buffer := !buffer^s) !cnt key2 item args; cnt := !cnt + 1) lst;
-if !args <> [] then dumpargs2(fun s -> buffer := !buffer^s) args;
+if !args <> [] then dumpargs2(fun s -> buffer := !buffer^s) key args;
 if (!retval) then !buffer^"\n\t;\n\n" else "/* "^(!buffer)^"\n\t; */\n\n"
 
 let enter_keyword id keyword prim = 
@@ -198,9 +216,9 @@ let _ = List.iter (fun (str,key,prim) -> enter_keyword str key prim)
 *)
 ( "empty", EMPTY, false);
 ( "c_identifier_2", C_IDENTIFIER_2 "", true);
-( "c_identifier_3_2", C_IDENTIFIER_3_2 "", true);
+( "c_identifier_3_4", C_IDENTIFIER_3_2 "", true);
 ( "simple_identifier_2", SIMPLE_IDENTIFIER_2 "", true); 
-( "simple_identifier_3_2", SIMPLE_IDENTIFIER_3_2 "", true);
+( "simple_identifier_3_4", SIMPLE_IDENTIFIER_3_2 "", true);
 ( "system_task_identifier_3", SYSTEM_TASK_IDENTIFIER_3 "", true);
 ( "system_function_identifier_3", SYSTEM_FUNCTION_IDENTIFIER_3 "", true);
 
@@ -221,6 +239,9 @@ let _ = List.iter (fun (str,key,prim) -> enter_keyword str key prim)
 ( "binary_base_3", BINARY_BASE_3 "", true);
 ( "octal_base_3", OCTAL_BASE_3 "", true);
 ( "hex_base_3", HEX_BASE_3 "", true);
+
+(* bodge *)
+(  "type_declaration_identifier", TYPE_DECLARATION_IDENTIFIER "", true);
 
 (  "file_path", FILE_PATH, false);
 (  "space", SPACE, false);
@@ -801,7 +822,7 @@ let _ =
     let rec kind n = (if n > 1 then (kind (n-1)^" * ") else "")^"token" in
     Printf.fprintf ochan1 "%%token <%s> %s\n" (kind i) (multiple i);
   done;
-  Printf.fprintf ochan1 "%%token ALTERNATIVE\n";
+  Printf.fprintf ochan1 "%%token  ALTERNATIVE\n";
   Printf.fprintf ochan1 "%%token  ASSIGNMENT\n";
   Printf.fprintf ochan1 "%%token  BIDIR\n";
   Printf.fprintf ochan1 "%%token <string> BINNUM\n";
@@ -819,23 +840,23 @@ let _ =
   Printf.fprintf ochan1 "%%token  ENDLABEL\n";
   Printf.fprintf ochan1 "%%token  ENDOFFILE\n";
   Printf.fprintf ochan1 "%%token <float> FLOATNUM\n";
-  Printf.fprintf ochan1 "%%token FULLSKEW_TIMING_CHECK\n";
+  Printf.fprintf ochan1 "%%token  FULLSKEW_TIMING_CHECK\n";
   Printf.fprintf ochan1 "%%token  FUNCREF\n";
   Printf.fprintf ochan1 "%%token  FUNCUSED\n";
   Printf.fprintf ochan1 "%%token  GENCASE\n";
   Printf.fprintf ochan1 "%%token  GENCASECOND\n";
   Printf.fprintf ochan1 "%%token <string> HEXNUM\n";
-  Printf.fprintf ochan1 "%%token HOLD_TIMING_CHECK\n";
+  Printf.fprintf ochan1 "%%token  HOLD_TIMING_CHECK\n";
   Printf.fprintf ochan1 "%%token  IMPLICIT\n";
   Printf.fprintf ochan1 "%%token <string> INTNUM\n";
   Printf.fprintf ochan1 "%%token  IOPORT\n";
-  Printf.fprintf ochan1 "%%token LEFT_BRACKET\n";
-  Printf.fprintf ochan1 "%%token LEFT_CURLY\n";
+  Printf.fprintf ochan1 "%%token  LEFT_BRACKET\n";
+  Printf.fprintf ochan1 "%%token  LEFT_CURLY\n";
   Printf.fprintf ochan1 "%%token  MEMORY\n";
   Printf.fprintf ochan1 "%%token  MINTYPMAX\n";
   Printf.fprintf ochan1 "%%token  MODINST\n";
   Printf.fprintf ochan1 "%%token  NAMED\n";
-  Printf.fprintf ochan1 "%%token NOCHANGE_TIMING_CHECK\n";
+  Printf.fprintf ochan1 "%%token  NOCHANGE_TIMING_CHECK\n";
   Printf.fprintf ochan1 "%%token <string> OCTNUM\n";
   Printf.fprintf ochan1 "%%token  PARAMUSED\n";
   Printf.fprintf ochan1 "%%token  PARTSEL\n";
@@ -848,7 +869,7 @@ let _ =
   Printf.fprintf ochan1 "%%token  P_ENDCELLDEFINE\n";
   Printf.fprintf ochan1 "%%token  P_ENDIF\n";
   Printf.fprintf ochan1 "%%token  P_ENDPROTECT\n";
-  Printf.fprintf ochan1 "%%token PERIOD_TIMING_CHECK\n";
+  Printf.fprintf ochan1 "%%token  PERIOD_TIMING_CHECK\n";
   Printf.fprintf ochan1 "%%token  P_IFDEF\n";
   Printf.fprintf ochan1 "%%token <string> P_INCLUDE\n";
   Printf.fprintf ochan1 "%%token  P_NOSUPPRESS_FAULTS\n";
@@ -860,36 +881,39 @@ let _ =
   Printf.fprintf ochan1 "%%token  P_SUPPRESS_FAULTS\n";
   Printf.fprintf ochan1 "%%token <string> P_TIMESCALE\n";
   Printf.fprintf ochan1 "%%token  RECEIVER\n";
-  Printf.fprintf ochan1 "%%token RECOVERY_TIMING_CHECK\n";
-  Printf.fprintf ochan1 "%%token RECREM_TIMING_CHECK\n";
-  Printf.fprintf ochan1 "%%token REMOVAL_TIMING_CHECK\n";
-  Printf.fprintf ochan1 "%%token RIGHT_BRACKET\n";
-  Printf.fprintf ochan1 "%%token RIGHT_CURLY\n";
+  Printf.fprintf ochan1 "%%token  RECOVERY_TIMING_CHECK\n";
+  Printf.fprintf ochan1 "%%token  RECREM_TIMING_CHECK\n";
+  Printf.fprintf ochan1 "%%token  REMOVAL_TIMING_CHECK\n";
+  Printf.fprintf ochan1 "%%token  RIGHT_BRACKET\n";
+  Printf.fprintf ochan1 "%%token  RIGHT_CURLY\n";
   Printf.fprintf ochan1 "%%token  SCALAR\n";
   Printf.fprintf ochan1 "%%token  SENSUSED\n";
-  Printf.fprintf ochan1 "%%token SETUPHOLD_TIMING_CHECK\n";
-  Printf.fprintf ochan1 "%%token SETUP_TIMING_CHECK\n";
-  Printf.fprintf ochan1 "%%token SKEW_TIMING_CHECK\n";
+  Printf.fprintf ochan1 "%%token  SETUPHOLD_TIMING_CHECK\n";
+  Printf.fprintf ochan1 "%%token  SETUP_TIMING_CHECK\n";
+  Printf.fprintf ochan1 "%%token  SKEW_TIMING_CHECK\n";
   Printf.fprintf ochan1 "%%token  SPECIAL\n";
   Printf.fprintf ochan1 "%%token  SUBCCT\n";
   Printf.fprintf ochan1 "%%token  SUBMODULE\n";
-  Printf.fprintf ochan1 "%%token SUBTRACTION\n";
+  Printf.fprintf ochan1 "%%token  SUBTRACTION\n";
 (*
-  Printf.fprintf ochan1 "%%token SYSTEM_FUNCTION_IDENTIFIER_3 \n";
-  Printf.fprintf ochan1 "%%token SYSTEM_TASK_IDENTIFIER_3 \n";
+  Printf.fprintf ochan1 "%%token  SYSTEM_FUNCTION_IDENTIFIER_3 \n";
+  Printf.fprintf ochan1 "%%token  SYSTEM_TASK_IDENTIFIER_3 \n";
 *)
   Printf.fprintf ochan1 "%%token  TASKREF\n";
   Printf.fprintf ochan1 "%%token  TASKUSED\n";
-  Printf.fprintf ochan1 "%%token TIMESKEW_TIMING_CHECK\n";
+  Printf.fprintf ochan1 "%%token  TIMESKEW_TIMING_CHECK\n";
   Printf.fprintf ochan1 "%%token  TIMINGSPEC\n";
   Printf.fprintf ochan1 "%%token <token list> TLIST\n";
-  Printf.fprintf ochan1 "%%token TOKEN_707\n";
-  Printf.fprintf ochan1 "%%token TOKEN_708\n";
+  Printf.fprintf ochan1 "%%token  TOKEN_707\n";
+  Printf.fprintf ochan1 "%%token  TOKEN_708\n";
   Printf.fprintf ochan1 "%%token  UNKNOWN\n";
-  Printf.fprintf ochan1 "%%token WIDTH_TIMING_CHECK\n";
+  Printf.fprintf ochan1 "%%token  WIDTH_TIMING_CHECK\n";
   Printf.fprintf ochan1 "\n";
   Printf.fprintf ochan1 "%%start start\n";
-  Printf.fprintf ochan1 "%%type <token> start\n";
+  Printf.fprintf ochan1 "%%type <Grammar_sysver.token> start\n";
+  Printf.fprintf ochan1 "\n%%{ ";
+  Printf.fprintf ochan1 "open Grammar_sysver";
+  Printf.fprintf ochan1 "\n%%}\n\n";
   Printf.fprintf ochan1 "\n%%%%\n\n";
   Printf.fprintf ochan1 "start: source_text { $1 };\n\n";
   Hashtbl.iter (fun key (item,prim) -> if prim then let x = Grammar_sysver.getstr item in Printf.fprintf ochan1 "%s: %s { %s $1 };\n" key x x) ksymbols;

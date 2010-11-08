@@ -17,9 +17,9 @@
 * Based on verilator parser code by Paul Wasson, Duane Galbi and Wilson Snyder
 *******************************************************************************)
 
-open Other;;
+open Grammar_sysver;;
 
-type uptr = UPTR of (Setup.fmt -> int -> Other.token -> unit) | UNIL;;
+type uptr = UPTR of (Setup.fmt -> int -> Grammar_sysver.token -> unit) | UNIL;;
 
 type modtree = {
 tree: token;
@@ -81,3 +81,8 @@ let rec qsort = function
        let is_less x = x < pivot in
        let left, right = List.partition is_less rest in
        qsort left @ [pivot] @ qsort right
+
+let grdbg key ktok:token = begin
+Printf.printf "Grammar %s => %s\n" key (Setup.str_token ktok);
+ktok
+end
