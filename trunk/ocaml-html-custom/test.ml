@@ -129,15 +129,9 @@ output_string tc (Printf.sprintf "%.2d %s\n" (!cnt) (mygetstr2 tok));
 done;
 !sub_def
 
-let thresh = 1
-
 (* version of getstr for arguments inside { } in resulting description *)
 
-let rec mygetstr3 tok cnt len = (if (cnt = 1) then "(" else "")^(match tok with
-| ID id -> (if String.length id > thresh then ("$"^(string_of_int cnt)) else "CHAR '"^id^"'")
-| _ -> if (Hashtbl.mem reverse tok) then
-  (if snd(Hashtbl.find reverse tok) then ((mygetstr2 tok)^" $"^(string_of_int cnt)) else mygetstr2 tok)
-else (mygetstr2 tok))^(if cnt == len then ");" else ", ")
+let rec mygetstr3 id cnt len = (if (cnt = 1) then "(" else "")^id^(if cnt == len then ");" else ", ")
 
 let rec unpack write_os tok = match tok with
     | VBAR -> write_os "| "
@@ -174,14 +168,19 @@ if Hashtbl.mem rules (ID id) then
 else
     id
 
-let rec unpack2 write cnt key tok args = match tok with
+let rec unpack2 write cnt key tok (args:string list ref) = let argn = "arg"^(string_of_int cnt) in match tok with
     | VBAR -> dumpargs2 write key args; write"\n\t| "; true
     | IS_DEFINED_AS -> write ": "; args := []; true
-    | ID id -> write (if String.length id > thresh then leprechaun(if cnt >= 2 then simplify id else id)^" " else Printf.sprintf "'%s' " id); args := !args @ [tok]; String.length id > thresh
-    | TLIST lst -> pending := !pending @ [dump2 key (ID key :: IS_DEFINED_AS :: VBAR :: lst)]; write (key^" "); args := !args @ [ID key]; true
-    | DOTTED lst -> pending := !pending @ [dump2 key (ID key :: IS_DEFINED_AS :: VBAR :: ID key :: lst)]; write (key^" "); args := !args @ [ID key]; true
+    | ID id -> write ((if cnt >= 2 then argn^" = "^leprechaun(simplify id) else leprechaun(id))^" "); args := !args @ [argn]; true
+    | TLIST lst -> pending := !pending @ [dump2 key (ID key :: IS_DEFINED_AS :: VBAR :: lst)];
+        write (argn^" = "^key^" "); args := !args @ [argn]; true
+    | DOTTED lst -> pending := !pending @ [dump2 key (ID key :: IS_DEFINED_AS :: VBAR :: ID key :: lst)];
+        write (argn^" = "^key^" "); args := !args @ [argn]; true
     | RANGE(left,right) -> false
-    | _ -> write ((mygetstr2 tok)^" "); args := !args @ [tok]; true
+    | _ -> if ( if (Hashtbl.mem reverse tok) then (let (x,p) = Hashtbl.find reverse tok in p) else false ) then
+(  let other = mygetstr2 tok in write (argn^" = "^other^" "); args := !args @ [other^" "^argn])
+else
+( let other = mygetstr2 tok in write (other^" "); args := !args @ [other]); true 
 
 and dump2 key0 lst =
 let key = leprechaun key0 and buffer = ref "" and cnt = ref 0 and args = ref [] and retval = ref true in
