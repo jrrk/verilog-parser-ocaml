@@ -172,7 +172,8 @@ let rec unpack2 write cnt key tok (args:string list ref) = let argn = "arg"^(str
     | VBAR -> dumpargs2 write key args; write"\n\t| "; true
     | IS_DEFINED_AS -> write ": "; args := []; true
     | ID id -> write ((if cnt >= 2 then argn^" = "^leprechaun(simplify id) else leprechaun(id))^" "); args := !args @ [argn]; true
-    | TLIST lst -> pending := !pending @ [dump2 key (ID key :: IS_DEFINED_AS :: VBAR :: lst)];
+    | TLIST lst -> let rslt = dump2 key (ID key :: IS_DEFINED_AS :: VBAR :: lst) in 
+        if isalpha rslt.[0] then pending := !pending @ ["%inline "^rslt] else pending := !pending @ [rslt];
         write (argn^" = "^key^" "); args := !args @ [argn]; true
     | DOTTED lst -> pending := !pending @ [dump2 key (ID key :: IS_DEFINED_AS :: VBAR :: ID key :: lst)];
         write (argn^" = "^key^" "); args := !args @ [argn]; true
