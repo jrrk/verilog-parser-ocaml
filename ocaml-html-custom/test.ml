@@ -81,8 +81,8 @@ let rec mygetstr tok = match tok with
 | RIGHT_CURLY -> "}"
 | SUBTRACTION -> "-"
 | RANGE(left,right) -> Format.sprintf "\"%s\" .. \"%s\"" (mygetstr left) (mygetstr right)
-| TOKEN_BEGIN_COMMENT -> "'/' '*' "
-| TOKEN_END_COMMENT -> "'*' '/' "
+| BEGIN_COMMENT -> "'/' '*' "
+| END_COMMENT -> "'*' '/' "
 | TLIST lst | DOTTED lst -> let concat = ref "" in List.iter (fun item -> concat := !concat ^ " " ^ mygetstr item) lst; !concat
 | _ -> if (Hashtbl.mem reverse tok) then (let (x,p) = Hashtbl.find reverse tok in x) else (Grammar_sysver.getstr tok)
 
@@ -175,8 +175,10 @@ let rec unpack2 write cnt key tok (args:string list ref) = let argn = "arg"^(str
     | TLIST lst -> let rslt = dump2 key (ID key :: IS_DEFINED_AS :: VBAR :: lst) in 
         if isalpha rslt.[0] then pending := !pending @ ["%inline "^rslt] else pending := !pending @ [rslt];
         write (argn^" = "^key^" "); args := !args @ [argn]; true
-    | DOTTED lst -> pending := !pending @ [dump2 key (ID key :: IS_DEFINED_AS :: VBAR :: ID key :: lst)];
-        write (argn^" = "^key^" "); args := !args @ [argn]; true
+    | DOTTED lst -> ( match List.hd lst with 
+        | ID "attribute_instance" -> ()
+        | _ -> pending := !pending @ [dump2 key (ID key :: IS_DEFINED_AS :: VBAR :: ID key :: lst)];
+        write (argn^" = "^key^" "); args := !args @ [argn]); true
     | RANGE(left,right) -> false
     | _ -> if ( if (Hashtbl.mem reverse tok) then (let (x,p) = Hashtbl.find reverse tok in p) else false ) then
 (  let other = mygetstr2 tok in write (argn^" = "^other^" "); args := !args @ [other^" "^argn])
@@ -215,12 +217,10 @@ let _ = List.iter (fun (str,key,prim) -> enter_keyword str key prim)
 (  "zA", ZA, false);
 *)
 ( "empty", EMPTY, false);
-( "c_identifier_2", C_IDENTIFIER_2 "", true);
-( "c_identifier_3_4", C_IDENTIFIER_3_2 "", true);
-( "simple_identifier_2", SIMPLE_IDENTIFIER_2 "", true); 
-( "simple_identifier_3_4", SIMPLE_IDENTIFIER_3_2 "", true);
-( "system_task_identifier_3", SYSTEM_TASK_IDENTIFIER_3 "", true);
-( "system_function_identifier_3", SYSTEM_FUNCTION_IDENTIFIER_3 "", true);
+( "c_identifier", C_IDENTIFIER "", true);
+( "simple_identifier", SIMPLE_IDENTIFIER "", true); 
+( "system_task_identifier", SYSTEM_TASK_IDENTIFIER "", true);
+( "system_function_identifier", SYSTEM_FUNCTION_IDENTIFIER "", true);
 
 ( "z_digit", Z_DIGIT "", true);
 ( "decimal_base", DECIMAL_BASE "", true);
@@ -239,9 +239,9 @@ let _ = List.iter (fun (str,key,prim) -> enter_keyword str key prim)
 ( "binary_base_3", BINARY_BASE_3 "", true);
 ( "octal_base_3", OCTAL_BASE_3 "", true);
 ( "hex_base_3", HEX_BASE_3 "", true);
+( "unsigned_number", UNSIGNED_NUMBER "", true);
 
-(* bodge *)
-(  "type_declaration_identifier", TYPE_DECLARATION_IDENTIFIER "", true);
+( "name_of_udp_instance", NAME_OF_UDP_INSTANCE "", true); (* hack *)
 
 (  "file_path", FILE_PATH, false);
 (  "space", SPACE, false);
@@ -549,69 +549,69 @@ let _ = List.iter (fun (str,key,prim) -> enter_keyword str key prim)
 (  "^~"			, (P_XNOR), false);
 (  "~^"			, (P_NXOR), false);
 (  "^="			, (P_XOREQ), false);
-("[*->", TOKEN_349, false);
-("|->", TOKEN_327, false);
-("\"", TOKEN_695, false);
+("[*->", LBRACK_STAR_DASH_GT, false);
+("|->", VBAR_DASH_GT, false);
+("\"", DOUBLE_QUOTES, false);
 ("::=", IS_DEFINED_AS, false);
-("->>", TOKEN_504, false);
-("0", TOKEN_436, false);
-("1", TOKEN_435, false);
-("2", TOKEN_687, false);
-("3", TOKEN_688, false);
-("4", TOKEN_689, false);
-("5", TOKEN_690, false);
-("6", TOKEN_691, false);
-("7", TOKEN_639, false);
-("8", TOKEN_272, false);
-("9", TOKEN_266, false);
-("1'B0", TOKEN_431, false);
-("1'B1", TOKEN_432, false);
-("'b0", TOKEN_595, false);
-("'b1", TOKEN_596, false);
-("\\", TOKEN_718, false);
-("_", TOKEN_661, false);
-("1'BX", TOKEN_434, false);
-("1'Bx", TOKEN_433, false);
-("9_", TOKEN_713, false);
-("1'b0", TOKEN_427, false);
-("1'b1", TOKEN_428, false);
-("=?=", TOKEN_649, false);
-("1'bX", TOKEN_430, false);
-("[*", TOKEN_346, false);
-("@*", TOKEN_500, false);
-("1'bx", TOKEN_429, false);
-("\"DPI\"", TOKEN_287, false);
-("'0", TOKEN_631, false);
-("'1", TOKEN_632, false);
-("(*", TOKEN_697, false);
-("1364-2001", TOKEN_46, false);
-("'X", TOKEN_636, false);
-("'Z", TOKEN_634, false);
-("\n", TOKEN_706, false);
-("*)", TOKEN_699, false);
-("|=>", TOKEN_328, false);
-("*/", TOKEN_END_COMMENT, false);
-("!?=", TOKEN_650, false);
-("++", TOKEN_652, false);
-("'x", TOKEN_635, false);
-("'z", TOKEN_633, false);
-("]{", TOKEN_724, false);
-("9_$", TOKEN_723, false);
-("[*=", TOKEN_348, false);
-("|=", TOKEN_471, false);
-("--", TOKEN_653, false);
-("(*)", TOKEN_501, false);
+("->>", DASH_GT_GT, false);
+("0", TOKEN_ZERO, false);
+("1", TOKEN_ONE, false);
+("2", TOKEN_TWO, false);
+("3", TOKEN_THREE, false);
+("4", TOKEN_FOUR, false);
+("5", TOKEN_FIVE, false);
+("6", TOKEN_SIX, false);
+("7", TOKEN_SEVEN, false);
+("8", TOKEN_EIGHT, false);
+("9", TOKEN_NINE, false);
+("1'B0", TOKEN_FALSE1, false);
+("1'B1", TOKEN_TRUE1, false);
+("'b0", TOKEN_FALSE, false);
+("'b1", TOKEN_TRUE, false);
+("\\", BACKSLASH, false);
+("_", UNDERSCORE, false);
+("1'BX", TOKEN_X0, false);
+("1'Bx", TOKEN_X1, false);
+("9_", TOKEN_9_, false);
+("1'b0", TOKEN_FALSE2, false);
+("1'b1", TOKEN_TRUE2, false);
+("=?=", EQUALS_QUERY_EQUALS, false);
+("1'bX", TOKEN_X2, false);
+("[*", LBRACK_STAR, false);
+("@*", AT_STAR, false);
+("1'bx", TOKEN_X3, false);
+("\"DPI\"", TOKEN_DPI, false);
+("'0", TOKEN_QUOTE_FALSE, false);
+("'1", TOKEN_QUOTE_TRUE, false);
+("(*", TOKEN_LPAREN_STAR, false);
+("1364-2001", TOKEN_1364_2001, false);
+("'X", TOKEN_QUOTE_X1, false);
+("'Z", TOKEN_QUOTE_Z1, false);
+("\n", TOKEN_NEWLINE, false);
+("*)", TOKEN_STAR_RPAREN, false);
+("|=>", TOKEN_PLING_EQUALS_GT, false);
+("*/", END_COMMENT, false);
+("!?=", TOKEN_PLING_QUERY_EQUALS, false);
+("++", TOKEN_PLUS_PLUS, false);
+("'x", TOKEN_QUOTE_X2, false);
+("'z", TOKEN_QUOTE_Z2, false);
+("]{", TOKEN_RBRACK_LCURLY, false);
+("9_$", TOKEN_9_DOLLAR, false);
+("[*=", TOKEN_LBRACK_STAR_EQUALS, false);
+("|=", TOKEN_VBAR_EQUALS, false);
+("--", TOKEN_DASH_DASH, false);
+("(*)", TOKEN_LPAREN_STAR_RPAREN, false);
 ("-incdir", INCDIR, false);
-("/*", TOKEN_BEGIN_COMMENT, false);
-("//", TOKEN_704, false);
-("||", TOKEN_651, false);
-("01", TOKEN_587, false);
-("{any_ASCII_character_except_white_space}", TOKEN_719, false);
-("~|", TOKEN_648, false);
-("10", TOKEN_588, false);
-("11", TOKEN_176, false);
-("'B0", TOKEN_597, false);
-("'B1", TOKEN_598, false);
+("/*", BEGIN_COMMENT, false);
+("//", TOKEN_SLASH_SLASH, false);
+("||", TOKEN_VBAR_VBAR, false);
+("01", TOKEN_EDGE01, false);
+("{any_ASCII_character_except_white_space}", TOKEN_ANY_ASCII, false);
+("~|", TILDE_VBAR, false);
+("10", TOKEN_EDGE_10, false);
+("11", TOKEN_EDGE_11, false);
+("'B0", TOKEN_B0, false);
+("'B1", TOKEN_B1, false);
 ( "&" , (AMPERSAND), false);
 ( "@" , (AT), false);
 ( "^" , (CARET), false);
@@ -640,7 +640,7 @@ let _ = List.iter (fun (str,key,prim) -> enter_keyword str key prim)
 ( "|" , (VBAR), false);
 ( "$" , (DOLLAR), false);
 ( "'" , (SQUOTE), false);
-( "\\n", TOKEN_601, false)]
+( "\\n", TOKEN_ESCAPED_NEWLINE, false)]
 
 
 let subst1 sub1 obuf outix = begin match sub1 with
@@ -763,7 +763,9 @@ let mywrite_ ~dtd ~xhtml write_os doc =
   try
     List.iter trav doc;
     write_os "\n";
-    Hashtbl.iter (fun key lst -> match key with ID id -> write_os (dump2 id lst) | _ -> ()) rules;
+    Hashtbl.iter (fun key lst -> match key with ID id ->
+      write_os ((if List.mem VBAR lst then "" else "%inline ")^(dump2 id lst))
+      | _ -> ()) rules;
     List.iter (fun item -> write_os item) !pending;
     write_os "// END_OF_FILE\n"
   with
@@ -904,8 +906,6 @@ let _ =
   Printf.fprintf ochan1 "%%token  TIMESKEW_TIMING_CHECK\n";
   Printf.fprintf ochan1 "%%token  TIMINGSPEC\n";
   Printf.fprintf ochan1 "%%token <token list> TLIST\n";
-  Printf.fprintf ochan1 "%%token  TOKEN_707\n";
-  Printf.fprintf ochan1 "%%token  TOKEN_708\n";
   Printf.fprintf ochan1 "%%token  UNKNOWN\n";
   Printf.fprintf ochan1 "%%token  WIDTH_TIMING_CHECK\n";
   Printf.fprintf ochan1 "\n";
@@ -915,7 +915,7 @@ let _ =
   Printf.fprintf ochan1 "open Grammar_sysver";
   Printf.fprintf ochan1 "\n%%}\n\n";
   Printf.fprintf ochan1 "\n%%%%\n\n";
-  Printf.fprintf ochan1 "start: source_text { $1 };\n\n";
+  Printf.fprintf ochan1 "start: arg1 = source_text { arg1 };\n\n";
   Hashtbl.iter (fun key (item,prim) -> if prim then let x = Grammar_sysver.getstr item in Printf.fprintf ochan1 "%s: %s { %s $1 };\n" key x x) ksymbols;
   with_out_obj_channel (new output_channel ochan1) (fun ch -> mywrite ch html1);
   close_in chan1;

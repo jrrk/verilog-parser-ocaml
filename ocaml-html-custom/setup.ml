@@ -73,7 +73,7 @@ let one_elm = TokSet.add EMPTY TokSet.empty;;
 
 let rec str_token (e:token) = match e with
 | ID id -> id
-| SIMPLE_IDENTIFIER_2 id -> id
+| SIMPLE_IDENTIFIER id -> id
 | RANGE (INT hi,INT lo) -> "[" ^ (string_of_int hi) ^ ":" ^ (string_of_int lo) ^ "] "
 | RANGE (hi, lo) -> "[" ^ (str_token hi) ^ ":" ^ (str_token lo) ^ "] "
 | TRIPLE (DOT, inner, tok) -> "."^(str_token inner)^"("^(str_token tok)^")"

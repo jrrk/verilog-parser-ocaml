@@ -273,7 +273,7 @@ if Hashtbl.mem ksymbols word then hlog lexbuf (Hashtbl.find ksymbols word) else 
 | digit*'\''['o' 'O']['0'-'7' 'x' 'X' 'z' 'Z' '?' '_']+ as onum { hlog lexbuf (OCTNUM onum ) }
 | digit*'\''['d' 'D']digit+ as dnum { hlog lexbuf (DECNUM dnum ) }
 | digit*'\''['h' 'H']['0'-'9' 'A'-'F' 'a'-'f' 'x' 'X' 'z' 'Z' '?' '_']+ as hnum { hlog lexbuf (HEXNUM hnum ) }
-| digit+ as inum { hlog lexbuf (INTNUM inum ) }
+| digit+ as inum { hlog lexbuf (UNSIGNED_NUMBER inum ) }
 | '\"'anything_but_quote*'\"' as asciinum { hlog lexbuf (ASCNUM asciinum ) }
 | "`timescale" anything_but_newline+ as preproc { hlog lexbuf (P_TIMESCALE preproc) }
 | '`'ident ident_num* as presym {
@@ -281,7 +281,7 @@ if Hashtbl.mem ksymbols word then hlog lexbuf (Hashtbl.find ksymbols word) else 
   else hlog lexbuf (PREPROC presym)
 }
 | ident ident_num* as word {
-if Hashtbl.mem ksymbols word then hlog lexbuf (Hashtbl.find ksymbols word) else hlog lexbuf (SIMPLE_IDENTIFIER_2 word)
+if Hashtbl.mem ksymbols word then hlog lexbuf (Hashtbl.find ksymbols word) else hlog lexbuf (SIMPLE_IDENTIFIER word)
 }
   | [' ' '\t' ]		{token lexbuf }
   | ['\r' '\n' ]	{token lexbuf }
