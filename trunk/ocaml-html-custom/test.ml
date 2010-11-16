@@ -789,26 +789,6 @@ let _ =
 
   Hashtbl.iter (fun key (item,(prim:bool)) -> Hashtbl.add reverse item ("'"^key^"'", prim);
     Printf.fprintf ochan1 "%%token%s %s // %s\n" (if prim then "<string>" else "") (Grammar_sysver.getstr item) key) ksymbols;
-(*
-  Printf.fprintf ochan1 "%%token <string> X\n";
-  Printf.fprintf ochan1 "%%token <string> x\n";
-  Printf.fprintf ochan1 "%%token <string> R\n";
-  Printf.fprintf ochan1 "%%token <string> r\n";
-  Printf.fprintf ochan1 "%%token <string> f\n";
-  Printf.fprintf ochan1 "%%token <string> P\n";
-  Printf.fprintf ochan1 "%%token <string> p\n";
-  Printf.fprintf ochan1 "%%token <string> N\n";
-  Printf.fprintf ochan1 "%%token <string> n\n";
-  Printf.fprintf ochan1 "%%token <string> Z\n";
-  Printf.fprintf ochan1 "%%token <string> z\n";
-  Printf.fprintf ochan1 "%%token <string> S\n";
-  Printf.fprintf ochan1 "%%token <string> s\n";
-  Printf.fprintf ochan1 "%%token <string> a b c d e f A B C D E F\n";
-  Printf.fprintf ochan1 "%%token <string> H O d e a\n";
-  Printf.fprintf ochan1 "%%token <string> FILE_PATH\n";
-  Printf.fprintf ochan1 "%%token <string> SPACE TAB NEWLINE EOF\n";
-  Printf.fprintf ochan1 "%%token <string> ZA Z_ Z0\n";
-*)
   Printf.fprintf ochan1 "%%token <token> MS\n";
   Printf.fprintf ochan1 "%%token <token> US\n";
   Printf.fprintf ochan1 "%%token <token> NS\n";
@@ -897,10 +877,6 @@ let _ =
   Printf.fprintf ochan1 "%%token  SUBCCT\n";
   Printf.fprintf ochan1 "%%token  SUBMODULE\n";
   Printf.fprintf ochan1 "%%token  SUBTRACTION\n";
-(*
-  Printf.fprintf ochan1 "%%token  SYSTEM_FUNCTION_IDENTIFIER_3 \n";
-  Printf.fprintf ochan1 "%%token  SYSTEM_TASK_IDENTIFIER_3 \n";
-*)
   Printf.fprintf ochan1 "%%token  TASKREF\n";
   Printf.fprintf ochan1 "%%token  TASKUSED\n";
   Printf.fprintf ochan1 "%%token  TIMESKEW_TIMING_CHECK\n";
