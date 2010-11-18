@@ -86,7 +86,7 @@ let rec str_token (e:token) = match e with
 | BUFIF arg -> arg
 | BINNUM arg -> "BINNUM "^arg
 | ASCNUM arg -> "ASCNUM "^arg
-| EDGE arg -> Printf.sprintf "EDGE %c%c" (fst arg) (snd arg)
+| TEDGE arg -> Printf.sprintf "EDGE %c%c" (fst arg) (snd arg)
 | SCALAR -> "scalar"
 | WIRE -> "wire"
 | REG -> "reg"
