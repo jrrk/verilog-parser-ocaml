@@ -952,9 +952,9 @@ let rec endscan2 indent mykey =
 	Printf.fprintf (fst out_chan) "Checking %s: " mykey );
 	if (Hashtbl.mem pending mykey) then
           begin
-	  if (Globals.verbose > 0) then Printf.fprintf (fst out_chan) "Module %s still postponed\n" mykey;
+	  if (Globals.verbose >= 0) then Printf.fprintf (fst out_chan) "Module %s still postponed\n" mykey;
 	  List.iter (fun key -> if (Hashtbl.mem pending key) then endscan2 (indent+2) key
-          else if (Globals.verbose > 0) then Printf.fprintf (fst out_chan) "%s " key) ((Hashtbl.find pending mykey).Globals.unresolved);
+          else if (Globals.verbose >= 0) then Printf.fprintf (fst out_chan) "%s " key) ((Hashtbl.find pending mykey).Globals.unresolved);
  	  output_char (fst out_chan) '\n';
           end
 	end

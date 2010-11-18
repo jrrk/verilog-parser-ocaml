@@ -20,19 +20,35 @@
 // Generic void
 %token EMPTY
 // Generic double
-%token<token * token > DOUBLE
+%token<token*token> DOUBLE
 // Generic triple
-%token<token * token * token > TRIPLE
+%token<token*token*token> TRIPLE
 // Generic quadruple
-%token<token * token * token * token > QUADRUPLE
+%token<token*token*token*token> QUADRUPLE
 // Generic quintuple
-%token<token * token * token * token * token > QUINTUPLE
+%token<token*token*token*token*token> QUINTUPLE
 // Generic sextuple
-%token<token * token * token * token * token * token > SEXTUPLE
+%token<token*token*token*token*token*token> SEXTUPLE
 // Generic septuple
-%token<token * token * token * token * token * token * token > SEPTUPLE
+%token<token*token*token*token*token*token*token> SEPTUPLE
 // Generic octuple
-%token<token * token * token * token * token * token * token * token> OCTUPLE
+%token<token*token*token*token*token*token*token*token> OCTUPLE
+%token<token*token*token*token*token*token*token*token*token> NONUPLE
+%token<token*token*token*token*token*token*token*token*token*token> DECUPLE
+%token<token*token*token*token*token*token*token*token*token*token*token> UNDECUPLE
+%token<token*token*token*token*token*token*token*token*token*token*token*token> DUODECUPLE
+%token<token*token*token*token*token*token*token*token*token*token*token*token*token*token> QUATTUORDECUPLE
+%token<token*token*token*token*token*token*token*token*token*token*token*token*token*token*token> QUINDECUPLE
+%token<token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token> SEXDECUPLE
+%token<token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token> SEPTENDECUPLE
+%token<token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token> OCTODECUPLE
+%token<token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token> NOVEMDECUPLE
+%token <token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token> VIGENUPLE
+%token <token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token> UNVIGENUPLE
+%token <token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token> DUOVIGENUPLE
+%token <token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token> TREVIGENUPLE
+%token <token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token> QUATTUORVIGENUPLE
+%token <token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token*token> QUINVIGENUPLE
 
 // non-keyword tokens
 %token BITSEL
@@ -110,7 +126,7 @@
 // for {a,b,c}
 %token CONCAT
 // for tables
-%token<char*char> EDGE
+%token<char*char> TEDGE
 // Generic lexer tokens, for example a number
 // IEEE: real_number
 %token<float>		FLOATNUM	// "FLOATING-POINT NUMBER"
@@ -129,7 +145,6 @@
 %token<string>		HEXNUM	// "HEXADECIMAL NUMBER"
 // IEEE: string_literal
 %token<string>		ASCNUM	// "ASCII NUMBER / STRING"
-%token			TIMINGSPEC	// "TIMING SPEC ELEMENT"
 
 %token<char> ILLEGAL
 %token DOLLAR
@@ -283,6 +298,35 @@
 %token D_WARNING	// "$warning"
 %token D_WRITE		// "$write"
 
+%token NOCHANGE // $nochange
+%token D_HOLD // $hold
+%token D_PERIOD // $period
+%token D_RECOVERY // $recovery
+%token D_RECREM // $recrem
+%token D_REMOVAL // $removal
+%token D_SETUPHOLD // $setuphold
+%token D_SETUP // $setup
+%token D_SKEW // $skew
+%token D_TIMESKEW // $timeskew
+%token D_WIDTH // $width
+%token SHOWCANCELLED // showcancelled
+%token NOSHOWCANCELLED // noshowcancelled
+%token SPECPARAM // specparam
+%token IF_NONE // ifnone
+%token TILDE_VBAR // ~|
+%token TOKEN_EDGE01 // 01
+%token TOKEN_EDGE_10 // 10
+%token TOKEN_ZERO // 0
+%token TOKEN_ONE // 1
+%token PATHPULSE // PATHPULSE$
+%token FULLSKEW // $fullskew
+%token PULSESTYLE_ONDETECT // pulsestyle_ondetect
+%token PULSESTYLE_ONEVENT // pulsestyle_onevent
+%token EDGE // edge
+
+%token<string> Z_OR_X // z_or_x
+
+%token P_NXOR // ~^
 %token P_OROR		// "||"
 %token P_ANDAND		// "&&"
 %token P_NOR		// "~|"
@@ -474,8 +518,6 @@
 %type <token> sigAttrListE
 %type <token> sigId
 %type <token> signingE
-%type <token> Junk
-%type <token list> JunkList
 %type <token> start
 %type <token> stateCaseForIf
 %type <token> stmt
@@ -498,6 +540,7 @@
 %type <token>      varReg
 %type <token list> vrdList
 %type <token> identifier
+%type <token list> specify_block
 
 %%
 
@@ -725,7 +768,7 @@ modItemListE:
 modItem:
 		modOrGenItem 				{ $1 }
 	|	generateRegion				{ $1 }
-	|	SPECIFY JunkListE ENDSPECIFY	{ DOUBLE (SPECIFY, TLIST $2 ) }
+	|	SPECIFY specify_block ENDSPECIFY	{ DOUBLE (SPECIFY, TLIST $2 ) }
 	;
 
 // IEEE: generate_region
@@ -1594,8 +1637,8 @@ tinList:	tin					{ [ $1 ] }
 tin:		INTNUM					{ BINNUM $1 }
 	|	TIMES					{ TIMES }
 	|	QUERY					{ QUERY }
-	|	LPAREN edge2 RPAREN			{ EDGE((fst $2),(snd $2)) }
-	|	LPAREN edge1 edge1 RPAREN		{ EDGE(($2),($2)) }
+	|	LPAREN edge2 RPAREN			{ TEDGE((fst $2),(snd $2)) }
+	|	LPAREN edge1 edge1 RPAREN		{ TEDGE(($2),($2)) }
 	|	ID					{ BINNUM $1 }
 	;
 
@@ -1619,147 +1662,6 @@ tregout:	INTNUM					{ BINNUM $1 }
 	|	MINUS					{ MINUS }
 	|	QUERY					{ QUERY }
 	|	ID					{ BINNUM $1 }
-	;
-
-//************************************************
-// Specify
-
-JunkListE:	/* Empty */ 				{ [] } /* ignored */
-	|	JunkList				{ $1 } /* ignored */
-	;
-
-JunkList:	Junk	 				{ [ $1 ] } /* ignored */
-	|	Junk JunkList 				{ if (List.mem $1 $2 == false) then $1 :: $2 else $2 }
-	;
-
-Junk:		identifier 				{ $1 }
-	|	INTNUM 					{ EMPTY }
-	|	FLOATNUM 				{ EMPTY }
-	|	ASSIGNMENT				{ EMPTY }
-	|	DLYASSIGNMENT				{ EMPTY }
-	|	MODINST					{ EMPTY }
-	|	PRIMINST				{ EMPTY }
-	|	MEMORY					{ EMPTY }
-	|	BITSEL					{ EMPTY }
-	|	EMPTY					{ EMPTY }
-	|	EOF					{ EMPTY }
-	|	INT					{ EMPTY }
-	|	ILLEGAL					{ EMPTY }
-	|	PARTSEL					{ EMPTY }
-	|	RANGE					{ EMPTY }
-	|	IOPORT					{ EMPTY }
-	|	SUBCCT					{ EMPTY }
-	|	SUBMODULE				{ EMPTY }
-	|	IMPLICIT				{ EMPTY }
-	|	BIDIR					{ EMPTY }
-	|	DRIVER					{ EMPTY }
-	|	RECEIVER				{ EMPTY }
-	|	EDGE					{ EMPTY }
-	|	SPECIAL					{ EMPTY }
-	|	PARAMUSED				{ EMPTY }
-	|	TASKUSED				{ EMPTY }
-	|	FUNCUSED				{ EMPTY }
-	|	SENSUSED				{ EMPTY }
-	|	VOID					{ EMPTY }
-	|	SCALAR					{ EMPTY }
-	|	DOUBLE					{ EMPTY }
-	|	TRIPLE					{ EMPTY }
-	|	QUADRUPLE				{ EMPTY }
-	|	QUINTUPLE				{ EMPTY }
-	|	SEXTUPLE				{ EMPTY }
-	|	SEPTUPLE				{ EMPTY }
-	|	OCTUPLE					{ EMPTY }
-	|	CASECOND				{ EMPTY }
-	|	CONCAT					{ EMPTY }
-	|	ENDLABEL				{ EMPTY }
-	|	GENCASE					{ EMPTY }
-	|	GENCASECOND				{ EMPTY }
-	|	MINTYPMAX				{ EMPTY }
-	|	PLING					{ EMPTY }
-	|	FUNCREF					{ EMPTY }
-	|	TASKREF					{ EMPTY }
-	|	UNKNOWN					{ EMPTY }
-	|	NAMED					{ EMPTY }
-	|	CELLPIN					{ EMPTY }
-	|	DOTTED					{ EMPTY }
-	|	TLIST					{ EMPTY }
-	|	AMPERSAND				{ EMPTY }
-	|	LPAREN					{ EMPTY }
-	|	RPAREN					{ EMPTY }
-	|	TIMES					{ EMPTY }
-	|	DIVIDE					{ EMPTY }
-	|	MODULO					{ EMPTY }
-	|	PLUS					{ EMPTY }
-	|	MINUS					{ EMPTY }
-	|	COMMA					{ EMPTY }
-	|	COLON					{ EMPTY }
-	|	SEMICOLON				{ EMPTY }
-	|	DOLLAR					{ EMPTY }
-	|	EQUALS					{ EMPTY }
-	|	GREATER					{ EMPTY }
-	|	LESS					{ EMPTY }
-	|	QUERY					{ EMPTY }
-	|	CARET					{ EMPTY }
-	|	LCURLY					{ EMPTY }
-	|	RCURLY					{ EMPTY }
-	|	LBRACK					{ EMPTY }
-	|	RBRACK					{ EMPTY }
-	|	VBAR					{ EMPTY }
-	|	TILDE					{ EMPTY }
-	|	AT					{ EMPTY }
-	|	IF					{ EMPTY }
-	|	NEGEDGE					{ EMPTY }
-	|	POSEDGE					{ EMPTY }
-	|	ASCNUM					{ EMPTY }
-	|	TIMINGSPEC				{ EMPTY }
-	|	P_ANDAND				{ EMPTY }
-	|	P_GTE					{ EMPTY }
-	|	P_LTE					{ EMPTY }
-	|	P_EQUAL					{ EMPTY }
-	|	P_NOTEQUAL				{ EMPTY }
-	|	P_CASEEQUAL				{ EMPTY }
-	|	P_CASENOTEQUAL				{ EMPTY }
-	|	P_WILDEQUAL				{ EMPTY }
-	|	P_WILDNOTEQUAL				{ EMPTY }
-	|	P_XNOR					{ EMPTY }
-	|	P_NOR					{ EMPTY }
-	|	P_NAND					{ EMPTY }
-	|	P_OROR					{ EMPTY }
-	|	P_SLEFT					{ EMPTY }
-	|	P_SRIGHT				{ EMPTY }
-	|	P_SSRIGHT				{ EMPTY }
-	|	P_PLUSCOLON				{ EMPTY }
-	|	P_MINUSCOLON				{ EMPTY }
-	|	P_POW					{ EMPTY }
-	|	P_ORMINUSGT				{ EMPTY }
-	|	P_OREQGT				{ EMPTY }
-	|	P_EQGT					{ EMPTY }
-	|	P_ASTGT					{ EMPTY }
-	|	P_ANDANDAND				{ EMPTY }
-	|	P_POUNDPOUND				{ EMPTY }
-	|	P_DOTSTAR				{ EMPTY }
-	|	P_ATAT					{ EMPTY }
-	|	P_COLONCOLON				{ EMPTY }
-	|	P_COLONEQ				{ EMPTY }
-	|	P_COLONDIV				{ EMPTY }
-	|	P_PLUSEQ				{ EMPTY }
-	|	P_MINUSEQ				{ EMPTY }
-	|	P_TIMESEQ				{ EMPTY }
-	|	P_DIVEQ					{ EMPTY }
-	|	P_MODEQ					{ EMPTY }
-	|	P_ANDEQ					{ EMPTY }
-	|	P_OREQ					{ EMPTY }
-	|	P_XOREQ					{ EMPTY }
-	|	P_SLEFTEQ				{ EMPTY }
-	|	P_SRIGHTEQ				{ EMPTY }
-	|	P_SSRIGHTEQ				{ EMPTY }
-	|	P_MINUSGT				{ EMPTY }
-	|	P_DEFINE				{ EMPTY }
-	|	P_IFDEF					{ EMPTY }
-	|	P_INCLUDE				{ EMPTY }
-	|	P_ELSE					{ EMPTY }
-	|	P_ENDIF					{ EMPTY }
-	|	error 					{ EMPTY }
 	;
 
 //************************************************
@@ -1870,5 +1772,663 @@ AssertStmt:
 	;
 
 //**********************************************************************
+// Specify blocks
 
-%%
+specify_block : {  [] }
+        | specify_block specify_item { $1 @ [$2] }
+        ;
+
+specify_item : arg2 = specparam_declaration { (arg2) }
+	| arg4 = pulsestyle_declaration { (arg4) }
+	| arg6 = showcancelled_declaration { (arg6) }
+	| arg8 = path_declaration { (arg8) }
+	| arg10 = system_timing_check { (arg10) }
+	;
+
+system_timing_check : arg2 = d_setup_timing_check { (arg2) }
+	| arg4 = d_hold_timing_check { (arg4) }
+	| arg6 = d_setuphold_timing_check { (arg6) }
+	| arg8 = d_recovery_timing_check { (arg8) }
+	| arg10 = d_removal_timing_check { (arg10) }
+	| arg12 = d_recrem_timing_check { (arg12) }
+	| arg14 = d_skew_timing_check { (arg14) }
+	| arg16 = d_timeskew_timing_check { (arg16) }
+	| arg18 = d_fullskew_timing_check { (arg18) }
+	| arg20 = d_period_timing_check { (arg20) }
+	| arg22 = d_width_timing_check { (arg22) }
+	| arg24 = d_nochange_timing_check { (arg24) }
+	;
+
+unary_module_path_operator : PLING { (PLING) }
+	| TILDE { (TILDE) }
+	| AMPERSAND { (AMPERSAND) }
+	| P_NAND { (P_NAND) }
+	| VBAR { (VBAR) }
+	| TILDE_VBAR { (TILDE_VBAR) }
+	| CARET { (CARET) }
+	| P_NXOR { (P_NXOR) }
+	| P_XNOR { (P_XNOR) }
+	;
+
+module_path_primary : arg2 = number { (arg2) }
+	| arg4 = identifier { (arg4) }
+	| arg6 = module_path_concatenation { (arg6) }
+	| arg8 = module_path_multiple_concatenation { (arg8) }
+/*
+	| arg10 = function_call { (arg10) }
+	| arg12 = system_function_call { (arg12) }
+	| arg14 = constant_function_call { (arg14) }
+*/
+	| LPAREN arg17 = module_path_mintypmax_expression RPAREN { TRIPLE(LPAREN, arg17, RPAREN) }
+	;
+
+timing_check_condition : arg2 = scalar_timing_check_condition { (arg2) }
+	| LPAREN arg5 = scalar_timing_check_condition RPAREN { TRIPLE(LPAREN, arg5, RPAREN) }
+	;
+
+specify_terminal_descriptor : arg2 = specify_input_terminal_descriptor { (arg2) }
+	| arg4 = specify_output_terminal_descriptor { (arg4) }
+	;
+
+polarity_operator : PLUS { (PLUS) }
+	| MINUS { (MINUS) }
+	;
+
+list_of_path_delay_expressions : arg2 = path_delay_expression { (arg2) }
+	| arg4 = path_delay_expression COMMA arg6 = path_delay_expression { TRIPLE(arg4, COMMA, arg6) }
+	| arg8 = path_delay_expression COMMA arg10 = path_delay_expression COMMA arg12 = path_delay_expression { QUINTUPLE(arg8, COMMA, arg10, COMMA, arg12) }
+	| arg14 = path_delay_expression COMMA arg16 = path_delay_expression COMMA arg18 = path_delay_expression COMMA arg20 = path_delay_expression COMMA arg22 = path_delay_expression COMMA arg24 = path_delay_expression { UNDECUPLE(arg14, COMMA, arg16, COMMA, arg18, COMMA, arg20, COMMA, arg22, COMMA, arg24) }
+	| arg26 = path_delay_expression COMMA arg28 = path_delay_expression COMMA arg30 = path_delay_expression COMMA arg32 = path_delay_expression COMMA arg34 = path_delay_expression COMMA arg36 = path_delay_expression COMMA arg38 = path_delay_expression COMMA arg40 = path_delay_expression COMMA arg42 = path_delay_expression COMMA arg44 = path_delay_expression COMMA arg46 = path_delay_expression COMMA arg48 = path_delay_expression { TREVIGENUPLE(arg26, COMMA, arg28, COMMA, arg30, COMMA, arg32, COMMA, arg34, COMMA, arg36, COMMA, arg38, COMMA, arg40, COMMA, arg42, COMMA, arg44, COMMA, arg46, COMMA, arg48) }
+	;
+
+constant_range_expression : arg2 = constant_expression { (arg2) }
+	| arg4 = constant_expression COLON arg6 = constant_expression { TRIPLE(arg4, COLON, arg6) }
+	| arg8 = constant_expression P_PLUSCOLON arg10 = constant_expression { TRIPLE(arg8, P_PLUSCOLON, arg10) }
+	| arg12 = constant_expression P_MINUSCOLON arg14 = constant_expression { TRIPLE(arg12, P_MINUSCOLON, arg14) }
+	;
+
+%inline d_recrem_timing_check : D_RECREM LPAREN arg4 = timing_check_event COMMA arg6 = timing_check_event COMMA arg8 = expression COMMA arg10 = expression arg11 = d_recrem_timing_check_11 RPAREN SEMICOLON { DUODECUPLE(D_RECREM, LPAREN, arg4, COMMA, arg6, COMMA, arg8, COMMA, arg10, arg11, RPAREN, SEMICOLON) }
+	;
+
+%inline d_recrem_timing_check_11_4 : {  EMPTY }
+	| arg3 = variable_identifier { (arg3) }
+	;
+
+%inline d_recrem_timing_check_11_5_4 : {  EMPTY }
+	| arg3 = mintypmax_expression { (arg3) }
+	;
+
+%inline d_recrem_timing_check_11_5_5_4 : {  EMPTY }
+	| arg3 = mintypmax_expression { (arg3) }
+	;
+
+%inline d_recrem_timing_check_11_5_5_5_4 : {  EMPTY }
+	| arg3 = delayed_reference { (arg3) }
+	;
+
+%inline d_recrem_timing_check_11_5_5_5_5_4 : {  EMPTY }
+	| arg3 = delayed_data { (arg3) }
+	;
+
+%inline d_recrem_timing_check_11_5_5_5_5 : {  EMPTY }
+	| COMMA arg4 = d_recrem_timing_check_11_5_5_5_5_4 { DOUBLE(COMMA, arg4) }
+	;
+
+%inline d_recrem_timing_check_11_5_5_5 : {  EMPTY }
+	| COMMA arg4 = d_recrem_timing_check_11_5_5_5_4 arg5 = d_recrem_timing_check_11_5_5_5_5 { TRIPLE(COMMA, arg4, arg5) }
+	;
+
+%inline d_recrem_timing_check_11_5_5 : {  EMPTY }
+	| COMMA arg4 = d_recrem_timing_check_11_5_5_4 arg5 = d_recrem_timing_check_11_5_5_5 { TRIPLE(COMMA, arg4, arg5) }
+	;
+
+%inline d_recrem_timing_check_11_5 : {  EMPTY }
+	| COMMA arg4 = d_recrem_timing_check_11_5_4 arg5 = d_recrem_timing_check_11_5_5 { TRIPLE(COMMA, arg4, arg5) }
+	;
+
+%inline d_recrem_timing_check_11 : {  EMPTY }
+	| COMMA arg4 = d_recrem_timing_check_11_4 arg5 = d_recrem_timing_check_11_5 { TRIPLE(COMMA, arg4, arg5) }
+	;
+
+%inline path_delay_expression : arg2 = constant_mintypmax_expression { (arg2) }
+	;
+
+pulse_control_specparam : PATHPULSE EQUALS LPAREN arg5 = limit_value arg6 = pulse_control_specparam_6 RPAREN SEMICOLON { SEPTUPLE(PATHPULSE, EQUALS, LPAREN, arg5, arg6, RPAREN, SEMICOLON) }
+	| PATHPULSE arg11 = specify_input_terminal_descriptor DOLLAR arg13 = specify_output_terminal_descriptor EQUALS LPAREN arg16 = limit_value arg17 = pulse_control_specparam_17 RPAREN SEMICOLON { DECUPLE(PATHPULSE, arg11, DOLLAR, arg13, EQUALS, LPAREN, arg16, arg17, RPAREN, SEMICOLON) }
+	;
+
+input_identifier : arg2 = identifier { (arg2) }
+	| arg4 = identifier { (arg4) }
+	;
+
+path_delay_value : arg2 = list_of_path_delay_expressions { (arg2) }
+	| LPAREN arg5 = list_of_path_delay_expressions RPAREN { TRIPLE(LPAREN, arg5, RPAREN) }
+	;
+
+%inline limit_value : arg2 = constant_mintypmax_expression { (arg2) }
+	;
+
+%inline pulse_control_specparam_6 : {  EMPTY }
+	| COMMA arg4 = limit_value { DOUBLE(COMMA, arg4) }
+	;
+
+%inline pulse_control_specparam_17 : {  EMPTY }
+	| COMMA arg4 = limit_value { DOUBLE(COMMA, arg4) }
+	;
+
+module_path_mintypmax_expression : arg2 = module_path_expression { (arg2) }
+	| arg4 = module_path_expression COLON arg6 = module_path_expression COLON arg8 = module_path_expression { QUINTUPLE(arg4, COLON, arg6, COLON, arg8) }
+	;
+
+%inline timing_check_event : arg2 = timing_check_event_2 arg3 = specify_terminal_descriptor arg4 = timing_check_event_4 { TRIPLE(arg2, arg3, arg4) }
+	;
+
+%inline timing_check_event_2 : {  EMPTY }
+	| arg3 = timing_check_event_control { (arg3) }
+	;
+
+%inline timing_check_event_4 : {  EMPTY }
+	| P_ANDANDAND arg4 = timing_check_condition { DOUBLE(P_ANDANDAND, arg4) }
+	;
+
+timing_check_event_control : POSEDGE { (POSEDGE) }
+	| NEGEDGE { (NEGEDGE) }
+	| arg6 = edge_control_specifier { (arg6) }
+	;
+
+edge_descriptor : TOKEN_EDGE01 { (TOKEN_EDGE01) }
+	| TOKEN_EDGE_10 { (TOKEN_EDGE_10) }
+	| arg6 = Z_OR_X arg7 = zero_or_one { DOUBLE(Z_OR_X arg6, arg7) }
+	| arg9 = zero_or_one arg10 = Z_OR_X { DOUBLE(arg9, Z_OR_X arg10) }
+	;
+
+zero_or_one : TOKEN_ZERO { (TOKEN_ZERO) }
+	| TOKEN_ONE { (TOKEN_ONE) }
+	;
+
+%inline edge_control_specifier : EDGE LBRACK arg4 = edge_descriptor arg5 = edge_control_specifier_5 RBRACK { QUINTUPLE(EDGE, LBRACK, arg4, arg5, RBRACK) }
+	;
+
+edge_control_specifier_5 : {  EMPTY }
+	| arg3 = edge_control_specifier_5 COMMA arg5 = edge_descriptor { TRIPLE(arg3, COMMA, arg5) }
+	;
+
+%inline module_path_concatenation : LCURLY arg3 = module_path_expression arg4 = module_path_concatenation_4 RCURLY { QUADRUPLE(LCURLY, arg3, arg4, RCURLY) }
+	;
+
+module_path_concatenation_4 : {  EMPTY }
+	| arg3 = module_path_concatenation_4 COMMA arg5 = module_path_expression { TRIPLE(arg3, COMMA, arg5) }
+	;
+
+%inline module_path_multiple_concatenation : LCURLY arg3 = constant_expression arg4 = module_path_concatenation RCURLY { QUADRUPLE(LCURLY, arg3, arg4, RCURLY) }
+	;
+
+%inline module_path_conditional_expression : arg2 = module_path_expression QUERY arg5 = module_path_expression COLON arg7 = module_path_expression { QUINTUPLE(arg2, QUERY, arg5, COLON, arg7) }
+	;
+
+scalar_timing_check_condition : arg2 = expression { (arg2) }
+	| TILDE arg5 = expression { DOUBLE(TILDE, arg5) }
+	| arg7 = expression P_EQUAL arg9 = scalar_constant { TRIPLE(arg7, P_EQUAL, arg9) }
+	| arg11 = expression P_CASEEQUAL arg13 = scalar_constant { TRIPLE(arg11, P_CASEEQUAL, arg13) }
+	| arg15 = expression P_NOTEQUAL arg17 = scalar_constant { TRIPLE(arg15, P_NOTEQUAL, arg17) }
+	| arg19 = expression P_CASENOTEQUAL arg21 = scalar_constant { TRIPLE(arg19, P_CASENOTEQUAL, arg21) }
+	;
+
+%inline d_setup_timing_check : D_SETUP LPAREN arg4 = timing_check_event COMMA arg6 = timing_check_event COMMA arg8 = expression arg9 = d_setup_timing_check_9 RPAREN SEMICOLON { DECUPLE(D_SETUP, LPAREN, arg4, COMMA, arg6, COMMA, arg8, arg9, RPAREN, SEMICOLON) }
+	;
+
+%inline d_setup_timing_check_9_4 : {  EMPTY }
+	| arg3 = variable_identifier { (arg3) }
+	;
+
+%inline d_setup_timing_check_9 : {  EMPTY }
+	| COMMA arg4 = d_setup_timing_check_9_4 { DOUBLE(COMMA, arg4) }
+	;
+
+%inline d_recovery_timing_check : D_RECOVERY LPAREN arg4 = timing_check_event COMMA arg6 = timing_check_event COMMA arg8 = expression arg9 = d_recovery_timing_check_9 RPAREN SEMICOLON { DECUPLE(D_RECOVERY, LPAREN, arg4, COMMA, arg6, COMMA, arg8, arg9, RPAREN, SEMICOLON) }
+	;
+
+%inline d_recovery_timing_check_9_4 : {  EMPTY }
+	| arg3 = variable_identifier { (arg3) }
+	;
+
+%inline d_recovery_timing_check_9 : {  EMPTY }
+	| COMMA arg4 = d_recovery_timing_check_9_4 { DOUBLE(COMMA, arg4) }
+	;
+
+%inline d_nochange_timing_check : NOCHANGE LPAREN arg4 = timing_check_event COMMA arg6 = timing_check_event COMMA arg8 = mintypmax_expression COMMA arg10 = mintypmax_expression arg11 = d_nochange_timing_check_11 RPAREN SEMICOLON { DUODECUPLE(NOCHANGE, LPAREN, arg4, COMMA, arg6, COMMA, arg8, COMMA, arg10, arg11, RPAREN, SEMICOLON) }
+	;
+
+%inline d_nochange_timing_check_11_4 : {  EMPTY }
+	| arg3 = variable_identifier { (arg3) }
+	;
+
+%inline d_nochange_timing_check_11 : {  EMPTY }
+	| COMMA arg4 = d_nochange_timing_check_11_4 { DOUBLE(COMMA, arg4) }
+	;
+
+%inline d_setuphold_timing_check : D_SETUPHOLD LPAREN arg4 = timing_check_event COMMA arg6 = timing_check_event COMMA arg8 = expression COMMA arg10 = expression arg11 = d_setuphold_timing_check_11 RPAREN SEMICOLON { DUODECUPLE(D_SETUPHOLD, LPAREN, arg4, COMMA, arg6, COMMA, arg8, COMMA, arg10, arg11, RPAREN, SEMICOLON) }
+	;
+
+%inline d_setuphold_timing_check_11_4 : {  EMPTY }
+	| arg3 = variable_identifier { (arg3) }
+	;
+
+%inline d_setuphold_timing_check_11_5_4 : {  EMPTY }
+	| arg3 = mintypmax_expression { (arg3) }
+	;
+
+%inline d_setuphold_timing_check_11_5_5_4 : {  EMPTY }
+	| arg3 = mintypmax_expression { (arg3) }
+	;
+
+%inline d_setuphold_timing_check_11_5_5_5_4 : {  EMPTY }
+	| arg3 = delayed_reference { (arg3) }
+	;
+
+%inline d_setuphold_timing_check_11_5_5_5_5_4 : {  EMPTY }
+	| arg3 = delayed_data { (arg3) }
+	;
+
+%inline d_setuphold_timing_check_11_5_5_5_5 : {  EMPTY }
+	| COMMA arg4 = d_setuphold_timing_check_11_5_5_5_5_4 { DOUBLE(COMMA, arg4) }
+	;
+
+%inline d_setuphold_timing_check_11_5_5_5 : {  EMPTY }
+	| COMMA arg4 = d_setuphold_timing_check_11_5_5_5_4 arg5 = d_setuphold_timing_check_11_5_5_5_5 { TRIPLE(COMMA, arg4, arg5) }
+	;
+
+%inline d_setuphold_timing_check_11_5_5 : {  EMPTY }
+	| COMMA arg4 = d_setuphold_timing_check_11_5_5_4 arg5 = d_setuphold_timing_check_11_5_5_5 { TRIPLE(COMMA, arg4, arg5) }
+	;
+
+%inline d_setuphold_timing_check_11_5 : {  EMPTY }
+	| COMMA arg4 = d_setuphold_timing_check_11_5_4 arg5 = d_setuphold_timing_check_11_5_5 { TRIPLE(COMMA, arg4, arg5) }
+	;
+
+%inline d_setuphold_timing_check_11 : {  EMPTY }
+	| COMMA arg4 = d_setuphold_timing_check_11_4 arg5 = d_setuphold_timing_check_11_5 { TRIPLE(COMMA, arg4, arg5) }
+	;
+
+showcancelled_declaration : SHOWCANCELLED arg3 = list_of_path_outputs SEMICOLON { TRIPLE(SHOWCANCELLED, arg3, SEMICOLON) }
+	| NOSHOWCANCELLED arg7 = list_of_path_outputs SEMICOLON { TRIPLE(NOSHOWCANCELLED, arg7, SEMICOLON) }
+	;
+
+%inline d_fullskew_timing_check : FULLSKEW LPAREN arg4 = timing_check_event COMMA arg6 = timing_check_event COMMA arg8 = expression COMMA arg10 = expression arg11 = d_fullskew_timing_check_11 RPAREN SEMICOLON { DUODECUPLE(FULLSKEW, LPAREN, arg4, COMMA, arg6, COMMA, arg8, COMMA, arg10, arg11, RPAREN, SEMICOLON) }
+	;
+
+%inline d_fullskew_timing_check_11_4 : {  EMPTY }
+	| arg3 = variable_identifier { (arg3) }
+	;
+
+%inline d_fullskew_timing_check_11_5_4 : {  EMPTY }
+	| arg3 = constant_expression { (arg3) }
+	;
+
+%inline d_fullskew_timing_check_11_5_5_4 : {  EMPTY }
+	| arg3 = constant_mintypmax_expression { (arg3) }
+	;
+
+%inline d_fullskew_timing_check_11_5_5 : {  EMPTY }
+	| COMMA arg4 = d_fullskew_timing_check_11_5_5_4 { DOUBLE(COMMA, arg4) }
+	;
+
+%inline d_fullskew_timing_check_11_5 : {  EMPTY }
+	| COMMA arg4 = d_fullskew_timing_check_11_5_4 arg5 = d_fullskew_timing_check_11_5_5 { TRIPLE(COMMA, arg4, arg5) }
+	;
+
+%inline d_fullskew_timing_check_11 : {  EMPTY }
+	| COMMA arg4 = d_fullskew_timing_check_11_4 arg5 = d_fullskew_timing_check_11_5 { TRIPLE(COMMA, arg4, arg5) }
+	;
+
+mintypmax_expression : arg2 = expression { (arg2) }
+	| arg4 = expression COLON arg6 = expression COLON arg8 = expression { QUINTUPLE(arg4, COLON, arg6, COLON, arg8) }
+	;
+
+pulsestyle_declaration : PULSESTYLE_ONEVENT arg3 = list_of_path_outputs SEMICOLON { TRIPLE(PULSESTYLE_ONEVENT, arg3, SEMICOLON) }
+	| PULSESTYLE_ONDETECT arg7 = list_of_path_outputs SEMICOLON { TRIPLE(PULSESTYLE_ONDETECT, arg7, SEMICOLON) }
+	;
+
+%inline d_timeskew_timing_check : D_TIMESKEW LPAREN arg4 = timing_check_event COMMA arg6 = timing_check_event COMMA arg8 = expression arg9 = d_timeskew_timing_check_9 RPAREN SEMICOLON { DECUPLE(D_TIMESKEW, LPAREN, arg4, COMMA, arg6, COMMA, arg8, arg9, RPAREN, SEMICOLON) }
+	;
+
+constant_mintypmax_expression : arg2 = constant_expression { (arg2) }
+	| arg4 = constant_expression COLON arg6 = constant_expression COLON arg8 = constant_expression { QUINTUPLE(arg4, COLON, arg6, COLON, arg8) }
+	;
+
+%inline d_timeskew_timing_check_9_4 : {  EMPTY }
+	| arg3 = variable_identifier { (arg3) }
+	;
+
+%inline d_timeskew_timing_check_9_5_4 : {  EMPTY }
+	| arg3 = constant_expression { (arg3) }
+	;
+
+%inline d_timeskew_timing_check_9_5_5_4 : {  EMPTY }
+	| arg3 = constant_mintypmax_expression { (arg3) }
+	;
+
+%inline d_timeskew_timing_check_9_5_5 : {  EMPTY }
+	| COMMA arg4 = d_timeskew_timing_check_9_5_5_4 { DOUBLE(COMMA, arg4) }
+	;
+
+%inline d_timeskew_timing_check_9_5 : {  EMPTY }
+	| COMMA arg4 = d_timeskew_timing_check_9_5_4 arg5 = d_timeskew_timing_check_9_5_5 { TRIPLE(COMMA, arg4, arg5) }
+	;
+
+%inline d_timeskew_timing_check_9 : {  EMPTY }
+	| COMMA arg4 = d_timeskew_timing_check_9_4 arg5 = d_timeskew_timing_check_9_5 { TRIPLE(COMMA, arg4, arg5) }
+	;
+
+delayed_data : arg2 = identifier { (arg2) }
+	| arg4 = identifier LBRACK arg6 = constant_mintypmax_expression RBRACK { QUADRUPLE(arg4, LBRACK, arg6, RBRACK) }
+	;
+
+%inline d_hold_timing_check : D_HOLD LPAREN arg4 = timing_check_event COMMA arg6 = timing_check_event COMMA arg8 = expression arg9 = d_hold_timing_check_9 RPAREN SEMICOLON { DECUPLE(D_HOLD, LPAREN, arg4, COMMA, arg6, COMMA, arg8, arg9, RPAREN, SEMICOLON) }
+	;
+
+%inline d_hold_timing_check_9_4 : {  EMPTY }
+	| arg3 = variable_identifier { (arg3) }
+	;
+
+%inline d_hold_timing_check_9 : {  EMPTY }
+	| COMMA arg4 = d_hold_timing_check_9_4 { DOUBLE(COMMA, arg4) }
+	;
+
+%inline d_width_timing_check : D_WIDTH LPAREN arg4 = controlled_timing_check_event COMMA arg6 = expression COMMA arg8 = constant_expression arg9 = d_width_timing_check_9 RPAREN SEMICOLON { DECUPLE(D_WIDTH, LPAREN, arg4, COMMA, arg6, COMMA, arg8, arg9, RPAREN, SEMICOLON) }
+	;
+
+%inline d_width_timing_check_9_4 : {  EMPTY }
+	| arg3 = variable_identifier { (arg3) }
+	;
+
+%inline d_width_timing_check_9 : {  EMPTY }
+	| COMMA arg4 = d_width_timing_check_9_4 { DOUBLE(COMMA, arg4) }
+	;
+
+constant_expression : arg2 = exprNoStr { (arg2) }
+	;
+
+%inline full_path_description : LPAREN arg3 = list_of_path_inputs arg4 = full_path_description_4 P_ASTGT arg6 = list_of_path_outputs RPAREN { SEXTUPLE(LPAREN, arg3, arg4, P_ASTGT, arg6, RPAREN) }
+	;
+
+%inline full_path_description_4 : {  EMPTY }
+	| arg3 = polarity_operator { (arg3) }
+	;
+
+%inline parallel_path_description : LPAREN arg3 = specify_input_terminal_descriptor arg4 = parallel_path_description_4 P_EQGT arg6 = specify_output_terminal_descriptor RPAREN { SEXTUPLE(LPAREN, arg3, arg4, P_EQGT, arg6, RPAREN) }
+	;
+
+%inline parallel_path_description_4 : {  EMPTY }
+	| arg3 = polarity_operator { (arg3) }
+	;
+
+path_declaration : arg2 = simple_path_declaration SEMICOLON { DOUBLE(arg2, SEMICOLON) }
+	| arg5 = edge_sensitive_path_declaration SEMICOLON { DOUBLE(arg5, SEMICOLON) }
+	| arg8 = state_dependent_path_declaration SEMICOLON { DOUBLE(arg8, SEMICOLON) }
+	;
+
+simple_path_declaration : arg2 = parallel_path_description EQUALS arg4 = path_delay_value { TRIPLE(arg2, EQUALS, arg4) }
+	| arg6 = full_path_description EQUALS arg8 = path_delay_value { TRIPLE(arg6, EQUALS, arg8) }
+	;
+
+edge_sensitive_path_declaration : arg2 = parallel_edge_sensitive_path_description EQUALS arg4 = path_delay_value { TRIPLE(arg2, EQUALS, arg4) }
+	| arg6 = full_edge_sensitive_path_description EQUALS arg8 = path_delay_value { TRIPLE(arg6, EQUALS, arg8) }
+	| arg6 = csr_edge_sensitive_path_description EQUALS arg8 = path_delay_value { TRIPLE(arg6, EQUALS, arg8) }
+	;
+
+colon_identifier : P_PLUSCOLON { (P_PLUSCOLON) }
+	| P_MINUSCOLON { (P_MINUSCOLON) }
+	;
+
+csr_edge_sensitive_path_description : LPAREN arg2 = edge_identifier arg3 = specify_input_terminal_descriptor P_EQGT LPAREN arg6 = identifier arg7 = colon_identifier arg8 = module_path_expression RPAREN RPAREN { DECUPLE(LPAREN, arg2, arg3, P_EQGT, LPAREN, arg6, arg7, arg8, RPAREN, RPAREN) }
+	;
+
+%inline full_edge_sensitive_path_description : LPAREN arg3 = full_edge_sensitive_path_description_3 arg4 = list_of_path_inputs P_ASTGT arg6 = list_of_path_outputs arg7 = full_edge_sensitive_path_description_7 COLON arg9 = expression RPAREN { NONUPLE(LPAREN, arg3, arg4, P_ASTGT, arg6, arg7, COLON, arg9, RPAREN) }
+	;
+
+%inline full_edge_sensitive_path_description_3 : {  EMPTY }
+	| arg3 = edge_identifier { (arg3) }
+	;
+
+%inline full_edge_sensitive_path_description_7 : {  EMPTY }
+	| arg3 = polarity_operator { (arg3) }
+	;
+
+%inline parallel_edge_sensitive_path_description : LPAREN arg3 = parallel_edge_sensitive_path_description_3 arg4 = specify_input_terminal_descriptor P_EQGT arg6 = specify_output_terminal_descriptor arg7 = parallel_edge_sensitive_path_description_7 COLON arg9 = expression RPAREN { NONUPLE(LPAREN, arg3, arg4, P_EQGT, arg6, arg7, COLON, arg9, RPAREN) }
+	;
+
+%inline parallel_edge_sensitive_path_description_3 : {  EMPTY }
+	| arg3 = edge_identifier { (arg3) }
+	;
+
+%inline parallel_edge_sensitive_path_description_7 : {  EMPTY }
+	| arg3 = polarity_operator { (arg3) }
+	;
+
+edge_identifier : POSEDGE { (POSEDGE) }
+	| NEGEDGE { (NEGEDGE) }
+	;
+
+specify_output_terminal_descriptor_3 : {  EMPTY }
+	| LBRACK arg4 = constant_range_expression RBRACK { TRIPLE(LBRACK, arg4, RBRACK) }
+	;
+
+specify_output_terminal_descriptor : output_identifier specify_output_terminal_descriptor_3 { DOUBLE($1, $2) }
+	;
+
+%inline specify_input_terminal_descriptor : arg2 = input_identifier arg3 = specify_input_terminal_descriptor_3 { DOUBLE(arg2, arg3) }
+	;
+
+%inline specify_input_terminal_descriptor_3 : {  EMPTY }
+	| LBRACK arg4 = constant_range_expression RBRACK { TRIPLE(LBRACK, arg4, RBRACK) }
+	;
+
+output_identifier : arg2 = identifier { (arg2) }
+	| arg4 = identifier { (arg4) }
+	;
+
+delayed_reference : arg2 = identifier { (arg2) }
+	| arg4 = identifier LBRACK arg6 = constant_mintypmax_expression RBRACK { QUADRUPLE(arg4, LBRACK, arg6, RBRACK) }
+	;
+
+%inline d_skew_timing_check : D_SKEW LPAREN arg4 = timing_check_event COMMA arg6 = timing_check_event COMMA arg8 = expression arg9 = d_skew_timing_check_9 RPAREN SEMICOLON { DECUPLE(D_SKEW, LPAREN, arg4, COMMA, arg6, COMMA, arg8, arg9, RPAREN, SEMICOLON) }
+	;
+
+%inline d_skew_timing_check_9_4 : {  EMPTY }
+	| arg3 = variable_identifier { (arg3) }
+	;
+
+%inline d_skew_timing_check_9 : {  EMPTY }
+	| COMMA arg4 = d_skew_timing_check_9_4 { DOUBLE(COMMA, arg4) }
+	;
+
+%inline list_of_path_inputs : arg2 = specify_input_terminal_descriptor arg3 = list_of_path_inputs_3 { DOUBLE(arg2, arg3) }
+	;
+
+list_of_path_inputs_3 : {  EMPTY }
+	| arg3 = list_of_path_inputs_3 COMMA arg5 = specify_input_terminal_descriptor { TRIPLE(arg3, COMMA, arg5) }
+	;
+
+%inline list_of_path_outputs : arg2 = specify_output_terminal_descriptor arg3 = list_of_path_outputs_3 { DOUBLE(arg2, arg3) }
+	;
+
+list_of_path_outputs_3 : {  EMPTY }
+	| arg3 = list_of_path_outputs_3 COMMA arg5 = specify_output_terminal_descriptor { TRIPLE(arg3, COMMA, arg5) }
+	;
+
+%inline d_period_timing_check : D_PERIOD LPAREN arg4 = controlled_timing_check_event COMMA arg6 = expression arg7 = d_period_timing_check_7 RPAREN SEMICOLON { OCTUPLE(D_PERIOD, LPAREN, arg4, COMMA, arg6, arg7, RPAREN, SEMICOLON) }
+	;
+
+%inline d_period_timing_check_7_4 : {  EMPTY }
+	| arg3 = variable_identifier { (arg3) }
+	;
+
+%inline d_period_timing_check_7 : {  EMPTY }
+	| COMMA arg4 = d_period_timing_check_7_4 { DOUBLE(COMMA, arg4) }
+	;
+
+%inline specparam_declaration : SPECPARAM arg3 = specparam_declaration_3 arg4 = list_of_specparam_assignments SEMICOLON { QUADRUPLE(SPECPARAM, arg3, arg4, SEMICOLON) }
+	;
+
+%inline specparam_declaration_3 : {  EMPTY }
+	| arg3 = range { (arg3) }
+	;
+
+%inline list_of_specparam_assignments : arg2 = specparam_assignment arg3 = list_of_specparam_assignments_3 { DOUBLE(arg2, arg3) }
+	;
+
+list_of_specparam_assignments_3 : {  EMPTY }
+	| arg3 = list_of_specparam_assignments_3 COMMA arg5 = specparam_assignment { TRIPLE(arg3, COMMA, arg5) }
+	;
+
+binary_module_path_operator : P_EQUAL { (P_EQUAL) }
+	| P_NOTEQUAL { (P_NOTEQUAL) }
+	| P_ANDAND { (P_ANDAND) }
+	| P_OROR { (P_OROR) }
+	| AMPERSAND { (AMPERSAND) }
+	| VBAR { (VBAR) }
+	| CARET { (CARET) }
+	| P_XNOR { (P_XNOR) }
+	| P_NXOR { (P_NXOR) }
+	;
+
+module_path_expression : arg2 = module_path_primary { (arg2) }
+	| arg4 = unary_module_path_operator arg6 = module_path_primary { DOUBLE(arg4, arg6) }
+	| arg8 = module_path_expression arg9 = binary_module_path_operator arg11 = module_path_expression { TRIPLE(arg8, arg9, arg11) }
+	| arg13 = module_path_conditional_expression { (arg13) }
+	;
+
+state_dependent_path_declaration : IF LPAREN arg4 = module_path_expression RPAREN arg6 = simple_path_declaration { QUINTUPLE(IF, LPAREN, arg4, RPAREN, arg6) }
+	| IF LPAREN arg10 = module_path_expression RPAREN arg12 = edge_sensitive_path_declaration { QUINTUPLE(IF, LPAREN, arg10, RPAREN, arg12) }
+	| IF_NONE arg15 = simple_path_declaration { DOUBLE(IF_NONE, arg15) }
+	;
+
+specparam_assignment : arg2 = identifier EQUALS arg4 = constant_mintypmax_expression { TRIPLE(arg2, EQUALS, arg4) }
+	| arg6 = pulse_control_specparam { (arg6) }
+	;
+
+%inline d_removal_timing_check : D_REMOVAL LPAREN arg4 = timing_check_event COMMA arg6 = timing_check_event COMMA arg8 = expression arg9 = d_removal_timing_check_9 RPAREN SEMICOLON { DECUPLE(D_REMOVAL, LPAREN, arg4, COMMA, arg6, COMMA, arg8, arg9, RPAREN, SEMICOLON) }
+	;
+
+%inline d_removal_timing_check_9_4 : {  EMPTY }
+	| arg3 = variable_identifier { (arg3) }
+	;
+
+%inline d_removal_timing_check_9 : {  EMPTY }
+	| COMMA arg4 = d_removal_timing_check_9_4 { DOUBLE(COMMA, arg4) }
+	;
+
+%inline controlled_timing_check_event : arg2 = timing_check_event_control arg3 = specify_terminal_descriptor arg4 = controlled_timing_check_event_4 { TRIPLE(arg2, arg3, arg4) }
+	;
+
+%inline controlled_timing_check_event_4 : {  EMPTY }
+	| P_ANDANDAND arg4 = timing_check_condition { DOUBLE(P_ANDANDAND, arg4) }
+	;
+
+%inline variable_identifier : arg2 = identifier { (arg2) }
+	;
+
+%inline range : LBRACK arg3 = constant_expression COLON arg5 = constant_expression RBRACK { QUINTUPLE(LBRACK, arg3, COLON, arg5, RBRACK) }
+	;
+
+expression : arg2 = expr { (arg2) }
+
+scalar_constant : number { $1 }
+	;
+
+number:
+ 		INTNUM					{ INT (int_of_string $1) }
+	|	BINNUM					{ BINNUM $1 }
+	|	OCTNUM					{ OCTNUM $1 }
+	|	DECNUM					{ DECNUM $1 }
+	|	HEXNUM					{ HEXNUM $1 }
+	;
+
+unused_tokens:			{	}
+	|	ASSIGNMENT	{	}
+	|	BIDIR		{	}
+	|	BITSEL		{	}
+	|	CASECOND	{	}
+	|	CELLPIN		{	}
+	|	CONCAT		{	}
+	|	DECUPLE		{	}
+	|	DLYASSIGNMENT	{	}
+	|	DUODECUPLE	{	}
+	|	DUOVIGENUPLE	{	}
+	|	DOTTED		{	}
+	|	DOUBLE		{	}
+	|	DRIVER		{	}
+	|	EMPTY		{	}
+	|	ENDLABEL	{	}
+	|	EOF		{	}
+	|	FUNCREF		{	}
+	|	FUNCUSED	{	}
+	|	GENCASECOND	{	}
+	|	GENCASE		{	}
+	|	IMPLICIT	{	}
+	|	INT		{	}
+	|	IOPORT		{	}
+	|	MEMORY		{	}
+	|	MINTYPMAX	{	}
+	|	MODINST		{	}
+	|	NAMED		{	}
+	|	NONUPLE		{	}
+	|	NOVEMDECUPLE	{	}
+	|	OCTUPLE		{	}
+	|	OCTODECUPLE	{	}
+	|	P_ANDEQ		{	}
+	|	PARAMUSED	{	}
+	|	PARTSEL		{	}
+	|	P_ATAT		{	}
+	|	P_COLONCOLON	{	}
+	|	P_COLONDIV	{	}
+	|	P_COLONEQ	{	}
+	|	P_DEFINE	{	}
+	|	P_DIVEQ		{	}
+	|	P_ELSE		{	}
+	|	P_ENDIF		{	}
+	|	P_IFDEF		{	}
+	|	P_INCLUDE	{	}
+	|	P_MINUSEQ	{	}
+	|	P_MODEQ		{	}
+	|	P_OREQGT	{	}
+	|	P_OREQ		{	}
+	|	P_ORMINUSGT	{	}
+	|	P_PLUSEQ	{	}
+	|	P_POUNDPOUND	{	}
+	|	PRIMINST	{	}
+	|	P_SLEFTEQ	{	}
+	|	P_SRIGHTEQ	{	}
+	|	P_SSRIGHTEQ	{	}
+	|	P_TIMESEQ	{	}
+	|	P_XOREQ		{	}
+	|	QUADRUPLE	{	}
+	|	QUATTUORDECUPLE	{	}
+	|	QUATTUORVIGENUPLE	{	}
+	|	QUINTUPLE	{	}
+	|	QUINDECUPLE	{	}
+	|	QUINVIGENUPLE	{	}
+	|	RANGE		{	}
+	|	RECEIVER	{	}
+	|	SCALAR		{	}
+	|	SENSUSED	{	}
+	|	SEPTUPLE	{	}
+	|	SEPTENDECUPLE	{	}
+	|	SEXTUPLE	{	}
+	|	SEXDECUPLE	{	}
+	|	SPECIAL		{	}
+	|	SUBCCT		{	}
+	|	SUBMODULE	{	}
+	|	TASKREF		{	}
+	|	TASKUSED	{	}
+	|	TEDGE		{	}
+	|	TLIST		{	}
+	|	TRIPLE		{	}
+	|	TREVIGENUPLE	{	}
+	|	UNDECUPLE	{	}
+	|	UNVIGENUPLE	{	}
+	|	UNKNOWN		{	}
+	|	VIGENUPLE	{	}
+	|	VOID		{	}
+	;

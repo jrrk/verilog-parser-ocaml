@@ -17,41 +17,38 @@
 ## Based on verilator parser code by Paul Wasson, Duane Galbi and Wilson Snyder
 ##*****************************************************************************
 
-.PHONY: menhir ocamlyacc
-
 TARGET = vparser
-MENHIROPTS = --trace # --table
+MENHIROPTS = -v --trace --table # --infer
 YACCOPTS = -v
 #LEXOPTS = -ml
 
+INC = /home/jrrk/cmd/src/ocaml-3.12.0
+MENHIR = /home/jrrk/cmd/lib/ocaml/site-lib/menhirLib
 CMO1 = ord.cmo setup.cmo globals.cmo vlexer.cmo vparser.cmo dump.cmo const.cmo check.cmo semantics.cmo
 CMO2 = vparse.cmo main.cmo
 CMX = ord.cmx setup.cmx globals.cmx vlexer.cmx vparser.cmx dump.cmx const.cmx check.cmx semantics.cmx vparse.cmx main.cmx
 CML = toplevellib.cma str.cma unix.cma
 CMLX = str.cmxa unix.cmxa
 
-all:
-	@echo "Choose make ocamlyacc or make menhir"
+all: vparser vdebug vtop vchk
 
 vtop: $(TARGET)
-	ocamlmktop -g -o $@ $(CML) $(CMO1) $(CMO2)
+	ocamlmktop -g -o $@ $(MENHIR)/menhirLib.cmo $(CML) $(CMO1) $(CMO2)
 
 vdebug: $(TARGET)
-	ocamlc -g -o $@ $(CML) $(CMO1) $(CMO2)
-
-ocamlyacc: grammar.mly
-	ocamlyacc $(YACCOPTS) -b vparser $<
-	make vparser vdebug vtop vchk
-
-menhir: grammar.mly
-	menhir $(MENHIROPTS) --base vparser grammar.mly
-	make vparser vdebug vtop vchk
+	ocamlc -g -o $@ $(MENHIR)/menhirLib.cmo $(CML) $(CMO1) $(CMO2)
 
 vparser.mli vparser.ml: grammar.mly
-	@echo "Choose make ocamlyacc or make menhir"; false
+	menhir $(MENHIROPTS) --base vparser grammar.mly
 
 $(TARGET): $(CMO1) $(CMO2) mytoploop.cmo
-	ocamlc.opt -g -o $@ $(CML) $(CMO1) mytoploop.cmo $(CMO2)
+	ocamlc.opt -g -o $@ $(MENHIR)/menhirLib.cmo $(CML) $(CMO1) mytoploop.cmo $(CMO2)
+
+$(TARGET).cmo: $(TARGET).ml
+	ocamlc.opt -I $(MENHIR) -g -c $<
+
+$(TARGET).cmx: $(TARGET).ml
+	ocamlopt.opt -I $(MENHIR) -g -c $<
 
 depend: vparser.ml vlexer.ml
 	ocamldep *.ml *.mli > .depend
@@ -87,9 +84,7 @@ debug: vtop
 	ocamldebug ./vtop
 
 vchk: $(CMX)
-	ocamlopt.opt -g -o $@ $(CMLX) $(CMX)
-
-INC = /home/jrrk/cmd/src/ocaml-3.12.0
+	ocamlopt.opt -g -o $@ $(MENHIR)/menhirLib.cmx $(CMLX) $(CMX)
 
 I = -I $(INC)/driver -I $(INC)/toplevel -I $(INC)/bytecomp -I $(INC)/parsing -I $(INC)/utils -I $(INC)/typing
 

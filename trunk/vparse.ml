@@ -226,8 +226,8 @@ let parse str = begin
     | Error ->
     begin
     psuccess := false;
-    Printf.fprintf stderr "Parse Error in %s\n" (fst(Stack.top includes));
-    Printf.fprintf (fst out_chan) "Parse Error in %s\n" (fst(Stack.top includes));
+    Printf.fprintf stderr "Previous Module %s parse Error in %s\n" !last_mod (fst(Stack.top includes));
+    Printf.fprintf (fst out_chan) "Previous Module %s parse Error in %s\n" !last_mod (fst(Stack.top includes));
     for i = 1 to hsiz do let idx = (hsiz-i+(!histcnt))mod hsiz in let item = !(history.(idx)) in
         Printf.fprintf (fst out_chan) "Backtrace %d : %s (%d-%d)\n"  i (str_token (item.tok)) item.strt item.stop;
     done;
