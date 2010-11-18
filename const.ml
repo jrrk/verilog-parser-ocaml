@@ -104,15 +104,17 @@ else
 ignore(Stack.pop stk);
 rslt
 
-let iwidth out_chan syms wid =  match wid with 
+let idirection fst snd = let inc = snd - fst in (if inc<0 then -1 else 1)
+
+let iwidth out_chan syms wid =  let r = match wid with 
 | RANGE(expr1, expr2) -> (exprConst out_chan syms expr1,exprConst out_chan syms expr2)
 | UNKNOWN -> (0,0)
 | SCALAR -> (0,0)
 | EMPTY -> (0,0)
-| _ -> unhandled out_chan 56 wid; (-1,-1)
+| _ -> unhandled out_chan 56 wid; (-1,-1) in (fst r,snd r,idirection (fst r) (snd r))
 
-let maxwidth out_chan syms neww = let w = iwidth out_chan syms neww in
-1 + (max (fst w) (snd w))
+let maxwidth out_chan syms neww = let (left,right,inc) = iwidth out_chan syms neww in
+1 + (max left right)
 
 let show_set s = TokSet.iter (fun e -> Printf.printf "%s " (str_token e)) s;;
 
@@ -126,12 +128,13 @@ let show_chk_sig nam syma siga =
 let show_sig_attr syms id s = match s.sigattr with
 | Sigarray attrs -> (
 match s.width with
-| RANGE range -> let (hi,lo) = iwidth (stderr,Format.err_formatter) syms s.width in
+| RANGE range -> let (left, right, inc) = iwidth (stderr,Format.err_formatter) syms s.width in
   if not ((TokSet.mem IMPLICIT s.symattr)||(TokSet.mem MEMORY s.symattr)) then
-  ( try for i = hi downto lo do
-    show_chk_sig (id^"["^(string_of_int i)^"]") s.symattr attrs.(i)
+  ( let i = ref left in try while (if inc > 0 then !i <= right else !i >= right) do
+    show_chk_sig (id^"["^(string_of_int !i)^"]") s.symattr attrs.(!i);
+    i := !i + inc
     done
-  with Invalid_argument("index out of bounds") -> Printf.printf "Trying to access %s with index [%d:%d]\n" id hi lo)
+  with Invalid_argument("index out of bounds") -> Printf.printf "Trying to access %s with index [%d:%d]\n" id left right)
 | SCALAR | EMPTY | UNKNOWN->
     show_chk_sig id s.symattr attrs.(0)
 | _ -> unhandled (stderr,Format.err_formatter) 791 s.width)

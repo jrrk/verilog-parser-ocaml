@@ -133,8 +133,7 @@ let not_found out_chan syms w = Printf.fprintf (fst out_chan) "wire/port %s not 
 
 let enter_sym_attrs out_chan syms (tok:token) list width mode = match tok with
 | ID id -> if (Const.shash_chain_mem syms id == false)&&(mode <> Create) then (
-          Printf.fprintf (fst out_chan) "Signal %s cannot be declared here\n" id;
-          unhandled out_chan 221 tok )
+          Printf.fprintf (fst out_chan) "Signal %s cannot be declared here\n" id )
   else begin
      iter (fun x -> enter_a_sym out_chan syms id x width mode) list;
      let newset = (find_ident out_chan syms tok).symattr in
@@ -153,13 +152,13 @@ let enter_parameter out_chan syms id arg5 arg6 w =
 		       localsyms = syms;
      path=id}
 
-let sig_attr_extract out_chan isyms inner = let rslt0 = (0,0,Array.make 1 TokSet.empty) in
+let sig_attr_extract out_chan isyms inner = let rslt0 = (0,0,0,Array.make 1 TokSet.empty) in
 let rslt = ref rslt0 in ( match inner.sigattr with
 | Sigarray attrs -> (
 match inner.width with
-| RANGE range -> let (hi,lo) = iwidth out_chan isyms inner.width in rslt := (hi,lo,attrs)
+| RANGE range -> let (left,right,inc) = iwidth out_chan isyms inner.width in rslt := (left,right,inc,attrs)
 | SCALAR ->
-    rslt := (0,0,attrs);
+    rslt := (0,0,0,attrs);
 | UNKNOWN -> (*TBD*)
     rslt := rslt0;
 | EMPTY -> (*TBD*)
@@ -182,17 +181,19 @@ if (inner.sigattr <> Sigundef) && (Globals.verbose >= 2) then
 retval
 ;;
 
-let enter_range out_chan syms id sym attr wid inner high (low:int) inner_attr attrs = let (hi,lo) = iwidth out_chan syms wid in
-  if not ((TokSet.mem IMPLICIT sym.symattr)||(TokSet.mem MEMORY sym.symattr)||(hi < 0)||(lo < 0)) then
-    for i = hi downto lo do (*try*)
-    if chk_inner_attr out_chan inner inner_attr attr (high+i-hi) then attrs.(i) <- TokSet.add attr attrs.(i);
+let enter_range out_chan syms id sym attr wid inner high inci inner_attr attrs = let (left,right,inc) = iwidth out_chan syms wid in
+  if not ((TokSet.mem IMPLICIT sym.symattr)||(TokSet.mem MEMORY sym.symattr)||(left < 0)||(right < 0)) then
+    let i = ref left and j = ref high in while (if inc > 0 then !i <= right else !i >= right) do
+    if chk_inner_attr out_chan inner inner_attr attr !j then attrs.(!i) <- TokSet.add attr attrs.(!i);
     (*with Invalid_argument("index out of bounds") -> Printf.fprintf (fst out_chan) "Trying to access %s with index [%d]\n" id i*)
+    i := !i + inc;
+    j := !j + inci
     done
 
 let enter_a_sig_attr out_chan syms (tok:token) attr w isyms isym = ( match tok with 
-| ID id -> let sym = find_ident out_chan syms tok and (high,low,inner_attr) = sig_attr_extract out_chan isyms isym
+| ID id -> let sym = find_ident out_chan syms tok and (left,right,inc,inner_attr) = sig_attr_extract out_chan isyms isym
  in (match sym.sigattr with
-| Sigarray attrs -> enter_range out_chan syms id sym attr w isym high low inner_attr attrs
+| Sigarray attrs -> enter_range out_chan syms id sym attr w isym left inc inner_attr attrs
 | Sigparam x -> enter_sym_attrs out_chan syms tok [PARAMUSED] UNKNOWN AttrOnly
 | Sigundef -> Printf.fprintf (fst out_chan) "Internal error - Signal %s has no width\n" id
 | Sigtask x -> Printf.fprintf (fst out_chan) "Entity %s is already declared as a task\n" id
@@ -287,25 +288,25 @@ end
 and connect out_chan syms kind subcct (innert:token) tok = 
 let isyms = (Hashtbl.find Globals.modprims kind).symbols in ( Stack.push (255, innert) stk; match innert with ID innerid -> begin
 if (Const.shash_chain_mem isyms innerid) then
-let isym=Const.shash_chain_find isyms innerid in let irange = iwidth out_chan isyms isym.width in match tok with
+let isym=Const.shash_chain_find isyms innerid in let (fst_irange,snd_irange,inc_irange) = iwidth out_chan isyms isym.width in match tok with
 | ID outer -> inner_chk out_chan syms isyms isym subcct outer (find_ident out_chan syms tok).width
 | TRIPLE(BITSEL, ID outer, sel) -> if (Const.shash_chain_mem syms outer) then inner_chk out_chan syms isyms isym subcct outer (RANGE (sel, sel)) else not_found out_chan syms outer
 | QUADRUPLE(PARTSEL, ID outer, INT hi, INT lo) -> if (Const.shash_chain_mem syms outer) then inner_chk out_chan syms isyms isym subcct outer (RANGE(INT hi, INT lo)) else not_found out_chan syms outer
 | INT lev -> inner_chk_const out_chan syms isyms isym subcct tok (RANGE(INT 31, INT 0))
 | BINNUM lev -> inner_chk_const out_chan syms isyms isym subcct tok (RANGE(INT (fst(widthnum out_chan 2 lev)-1), INT 0))
-| DOUBLE(CONCAT, TLIST concat) -> let idx = ref (fst irange) in iter (fun (item:token) -> 
+| DOUBLE(CONCAT, TLIST concat) -> let idx = ref fst_irange in iter (fun (item:token) -> 
 ( if (Globals.verbose >= 3) then Printf.fprintf (fst out_chan) "Concat idx %d\n" !idx; match item with
   | ID id -> let wid = (find_ident out_chan syms item).width in
-      let (hi,lo) = iwidth out_chan syms wid in let last = !idx + lo - hi in
-      begin inner_chk out_chan syms isyms {symattr=isym.symattr; width=RANGE(INT !idx, INT last); sigattr = isym.sigattr; localsyms = EndShash; path=isym.path} subcct id wid; idx := last-1; end
-  | TRIPLE(BITSEL, ID id, INT sel) -> inner_chk out_chan syms isyms {symattr=isym.symattr; width=RANGE(INT !idx, INT !idx); sigattr = isym.sigattr; localsyms = EndShash; path=isym.path} subcct id (RANGE(INT sel, INT sel)); idx := !idx-1
-  | QUADRUPLE(PARTSEL, ID id, INT hi, INT lo) -> inner_chk out_chan syms isyms {symattr=isym.symattr; width=RANGE(INT !idx, INT (!idx+lo-hi)); sigattr = isym.sigattr; localsyms = EndShash; path=isym.path} subcct id (RANGE(INT hi, INT lo)); idx := !idx+lo-hi-1
-  | BINNUM lev -> let w = fst(widthnum out_chan 2 lev) in inner_chk_const out_chan syms isyms {symattr=isym.symattr; width=RANGE(INT !idx, INT (!idx+1-w)); sigattr = isym.sigattr; localsyms = EndShash; path=isym.path} subcct tok (RANGE(INT (w-1), INT 0)); idx := !idx-w
+      let (left,right,inc) = iwidth out_chan syms wid in let last = !idx + (right-left)*inc*inc_irange in
+      begin inner_chk out_chan syms isyms {symattr=isym.symattr; width=RANGE(INT !idx, INT last); sigattr = isym.sigattr; localsyms = EndShash; path=isym.path} subcct id wid; idx := last+inc_irange; end
+  | TRIPLE(BITSEL, ID id, INT sel) -> inner_chk out_chan syms isyms {symattr=isym.symattr; width=RANGE(INT !idx, INT !idx); sigattr = isym.sigattr; localsyms = EndShash; path=isym.path} subcct id (RANGE(INT sel, INT sel)); idx := !idx+inc_irange
+  | QUADRUPLE(PARTSEL, ID id, INT left, INT right) -> let inc = idirection left right in let last = !idx + (right-left)*inc*inc_irange in inner_chk out_chan syms isyms {symattr=isym.symattr; width=RANGE(INT !idx, INT last); sigattr = isym.sigattr; localsyms = EndShash; path=isym.path} subcct id (RANGE(INT left, INT right)); idx := last + inc_irange
+  | BINNUM lev -> let w = fst(widthnum out_chan 2 lev) in inner_chk_const out_chan syms isyms {symattr=isym.symattr; width=RANGE(INT !idx, INT (!idx+1-w)); sigattr = isym.sigattr; localsyms = EndShash; path=isym.path} subcct tok (RANGE(INT (w-1), INT 0)); idx := !idx+inc_irange*w
   | _ -> unhandled out_chan 224 item)
 ) concat;
-if (!idx <> (snd irange - 1)) then
+if (!idx <> snd_irange+inc_irange) then
   Printf.fprintf (fst out_chan) "Concatenation width %d does not match port width %s[%d:%d] in %s\n"
-    (fst irange - !idx) innerid (fst irange) (snd irange) subcct;
+    ((!idx - fst_irange)*inc_irange) innerid fst_irange snd_irange subcct;
 | _ -> inner_chk_expr out_chan syms isyms isym subcct tok
 else Printf.fprintf (fst out_chan) "Instance port %s of %s (type %s) not found\n" innerid subcct kind
 end
@@ -365,8 +366,8 @@ and exprGeneric out_chan syms expr = Stack.push (288, expr) stk; let retval = re
     ( ignore(exprGeneric out_chan syms expr);
     let retval1 = exprGeneric out_chan syms then_clause in
     let retval2 = exprGeneric out_chan syms else_clause in
-    let (hi1,lo1) = iwidth out_chan syms retval1 and (hi2,lo2) = iwidth out_chan syms retval2 in
-      retval := if (hi1-lo1 > hi2-lo2) then retval1 else retval2; )
+    let (left1,right1,inc1) = iwidth out_chan syms retval1 and (left2,right2,inc2) = iwidth out_chan syms retval2 in
+      retval := if ((right1-left1)*inc1 > (right2-left2)*inc2) then retval1 else retval2; )
 | DOUBLE(D_BITS, right ) -> retval := exprGeneric out_chan syms right
 | DOUBLE(D_C, TLIST right ) -> iter(fun arg -> retval := exprGeneric out_chan syms arg) right
 | DOUBLE(D_CLOG2, right ) -> retval := exprGeneric out_chan syms right
@@ -637,7 +638,7 @@ and decls out_chan tree mode =
       | _ -> unhandled out_chan 558 arg1);
     misc_syntax out_chan syms arg2;
     (match arg3 with
-      | RANGE(hi,lo) as rangehilo -> width := rangehilo
+      | RANGE(left,right) as rangehilo -> width := rangehilo
       | TLIST arg9 ->  List.iter (fun arg -> unhandled out_chan 508 arg) arg9
       | EMPTY -> ()
       | _ -> unhandled out_chan 510 arg3);
@@ -654,8 +655,8 @@ and decls out_chan tree mode =
     let width = ref SCALAR in begin
     misc_syntax out_chan syms arg1;
     (match arg2 with
-      | RANGE(hi, lo) as rangehilo -> width := rangehilo
-      | TRIPLE(EMPTY,(RANGE(hi, lo) as rangehilo),EMPTY) -> width := rangehilo
+      | RANGE(left, right) as rangehilo -> width := rangehilo
+      | TRIPLE(EMPTY,(RANGE(left, right) as rangehilo),EMPTY) -> width := rangehilo
       | TLIST arg7 ->  List.iter (fun arg -> unhandled out_chan 524 arg) arg7
       | EMPTY -> ()
       | TRIPLE(EMPTY,EMPTY,EMPTY) -> ()
