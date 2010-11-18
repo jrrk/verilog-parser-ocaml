@@ -42,7 +42,7 @@
 %token SUBCCT
 %token MODINST
 %token PRIMINST
-%token<token * token > RANGE
+%token<token * token> RANGE
 %token<token list> TLIST
 // for undeclared wires
 %token IMPLICIT

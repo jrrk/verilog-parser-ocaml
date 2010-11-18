@@ -57,24 +57,25 @@ end;;
 let erc_chk out_chan msg_cache erch (gsyms:sentries) id s = match s.sigattr with
 | Sigarray attrs -> (
 match s.width with
-| RANGE range -> let (hi,lo) = iwidth out_chan (Shash {nxt=EndShash; syms=gsyms}) s.width in
+| RANGE range -> let (left, right, inc) = iwidth out_chan (Shash {nxt=EndShash; syms=gsyms}) s.width in
   if not ((TokSet.mem IMPLICIT s.symattr)||(TokSet.mem MEMORY s.symattr)) then
-  ( let msg0 = ref "" and i0 = ref hi and i1 = ref hi in try for i = hi downto lo do
-    let msg = erc_chk_sig out_chan s.symattr attrs.(i) id in
+  ( let msg0 = ref "" and i0 = ref left and i1 = ref left and i = ref left in try while (if inc > 0 then !i <= right else !i >= right) do
+    let msg = erc_chk_sig out_chan s.symattr attrs.(!i) id in
 (*    if (String.length msg > 0) then
         Printf.fprintf (fst out_chan) "DBG: %s %s\n" (id^"["^(string_of_int i)^"]") msg;  *)
     if (msg <> !msg0) then (
       cache_msgs msg_cache !msg0 (id^"["^(string_of_int !i0)^":"^(string_of_int !i1)^"]");
-      i0 := i;
-      i1 := i;
+      i0 := !i;
+      i1 := !i;
       msg0 := msg; )
-    else if (i == lo) then (
+    else if (!i == right) then (
       if (String.length msg > 0) then
-      cache_msgs msg_cache !msg0 (id^"["^(string_of_int !i0)^":"^(string_of_int i)^"]"))
+      cache_msgs msg_cache !msg0 (id^"["^(string_of_int !i0)^":"^(string_of_int !i)^"]"))
     else
-      i1 := i;
+      i1 := !i;
+    i := !i + inc
     done
-  with Invalid_argument("index out of bounds") -> (erch(); Printf.fprintf (fst out_chan) "Trying to access %s with index [%d:%d]\n" id hi lo))
+  with Invalid_argument("index out of bounds") -> (erch(); Printf.fprintf (fst out_chan) "Trying to access %s with index [%d:%d]\n" id left right))
 | SCALAR | EMPTY | UNKNOWN->
     let msg = erc_chk_sig out_chan s.symattr attrs.(0) id in
     cache_msgs msg_cache msg id
