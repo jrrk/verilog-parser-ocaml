@@ -145,7 +145,7 @@ let enter_sym_attrs out_chan syms (tok:token) list width mode = match tok with
 | _ -> unhandled out_chan 128 tok;
 ;;
 
-let enter_parameter out_chan syms id arg5 arg6 w =
+let enter_parameter out_chan syms id arg6 w =
   shash_add syms id {Setup.symattr = (TokSet.singleton PARAMETER);
      width = w;
      sigattr = Sigparam arg6;
@@ -626,7 +626,7 @@ and decls out_chan tree mode =
 | QUADRUPLE(PARAMETER, EMPTY, EMPTY, decls) ->
     let width = ref EMPTY in begin
     ( match decls with
-      | TLIST arg9 ->  List.iter (fun x -> match x with TRIPLE(ID id, arg5, arg6) -> enter_parameter out_chan syms id arg5 arg6 !width | _ -> unhandled out_chan 498 x) arg9
+      | TLIST arg9 ->  List.iter (fun x -> match x with TRIPLE(ID id, arg5, arg6) -> enter_parameter out_chan syms id arg6 !width | _ -> unhandled out_chan 498 x) arg9
       | EMPTY -> ()
       | _ -> unhandled out_chan 500 decls); end
 (* Parse IO declarations *)
@@ -683,6 +683,90 @@ and decls out_chan tree mode =
       | TRIPLE(id, arg5, arg6) -> enter_sym_attrs out_chan syms id [kind] SCALAR Create
       | _ -> unhandled out_chan 544 x) arg3)
 | _ -> unhandled out_chan 545 expr );
+ignore(Stack.pop stk)
+
+and specifyitems out_chan syms expr = Stack.push (688, expr) stk; ( match expr with
+  | ID id -> enter_a_sym out_chan syms id SPECIFY UNKNOWN AttrOnly
+  | DOUBLE(DOUBLE(IF_NONE,
+     TRIPLE
+      (DECUPLE
+        (LPAREN, (NEGEDGE|POSEDGE), DOUBLE (ID id1, EMPTY), P_EQGT, LPAREN,
+         DOUBLE (ID id2, EMPTY), P_PLUSCOLON, BINNUM "1'b1", RPAREN,
+         RPAREN),
+       EQUALS, expr1)),
+   SEMICOLON) -> ()
+  | DOUBLE (ID id1, EMPTY) -> ()
+  | DOUBLE (PLING, d) -> ()
+  | DOUBLE (P_ANDANDAND, expr1) -> ()
+  | TRIPLE (DOUBLE (PLING, DOUBLE (ID id1, EMPTY)), AMPERSAND, d) -> ()
+  | TRIPLE (ID id, EQUALS, num) -> enter_parameter out_chan syms id num SCALAR
+  | QUADRUPLE(SPECPARAM, EMPTY, TLIST slst, SEMICOLON) -> iter (fun expr -> specifyitems out_chan syms expr) slst
+  | OCTUPLE(D_PERIOD, LPAREN, TRIPLE
+    ((NEGEDGE|POSEDGE), DOUBLE (ID id1, EMPTY),
+     DOUBLE (P_ANDANDAND, ID id2)),
+   COMMA, ID id3, DOUBLE (COMMA, ID id4), RPAREN, SEMICOLON) -> ()
+  | DECUPLE (LPAREN, POSEDGE, DOUBLE (ID id1, EMPTY), P_EQGT, LPAREN,
+         DOUBLE (ID id2, TRIPLE (LBRACK, INT idx, RBRACK)), COLON,
+         BINNUM "1'bx", RPAREN, RPAREN) -> ()
+  | DECUPLE(D_RECOVERY, LPAREN, TRIPLE ((NEGEDGE|POSEDGE), DOUBLE (ID id1, EMPTY), EMPTY),
+   COMMA,
+   TRIPLE
+    (POSEDGE, DOUBLE (ID id2, EMPTY),
+     DOUBLE (P_ANDANDAND, ID id3)),
+   COMMA, ID id4, DOUBLE (COMMA, ID id5), RPAREN,
+   SEMICOLON) -> ()
+  | DECUPLE(D_WIDTH, LPAREN,
+   TRIPLE
+    ((POSEDGE|NEGEDGE), DOUBLE (ID id1, EMPTY), DOUBLE (P_ANDANDAND, expr1)),
+   COMMA, expr2, COMMA, expr3, DOUBLE (COMMA, ID id4), RPAREN, SEMICOLON) -> ()
+  | UNDECUPLE
+        (ID "Tcq", COMMA, ID "Tcq", COMMA, ID "Tcqx", COMMA, ID "Tcq", COMMA,
+         ID "Tcqx", COMMA, ID "Tcq") -> ()
+  | UNDECUPLE
+      (ID "Tsdq", COMMA, ID "Tsdq", COMMA, ID "Tsdqx", COMMA, ID "Tsdq",
+       COMMA, ID "Tsdqx", COMMA, ID "Tsdq") -> ()
+  | DUODECUPLE
+  (D_SETUPHOLD, LPAREN,
+   TRIPLE
+    ((NEGEDGE|POSEDGE), DOUBLE (ID id1, EMPTY), expr1),
+   COMMA,
+   TRIPLE ((NEGEDGE|POSEDGE), DOUBLE (ID id3, idx), expr2),
+   COMMA, expr3, COMMA, expr4,
+   TRIPLE
+    (COMMA, ID id6,
+     TRIPLE
+      (COMMA, EMPTY,
+       TRIPLE
+        (COMMA, EMPTY,
+         TRIPLE
+          (COMMA, ID id7,
+           DOUBLE
+            (COMMA, qid))))),
+   RPAREN, SEMICOLON) -> ()
+  | DUODECUPLE
+  (D_RECREM, LPAREN,
+   TRIPLE
+    ((NEGEDGE|POSEDGE), DOUBLE (ID id1, EMPTY),
+     DOUBLE (P_ANDANDAND, expr1)),
+   COMMA,
+   TRIPLE
+    ((NEGEDGE|POSEDGE), DOUBLE (ID id2, EMPTY),
+     DOUBLE (P_ANDANDAND, expr2)),
+   COMMA, expr3, COMMA, expr4,
+   TRIPLE
+    (COMMA, ID id3,
+     TRIPLE
+      (COMMA, EMPTY,
+       TRIPLE
+        (COMMA, EMPTY,
+         TRIPLE (COMMA, ID id4, DOUBLE (COMMA, ID id5))))),
+   RPAREN, SEMICOLON) -> ()
+  | DOUBLE(TILDE, ID "EN") -> ()
+  | DOUBLE(QUINTUPLE(IF, LPAREN, cond, RPAREN, TRIPLE(dec, EQUALS, undec)), SEMICOLON) -> ()
+  | DOUBLE(TRIPLE(dec, EQUALS, undec), SEMICOLON) -> ()
+  | TRIPLE(LBRACK, INT 0, RBRACK) -> ()
+  | QUADRUPLE(ID id, LBRACK, INT n, RBRACK) -> ()
+  | _ -> unhandled out_chan 690 expr);
 ignore(Stack.pop stk)
 
 and toplevelitems out_chan tree =
@@ -757,10 +841,8 @@ and toplevelitems out_chan tree =
   | DOUBLE(TLIST tin,TLIST tout) -> ()
   | TRIPLE(TLIST tin,TLIST treg,TLIST tout) -> ()
   | _ -> unhandled out_chan 621 row) trows
-(* Parse truncated specify blocks *)
-| DOUBLE(SPECIFY, TLIST speclist) -> iter (fun item -> match item with
-  | ID id -> enter_a_sym out_chan syms id SPECIFY UNKNOWN AttrOnly
-  | _ -> ()) speclist
+(* Parse specify blocks *)
+| DOUBLE(SPECIFY, TLIST lst) -> iter (fun expr -> specifyitems out_chan syms expr) lst
 (* Parse primitive instance *)
 | QUADRUPLE(PRIMINST, ID prim, params, TLIST inlist) ->
 (*

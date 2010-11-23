@@ -20,7 +20,7 @@ val enter_sym_attrs : Setup.fmt -> Setup.shash -> Vparser.token -> Setup.TokSet.
 val check_syms : Setup.fmt -> string -> Setup.shash -> unit
 val endscan : unit -> unit
 val subexp : Setup.fmt -> Setup.TokSet.elt -> Setup.shash -> Vparser.token -> unit
-val enter_parameter : Setup.fmt -> Setup.shash -> string -> Vparser.token -> Vparser.token -> Vparser.token -> unit
+val enter_parameter : Setup.fmt -> Setup.shash -> string -> Vparser.token -> Vparser.token -> unit
 val create_attr : Setup.fmt -> Setup.shash -> Vparser.token -> Setup.tsigattr
 val stmtBlock : Setup.fmt -> Setup.shash -> Setup.TokSet.elt -> unit
 val for_stmt : Setup.fmt -> Setup.shash -> string -> Vparser.token -> Vparser.token -> Vparser.token -> Setup.TokSet.elt -> unit
