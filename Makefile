@@ -18,7 +18,8 @@
 ##*****************************************************************************
 
 TARGET = vparser
-MENHIROPTS = -v --trace --table # --infer
+MENHIROPTS = -v  --table # --infer 
+#MENHIROPTS = -v  --table  --trace
 YACCOPTS = -v
 #LEXOPTS = -ml
 

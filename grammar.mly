@@ -419,7 +419,7 @@
 %type <token> caseListE
 %type <token> case
 %type <token list> cateList
-%type <token> cellpinItemE
+%type <token> cellpinItem
 %type <token list> cellpinItList
 %type <token list> cellpinList
 %type <token> commaEListE
@@ -880,8 +880,7 @@ delay:
 
 dlyTerm:
 		identifier 				{ $1 }
-	|	INTNUM 					{ FLOATNUM (float_of_string $1) }
-	|	FLOATNUM 				{ FLOATNUM $1 }
+	|	floatnum 				{ $1 }
 	;
 
 // IEEE: mintypmax_expression and constant_mintypmax_expression
@@ -1022,12 +1021,12 @@ cellpinList:
 	;
 
 cellpinItList:
-		cellpinItemE				{ [ $1 ] }
-	|	cellpinItList COMMA cellpinItemE	{ $1 @ [ $3 ] }
+		/* empty: ',,' is legal */		{ [ ] }
+	|	cellpinItem				{ [ $1 ] }
+	|	cellpinItList COMMA cellpinItem		{ $1 @ [ $3 ] }
 	;
 
-cellpinItemE:
-		/* empty: ',,' is legal */		{ EMPTY }
+cellpinItem:
 	|	P_DOTSTAR				{ P_DOTSTAR }
 	|	DOT identifier				{ DOUBLE (CELLPIN, $2 ) }
 	|	DOT identifier LPAREN RPAREN		{ DOUBLE (CELLPIN, $2 ) }
@@ -1711,7 +1710,10 @@ strAsText:
 	;
 
 floatnum:
-		FLOATNUM				{ FLOATNUM $1 }
+		MINUS FLOATNUM				{ FLOATNUM (-. $2) }
+	|	MINUS INTNUM 				{ FLOATNUM (-.float_of_string $2)}
+	|	INTNUM 					{ FLOATNUM (float_of_string $1) }
+	|	FLOATNUM				{ FLOATNUM ($1) }
 	;
 
 concIdList:
@@ -1811,7 +1813,7 @@ unary_module_path_operator : PLING { (PLING) }
 	;
 
 module_path_primary : arg2 = number { (arg2) }
-	| arg4 = identifier { (arg4) }
+	| arg4 = specify_input_terminal_descriptor { (arg4) }
 	| arg6 = module_path_concatenation { (arg6) }
 	| arg8 = module_path_multiple_concatenation { (arg8) }
 /*
@@ -1834,11 +1836,11 @@ polarity_operator : PLUS { (PLUS) }
 	| MINUS { (MINUS) }
 	;
 
-list_of_path_delay_expressions : arg2 = path_delay_expression { (arg2) }
-	| arg4 = path_delay_expression COMMA arg6 = path_delay_expression { TRIPLE(arg4, COMMA, arg6) }
-	| arg8 = path_delay_expression COMMA arg10 = path_delay_expression COMMA arg12 = path_delay_expression { QUINTUPLE(arg8, COMMA, arg10, COMMA, arg12) }
-	| arg14 = path_delay_expression COMMA arg16 = path_delay_expression COMMA arg18 = path_delay_expression COMMA arg20 = path_delay_expression COMMA arg22 = path_delay_expression COMMA arg24 = path_delay_expression { UNDECUPLE(arg14, COMMA, arg16, COMMA, arg18, COMMA, arg20, COMMA, arg22, COMMA, arg24) }
-	| arg26 = path_delay_expression COMMA arg28 = path_delay_expression COMMA arg30 = path_delay_expression COMMA arg32 = path_delay_expression COMMA arg34 = path_delay_expression COMMA arg36 = path_delay_expression COMMA arg38 = path_delay_expression COMMA arg40 = path_delay_expression COMMA arg42 = path_delay_expression COMMA arg44 = path_delay_expression COMMA arg46 = path_delay_expression COMMA arg48 = path_delay_expression { TREVIGENUPLE(arg26, COMMA, arg28, COMMA, arg30, COMMA, arg32, COMMA, arg34, COMMA, arg36, COMMA, arg38, COMMA, arg40, COMMA, arg42, COMMA, arg44, COMMA, arg46, COMMA, arg48) }
+path_delay_value : arg2 = path_delay_expression { (arg2) }
+	| LPAREN arg4 = path_delay_expression COMMA arg6 = path_delay_expression RPAREN { TRIPLE(arg4, COMMA, arg6) }
+	| LPAREN arg8 = path_delay_expression COMMA arg10 = path_delay_expression COMMA arg12 = path_delay_expression RPAREN { QUINTUPLE(arg8, COMMA, arg10, COMMA, arg12) }
+	| LPAREN arg14 = path_delay_expression COMMA arg16 = path_delay_expression COMMA arg18 = path_delay_expression COMMA arg20 = path_delay_expression COMMA arg22 = path_delay_expression COMMA arg24 = path_delay_expression RPAREN { UNDECUPLE(arg14, COMMA, arg16, COMMA, arg18, COMMA, arg20, COMMA, arg22, COMMA, arg24) }
+	| LPAREN arg26 = path_delay_expression COMMA arg28 = path_delay_expression COMMA arg30 = path_delay_expression COMMA arg32 = path_delay_expression COMMA arg34 = path_delay_expression COMMA arg36 = path_delay_expression COMMA arg38 = path_delay_expression COMMA arg40 = path_delay_expression COMMA arg42 = path_delay_expression COMMA arg44 = path_delay_expression COMMA arg46 = path_delay_expression COMMA arg48 = path_delay_expression RPAREN { TREVIGENUPLE(arg26, COMMA, arg28, COMMA, arg30, COMMA, arg32, COMMA, arg34, COMMA, arg36, COMMA, arg38, COMMA, arg40, COMMA, arg42, COMMA, arg44, COMMA, arg46, COMMA, arg48) }
 	;
 
 constant_range_expression : arg2 = constant_expression { (arg2) }
@@ -1895,14 +1897,6 @@ constant_range_expression : arg2 = constant_expression { (arg2) }
 
 pulse_control_specparam : PATHPULSE EQUALS LPAREN arg5 = limit_value arg6 = pulse_control_specparam_6 RPAREN SEMICOLON { SEPTUPLE(PATHPULSE, EQUALS, LPAREN, arg5, arg6, RPAREN, SEMICOLON) }
 	| PATHPULSE arg11 = specify_input_terminal_descriptor DOLLAR arg13 = specify_output_terminal_descriptor EQUALS LPAREN arg16 = limit_value arg17 = pulse_control_specparam_17 RPAREN SEMICOLON { DECUPLE(PATHPULSE, arg11, DOLLAR, arg13, EQUALS, LPAREN, arg16, arg17, RPAREN, SEMICOLON) }
-	;
-
-input_identifier : arg2 = identifier { (arg2) }
-	| arg4 = identifier { (arg4) }
-	;
-
-path_delay_value : arg2 = list_of_path_delay_expressions { (arg2) }
-	| LPAREN arg5 = list_of_path_delay_expressions RPAREN { TRIPLE(LPAREN, arg5, RPAREN) }
 	;
 
 %inline limit_value : arg2 = constant_mintypmax_expression { (arg2) }
@@ -2147,6 +2141,7 @@ delayed_data : arg2 = identifier { (arg2) }
 	;
 
 constant_expression : arg2 = exprNoStr { (arg2) }
+	| arg3 = floatnum { (arg3) }
 	;
 
 %inline full_path_description : LPAREN arg3 = list_of_path_inputs arg4 = full_path_description_4 P_ASTGT arg6 = list_of_path_outputs RPAREN { SEXTUPLE(LPAREN, arg3, arg4, P_ASTGT, arg6, RPAREN) }
@@ -2179,9 +2174,10 @@ edge_sensitive_path_declaration : arg2 = parallel_edge_sensitive_path_descriptio
 
 colon_identifier : P_PLUSCOLON { (P_PLUSCOLON) }
 	| P_MINUSCOLON { (P_MINUSCOLON) }
+	| COLON { (COLON) }
 	;
 
-csr_edge_sensitive_path_description : LPAREN arg2 = edge_identifier arg3 = specify_input_terminal_descriptor P_EQGT LPAREN arg6 = identifier arg7 = colon_identifier arg8 = module_path_expression RPAREN RPAREN { DECUPLE(LPAREN, arg2, arg3, P_EQGT, LPAREN, arg6, arg7, arg8, RPAREN, RPAREN) }
+csr_edge_sensitive_path_description : LPAREN arg2 = edge_identifier arg3 = specify_input_terminal_descriptor P_EQGT LPAREN arg6 = specify_output_terminal_descriptor arg7 = colon_identifier arg8 = module_path_expression RPAREN RPAREN { DECUPLE(LPAREN, arg2, arg3, P_EQGT, LPAREN, arg6, arg7, arg8, RPAREN, RPAREN) }
 	;
 
 %inline full_edge_sensitive_path_description : LPAREN arg3 = full_edge_sensitive_path_description_3 arg4 = list_of_path_inputs P_ASTGT arg6 = list_of_path_outputs arg7 = full_edge_sensitive_path_description_7 COLON arg9 = expression RPAREN { NONUPLE(LPAREN, arg3, arg4, P_ASTGT, arg6, arg7, COLON, arg9, RPAREN) }
@@ -2214,18 +2210,14 @@ specify_output_terminal_descriptor_3 : {  EMPTY }
 	| LBRACK arg4 = constant_range_expression RBRACK { TRIPLE(LBRACK, arg4, RBRACK) }
 	;
 
-specify_output_terminal_descriptor : output_identifier specify_output_terminal_descriptor_3 { DOUBLE($1, $2) }
+specify_output_terminal_descriptor : identifier specify_output_terminal_descriptor_3 { DOUBLE($1, $2) }
 	;
 
-%inline specify_input_terminal_descriptor : arg2 = input_identifier arg3 = specify_input_terminal_descriptor_3 { DOUBLE(arg2, arg3) }
+%inline specify_input_terminal_descriptor : arg2 = identifier arg3 = specify_input_terminal_descriptor_3 { DOUBLE(arg2, arg3) }
 	;
 
 %inline specify_input_terminal_descriptor_3 : {  EMPTY }
 	| LBRACK arg4 = constant_range_expression RBRACK { TRIPLE(LBRACK, arg4, RBRACK) }
-	;
-
-output_identifier : arg2 = identifier { (arg2) }
-	| arg4 = identifier { (arg4) }
 	;
 
 delayed_reference : arg2 = identifier { (arg2) }
@@ -2275,11 +2267,11 @@ list_of_path_outputs_3 : {  EMPTY }
 	| arg3 = range { (arg3) }
 	;
 
-%inline list_of_specparam_assignments : arg2 = specparam_assignment arg3 = list_of_specparam_assignments_3 { DOUBLE(arg2, arg3) }
+%inline list_of_specparam_assignments : arg2 = specparam_assignment arg3 = list_of_specparam_assignments_3 { TLIST (arg2 :: arg3) }
 	;
 
-list_of_specparam_assignments_3 : {  EMPTY }
-	| arg3 = list_of_specparam_assignments_3 COMMA arg5 = specparam_assignment { TRIPLE(arg3, COMMA, arg5) }
+list_of_specparam_assignments_3 : { [] }
+	| arg3 = list_of_specparam_assignments_3 COMMA arg5 = specparam_assignment { arg3 @ [arg5] }
 	;
 
 binary_module_path_operator : P_EQUAL { (P_EQUAL) }
@@ -2302,9 +2294,10 @@ module_path_expression : arg2 = module_path_primary { (arg2) }
 state_dependent_path_declaration : IF LPAREN arg4 = module_path_expression RPAREN arg6 = simple_path_declaration { QUINTUPLE(IF, LPAREN, arg4, RPAREN, arg6) }
 	| IF LPAREN arg10 = module_path_expression RPAREN arg12 = edge_sensitive_path_declaration { QUINTUPLE(IF, LPAREN, arg10, RPAREN, arg12) }
 	| IF_NONE arg15 = simple_path_declaration { DOUBLE(IF_NONE, arg15) }
+	| IF_NONE arg15 = edge_sensitive_path_declaration { DOUBLE(IF_NONE, arg15) }
 	;
 
-specparam_assignment : arg2 = identifier EQUALS arg4 = constant_mintypmax_expression { TRIPLE(arg2, EQUALS, arg4) }
+%inline specparam_assignment : arg2 = identifier EQUALS arg4 = constant_mintypmax_expression { TRIPLE(arg2, EQUALS, arg4) }
 	| arg6 = pulse_control_specparam { (arg6) }
 	;
 
