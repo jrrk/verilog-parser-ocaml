@@ -6,6 +6,9 @@
 .ml.cmo:
 	ocamlfind ocamlc -c -g -package "str" $<
 
+lparser: liberty_parser.cmi liberty.cmo setup.cmi setup.cmo globals.cmi globals.cmo liberty_parser.cmo vlexer.cmo vparse.cmi mytoploop.cmo vparse.cmo main.cmo
+	ocamlfind ocamlc -g -package "str,unix" -linkpkg -o $@ toplevellib.cma liberty.cmo setup.cmo globals.cmo liberty_parser.cmo vlexer.cmo mytoploop.cmo vparse.cmo main.cmo
+
 liberty.ml: liberty_parser.cmi
 	echo open Liberty_parser > $@
 	echo open String >> $@
@@ -22,10 +25,13 @@ liberty_parser.cmo: liberty_parser.ml
 vlexer.ml vlexer.mli : vlexer.mll
 	ocamllex $<
 
-lparser: liberty_parser.cmi liberty.cmo setup.cmi setup.cmo globals.cmi globals.cmo liberty_parser.cmo vlexer.cmo vparse.cmi vparse.cmo main.cmo
-	ocamlfind ocamlc -g -package "unix" -linkpkg -o $@ liberty.cmo setup.cmo globals.cmo liberty_parser.cmo vlexer.cmo vparse.cmo main.cmo
-
 clean:
 	rm -f tokens.log liberty_parser.automaton test.mli test.cmi test.cmo test ord.ml liberty_parser.ml *.cmi *.cmo
 
 ord.cmo: ord.cmi
+
+INC = /home/jrrk/cmd/src/ocaml-3.12.0
+I = -I $(INC)/driver -I $(INC)/toplevel -I $(INC)/bytecomp -I $(INC)/parsing -I $(INC)/utils -I $(INC)/typing
+
+mytoploop.cmo: mytoploop.ml
+	ocamlc.opt -g -c $I $<

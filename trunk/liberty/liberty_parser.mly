@@ -13,7 +13,7 @@
 %token	LIBERTY_ATTRENUM_bus_naming_style
 %token	LIBERTY_ATTRENUM_bus_type
 %token	LIBERTY_ATTRENUM_calc_mode
-%token	LIBERTY_ATTRENUM_capacitance
+%token	LIBERTY_ENUM_capacitance
 %token	LIBERTY_ATTRENUM_capacitive_load_unit
 %token	LIBERTY_ATTRENUM_cell_footprint
 %token	LIBERTY_ATTRENUM_cell_leakage_power
@@ -127,8 +127,8 @@
 %token	LIBERTY_ATTRENUM_enable_also
 %token	LIBERTY_ATTRENUM_equal_or_opposite_output
 %token	LIBERTY_ATTRENUM_failure_rate
-%token	LIBERTY_ATTRENUM_fall_capacitance
-%token	LIBERTY_ATTRENUM_fall_capacitance_range
+%token	LIBERTY_ENUM_fall_capacitance
+%token	LIBERTY_ENUM_fall_capacitance_range
 %token	LIBERTY_ATTRENUM_fall_current_slope_after_threshold
 %token	LIBERTY_ATTRENUM_fall_current_slope_before_threshold
 %token	LIBERTY_ATTRENUM_fall_delay_intercept
@@ -188,7 +188,7 @@
 %token	LIBERTY_ATTRENUM_input_switching_condition
 %token	LIBERTY_ATTRENUM_input_threshold_pct_fall
 %token	LIBERTY_ATTRENUM_input_threshold_pct_rise
-%token	LIBERTY_ATTRENUM_input_voltage
+%token	LIBERTY_ENUM_input_voltage
 %token	LIBERTY_ATTRENUM_input_voltage_range
 %token	LIBERTY_ATTRENUM_interdependence_id
 %token	LIBERTY_ATTRENUM_interface_timing
@@ -378,7 +378,7 @@
 %token	LIBERTY_ATTRENUM_output_switching_condition
 %token	LIBERTY_ATTRENUM_output_threshold_pct_fall
 %token	LIBERTY_ATTRENUM_output_threshold_pct_rise
-%token	LIBERTY_ATTRENUM_output_voltage
+%token	LIBERTY_ENUM_output_voltage
 %token	LIBERTY_ATTRENUM_output_voltage_range
 %token	LIBERTY_ATTRENUM_pad_cell
 %token	LIBERTY_ATTRENUM_pad_type
@@ -437,8 +437,8 @@
 %token	LIBERTY_ATTRENUM_retention_cell
 %token	LIBERTY_ATTRENUM_retention_pin
 %token	LIBERTY_ATTRENUM_revision
-%token	LIBERTY_ATTRENUM_rise_capacitance
-%token	LIBERTY_ATTRENUM_rise_capacitance_range
+%token	LIBERTY_ENUM_rise_capacitance
+%token	LIBERTY_ENUM_rise_capacitance_range
 %token	LIBERTY_ATTRENUM_rise_current_slope_after_threshold
 %token	LIBERTY_ATTRENUM_rise_current_slope_before_threshold
 %token	LIBERTY_ATTRENUM_rise_delay_intercept
@@ -449,7 +449,7 @@
 %token	LIBERTY_ATTRENUM_rising_together_group
 %token	LIBERTY_ATTRENUM_routing_layers
 %token	LIBERTY_ATTRENUM_row_address
-%token	LIBERTY_ATTRENUM_scaling_factors
+%token	LIBERTY_ENUM_scaling_factors
 %token	LIBERTY_ATTRENUM_scan_group
 %token	LIBERTY_ATTRENUM_sdf_cond
 %token	LIBERTY_ATTRENUM_sdf_cond_end
@@ -508,7 +508,7 @@
 %token	LIBERTY_ATTRENUM_total_track_area
 %token	LIBERTY_ATTRENUM_tracks
 %token	LIBERTY_ATTRENUM_tree_type
-%token	LIBERTY_ATTRENUM_type
+%token	LIBERTY_ENUM_type
 %token	LIBERTY_ATTRENUM_typical_capacitances
 %token	LIBERTY_ATTRENUM_use_for_size_only
 %token	LIBERTY_ATTRENUM_user_function_class
@@ -528,7 +528,7 @@
 %token	LIBERTY_ATTRENUM_variable_7_range
 %token	LIBERTY_ATTRENUM_variables
 %token	LIBERTY_ATTRENUM_va_values
-%token	LIBERTY_ATTRENUM_vector
+%token	LIBERTY_ENUM_vector
 %token	LIBERTY_ATTRENUM_vhdl_name
 %token	LIBERTY_ATTRENUM_vih
 %token	LIBERTY_ATTRENUM_vil
@@ -556,7 +556,6 @@
 %token	LIBERTY_GROUPENUM_base_curves
 %token	LIBERTY_GROUPENUM_bundle
 %token	LIBERTY_GROUPENUM_bus
-%token	LIBERTY_GROUPENUM_capacitance
 %token	LIBERTY_GROUPENUM_ccs_lu_table_template
 %token	LIBERTY_GROUPENUM_ccsn_first_stage
 %token	LIBERTY_GROUPENUM_ccsn_last_stage
@@ -578,8 +577,6 @@
 %token	LIBERTY_GROUPENUM_electromigration
 %token	LIBERTY_GROUPENUM_em_lut_template
 %token	LIBERTY_GROUPENUM_em_max_toggle_rate
-%token	LIBERTY_GROUPENUM_fall_capacitance
-%token	LIBERTY_GROUPENUM_fall_capacitance_range
 %token	LIBERTY_GROUPENUM_fall_constraint
 %token	LIBERTY_GROUPENUM_fall_net_delay
 %token	LIBERTY_GROUPENUM_fall_power
@@ -596,7 +593,6 @@
 %token	LIBERTY_GROUPENUM_hyperbolic_noise_low
 %token	LIBERTY_GROUPENUM_init_current
 %token	LIBERTY_GROUPENUM_input_signal_swing
-%token	LIBERTY_GROUPENUM_input_voltage
 %token	LIBERTY_GROUPENUM_interconnect_delay
 %token	LIBERTY_GROUPENUM_internal_power
 %token	LIBERTY_GROUPENUM_intrinsic_capacitance
@@ -635,7 +631,6 @@
 %token	LIBERTY_GROUPENUM_output_current_rise
 %token	LIBERTY_GROUPENUM_output_current_template
 %token	LIBERTY_GROUPENUM_output_signal_swing
-%token	LIBERTY_GROUPENUM_output_voltage
 %token	LIBERTY_GROUPENUM_output_voltage_fall
 %token	LIBERTY_GROUPENUM_output_voltage_rise
 %token	LIBERTY_GROUPENUM_peak_current
@@ -677,8 +672,6 @@
 %token	LIBERTY_GROUPENUM_retaining_rise
 %token	LIBERTY_GROUPENUM_retain_rise_slew
 %token	LIBERTY_GROUPENUM_right_id
-%token	LIBERTY_GROUPENUM_rise_capacitance
-%token	LIBERTY_GROUPENUM_rise_capacitance_range
 %token	LIBERTY_GROUPENUM_rise_constraint
 %token	LIBERTY_GROUPENUM_rise_net_delay
 %token	LIBERTY_GROUPENUM_rise_power
@@ -687,7 +680,6 @@
 %token	LIBERTY_GROUPENUM_rise_transition_degradation
 %token	LIBERTY_GROUPENUM_routing_track
 %token	LIBERTY_GROUPENUM_scaled_cell
-%token	LIBERTY_GROUPENUM_scaling_factors
 %token	LIBERTY_GROUPENUM_sensitization
 %token	LIBERTY_GROUPENUM_seq
 %token	LIBERTY_GROUPENUM_seq_bank
@@ -702,7 +694,6 @@
 %token	LIBERTY_GROUPENUM_timing_based_variation
 %token	LIBERTY_GROUPENUM_timing_range
 %token	LIBERTY_GROUPENUM_tlatch
-%token	LIBERTY_GROUPENUM_type
 %token	LIBERTY_GROUPENUM_upper
 %token	LIBERTY_GROUPENUM_user_parameters
 %token	LIBERTY_GROUPENUM_va_compact_ccs_fall
@@ -713,7 +704,6 @@
 %token	LIBERTY_GROUPENUM_va_receiver_capacitance2_fall
 %token	LIBERTY_GROUPENUM_va_receiver_capacitance2_rise
 %token	LIBERTY_GROUPENUM_va_rise_constraint
-%token	LIBERTY_GROUPENUM_vector
 %token	LIBERTY_GROUPENUM_wire_load
 %token	LIBERTY_GROUPENUM_wire_load_selection
 %token	LIBERTY_GROUPENUM_wire_load_table
@@ -721,11 +711,13 @@
 %token COMMA SEMI LPAR RPAR LCURLY RCURLY COLON KW_DEFINE KW_DEFINE_GROUP
 %token KW_TRUE KW_FALSE PLUS MINUS MULT DIV EQ SIMPLE HEAD ATTR
 %token KW_FLOAT KW_STRING KW_ENUM KW_INTEGER KW_SHORT KW_OR KW_AND
-%token KW_BOOLEAN KW_LIST LBRACK RBRACK INCLUDE ENDOFFILE
+%token KW_BOOLEAN KW_LIST LBRACK RBRACK INCLUDE GROUP ENDOFFILE
 %token UNARY
 
 %token <float> NUM
-%token <string> STRING ID
+%token <string> STRING
+%token <token> ID
+%token <token list> TLIST
 // Generic double
 %token<token*token> DOUBLE
 // Generic triple
@@ -744,116 +736,124 @@
 %left PLUS MINUS 
 %left MULT DIV
 %right UNARY
-//%left LPAR RPAR
 
-%type <token>     group file statements statement
-%type <token>       define define_group
-%type <token> param_list attr_val attr_val_expr
-%type <token>	s_or_i
-%type <token> head
-%type <token> expr
+%type <token>		group file statement
+%type <token list>	statements param_list
+%type <token>		define define_group
+%type <token>		attr_val attr_val_expr
+%type <token>		s_or_i
+%type <token>		head
+%type <token>		expr
 
 %start file
 
 %%
 
 file	: group { $1 }
-		;
+	;
 
-group	: head LCURLY statements RCURLY { $1 }
+group	: head LCURLY statements RCURLY { TRIPLE(GROUP, $1, TLIST $3); }
         | head LCURLY RCURLY { $1 }
-		;
+	;
 
-statements 	: statement { $1 }
-		 	| statements statement  { $1 }
-			;
+statements :
+	| statement { [ $1 ] }
+ 	| statements statement { $1 @ [ $2 ] }
+	;
 
-statement 	: simple_attr { $1 }
-			| complex_attr { $1 }
-			| define { $1 }
-			| define_group { $1 }
-			| group  { $1 }
-			;
+statement :
+	| simple_attr { $1 }
+	| complex_attr { $1 }
+	| define { $1 }
+	| define_group { $1 }
+	| group  { $1 }
+	;
 
-simple_attr	: ID COLON attr_val_expr SEMI { TRIPLE(SIMPLE, ID $1, $3) }
-		| ID COLON attr_val_expr { TRIPLE(SIMPLE, ID $1, $3) }
-		| ID EQ    attr_val_expr { TRIPLE(EQ, ID $1, $3) }
-                | head  { $1 }
-				;
+simple_attr :
+	| ID COLON attr_val_expr SEMI { TRIPLE(SIMPLE, ID $1, $3) }
+	| ID COLON attr_val_expr { TRIPLE(SIMPLE, ID $1, $3) }
+	| ID EQ    attr_val_expr { TRIPLE(EQ, ID $1, $3) }
+        | head  { $1 }
+	;
 
-complex_attr    : head  SEMI  { $1 }
-                                ;
+complex_attr :
+	head  SEMI  { $1 }
+        ;
 
-head	: ID LPAR param_list RPAR { TRIPLE(HEAD, ID $1, $3) }
+head :
+	| ID LPAR param_list RPAR { TRIPLE(HEAD, ID $1, TLIST $3) }
         | ID LPAR RPAR            { ID $1 }
-        | LIBERTY_GROUPENUM_library LPAR param_list RPAR { $3 }
-		;
+	;
 
-param_list  : attr_val { $1 }
-            | param_list COMMA attr_val
-              { $1 } 
-		;
+param_list:
+	| attr_val { [ $1 ] }
+        | param_list COMMA attr_val { $1 @ [ $3 ] } 
+	;
 
-define  : KW_DEFINE LPAR s_or_i COMMA s_or_i COMMA s_or_i RPAR SEMI  
+define:
+	KW_DEFINE LPAR s_or_i COMMA s_or_i COMMA s_or_i RPAR SEMI  
                 { QUADRUPLE(KW_DEFINE, $3, $5, $7) }
 
-define_group : KW_DEFINE_GROUP LPAR s_or_i COMMA s_or_i RPAR SEMI
+define_group:
+	KW_DEFINE_GROUP LPAR s_or_i COMMA s_or_i RPAR SEMI
             { TRIPLE(KW_DEFINE_GROUP,$3,$5) } 
 		;
 
-s_or_i  : STRING { STRING $1 }
-		| ID { ID $1 }
-		;
+s_or_i:
+	STRING { STRING $1 }
+	| ID { ID $1 }
+	;
 
-attr_val : NUM { NUM $1 }
-		 | s_or_i { $1 }
-		 | s_or_i COLON s_or_i { TRIPLE(ATTR, $1, $3) }
-         	 | KW_TRUE { KW_TRUE }
-	         | KW_FALSE { KW_FALSE }
-		 ;
+attr_val:
+	NUM { NUM $1 }
+	| s_or_i { $1 }
+	| s_or_i COLON s_or_i { TRIPLE(ATTR, $1, $3) }
+        | KW_TRUE { KW_TRUE }
+	| KW_FALSE { KW_FALSE }
+	;
 
 attr_val_expr : STRING { STRING $1 }
-	         | KW_TRUE { KW_TRUE }
-		 | KW_FALSE { KW_FALSE }
-		 | expr { $1 }
-		 ;
+	| KW_TRUE { KW_TRUE }
+	| KW_FALSE { KW_FALSE }
+	| expr { $1 }
+	;
 
-expr     : expr PLUS expr 
+expr: expr PLUS expr 
            {
 	   TRIPLE(PLUS, $1, $3);
            }
-         | expr MINUS expr
+        | expr MINUS expr
            {
 	   TRIPLE(MINUS, $1, $3);
            }
-         | expr MULT expr
+        | expr MULT expr
            {
 	   TRIPLE(MULT, $1, $3);
            }
-         | expr DIV  expr
+        | expr DIV expr
            {
 	   TRIPLE(DIV, $1, $3);
            }
-         | LPAR expr RPAR
+        | LPAR expr RPAR
            {
 	   $2;
            }
-         | MINUS expr %prec UNARY
+        | MINUS expr %prec UNARY
            {
 	   DOUBLE(MINUS, $2);
            }
-         | PLUS  expr %prec UNARY
+        | PLUS expr %prec UNARY
            {
 	   DOUBLE(PLUS, $2);
            }
-         | NUM
+        | NUM
            {
 	   NUM $1
            }
-         | ID
+        | ID
            {
 	   ID $1
            }
-         ;
+        ;
 
 %%

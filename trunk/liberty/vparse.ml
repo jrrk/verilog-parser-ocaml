@@ -132,10 +132,6 @@ let from_func out_chan dst cnt =
     1
 ;;
 
-let read_pragma out_chan lib nam (kind:string) =
-Printf.fprintf (fst out_chan) "Pragma %s in library %s is black-boxed\n" nam lib;
-if (Hashtbl.mem Globals.black_box nam == false) then Hashtbl.add Globals.black_box nam kind
-
 let parse str = begin
   (   let trc_file = Globals.mygetenv "VCHK_TRACE_FILE" in
     if (!Globals.trace_file == Closed) && (trc_file <> "") then
@@ -152,6 +148,7 @@ let parse str = begin
     let lexbuf = Lexing.from_function (fun dst cnt -> from_func out_chan dst cnt) in
     let looping = ref true in while !looping do
       let rslt = Liberty_parser.file Vlexer.token lexbuf in match rslt with
+      | TRIPLE(GROUP,TRIPLE(HEAD, ID LIBERTY_GROUPENUM_library, TLIST [ID (STRING key)]), TLIST lst) -> Hashtbl.add libraries key lst
       | ENDOFFILE -> looping := false
       | _ -> Globals.unhandled (stdout,Format.std_formatter) 191 rslt
     done
