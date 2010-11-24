@@ -27,9 +27,7 @@ symbols: Setup.shash;
 mutable unresolved: string list;
  };;
 
-let modprims = Hashtbl.create 256;;
-let pending = Hashtbl.create 256;;
-let black_box = Hashtbl.create 256;;
+let libraries = Hashtbl.create 256;;
 let env_cache = Hashtbl.create 256;;
 
 let tmpnam = "report."^(string_of_int(Unix.getpid()))^"."^Unix.gethostname()^".report";;
@@ -44,7 +42,7 @@ let (implicit_wires:string list ref) = ref [];;
 
 let unhandled_dflt out_chan ln argt = let arg = (ln,argt) in if (List.mem arg !unhand_list == false) then begin
 unhand_list := arg :: !unhand_list;
-Printf.fprintf (fst out_chan) "\n\n**** Unhandled %d ****\n" (List.length !unhand_list);
+Printf.fprintf (fst out_chan) "\n\n**** Unhandled %d (%d) ****\n" (List.length !unhand_list) ln;
 end
 
 let unhandled_ptr = ref (UPTR unhandled_dflt);;
@@ -53,7 +51,7 @@ let unhandled out_chan ln arg = match !unhandled_ptr with UPTR fn -> fn out_chan
 
 let last_mod = ref "";;
 
-let get_table (m:string) = Hashtbl.find modprims m;;
+let get_table (m:string) = Hashtbl.find libraries m;;
 let get_syms (r:modtree) = r.symbols;;
 
 let tsymbols = Hashtbl.create 256;;

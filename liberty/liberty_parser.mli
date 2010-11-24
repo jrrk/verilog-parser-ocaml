@@ -14,7 +14,7 @@ type token =
   | LIBERTY_ATTRENUM_bus_naming_style
   | LIBERTY_ATTRENUM_bus_type
   | LIBERTY_ATTRENUM_calc_mode
-  | LIBERTY_ATTRENUM_capacitance
+  | LIBERTY_ENUM_capacitance
   | LIBERTY_ATTRENUM_capacitive_load_unit
   | LIBERTY_ATTRENUM_cell_footprint
   | LIBERTY_ATTRENUM_cell_leakage_power
@@ -128,8 +128,8 @@ type token =
   | LIBERTY_ATTRENUM_enable_also
   | LIBERTY_ATTRENUM_equal_or_opposite_output
   | LIBERTY_ATTRENUM_failure_rate
-  | LIBERTY_ATTRENUM_fall_capacitance
-  | LIBERTY_ATTRENUM_fall_capacitance_range
+  | LIBERTY_ENUM_fall_capacitance
+  | LIBERTY_ENUM_fall_capacitance_range
   | LIBERTY_ATTRENUM_fall_current_slope_after_threshold
   | LIBERTY_ATTRENUM_fall_current_slope_before_threshold
   | LIBERTY_ATTRENUM_fall_delay_intercept
@@ -189,7 +189,7 @@ type token =
   | LIBERTY_ATTRENUM_input_switching_condition
   | LIBERTY_ATTRENUM_input_threshold_pct_fall
   | LIBERTY_ATTRENUM_input_threshold_pct_rise
-  | LIBERTY_ATTRENUM_input_voltage
+  | LIBERTY_ENUM_input_voltage
   | LIBERTY_ATTRENUM_input_voltage_range
   | LIBERTY_ATTRENUM_interdependence_id
   | LIBERTY_ATTRENUM_interface_timing
@@ -379,7 +379,7 @@ type token =
   | LIBERTY_ATTRENUM_output_switching_condition
   | LIBERTY_ATTRENUM_output_threshold_pct_fall
   | LIBERTY_ATTRENUM_output_threshold_pct_rise
-  | LIBERTY_ATTRENUM_output_voltage
+  | LIBERTY_ENUM_output_voltage
   | LIBERTY_ATTRENUM_output_voltage_range
   | LIBERTY_ATTRENUM_pad_cell
   | LIBERTY_ATTRENUM_pad_type
@@ -438,8 +438,8 @@ type token =
   | LIBERTY_ATTRENUM_retention_cell
   | LIBERTY_ATTRENUM_retention_pin
   | LIBERTY_ATTRENUM_revision
-  | LIBERTY_ATTRENUM_rise_capacitance
-  | LIBERTY_ATTRENUM_rise_capacitance_range
+  | LIBERTY_ENUM_rise_capacitance
+  | LIBERTY_ENUM_rise_capacitance_range
   | LIBERTY_ATTRENUM_rise_current_slope_after_threshold
   | LIBERTY_ATTRENUM_rise_current_slope_before_threshold
   | LIBERTY_ATTRENUM_rise_delay_intercept
@@ -450,7 +450,7 @@ type token =
   | LIBERTY_ATTRENUM_rising_together_group
   | LIBERTY_ATTRENUM_routing_layers
   | LIBERTY_ATTRENUM_row_address
-  | LIBERTY_ATTRENUM_scaling_factors
+  | LIBERTY_ENUM_scaling_factors
   | LIBERTY_ATTRENUM_scan_group
   | LIBERTY_ATTRENUM_sdf_cond
   | LIBERTY_ATTRENUM_sdf_cond_end
@@ -509,7 +509,7 @@ type token =
   | LIBERTY_ATTRENUM_total_track_area
   | LIBERTY_ATTRENUM_tracks
   | LIBERTY_ATTRENUM_tree_type
-  | LIBERTY_ATTRENUM_type
+  | LIBERTY_ENUM_type
   | LIBERTY_ATTRENUM_typical_capacitances
   | LIBERTY_ATTRENUM_use_for_size_only
   | LIBERTY_ATTRENUM_user_function_class
@@ -529,7 +529,7 @@ type token =
   | LIBERTY_ATTRENUM_variable_7_range
   | LIBERTY_ATTRENUM_variables
   | LIBERTY_ATTRENUM_va_values
-  | LIBERTY_ATTRENUM_vector
+  | LIBERTY_ENUM_vector
   | LIBERTY_ATTRENUM_vhdl_name
   | LIBERTY_ATTRENUM_vih
   | LIBERTY_ATTRENUM_vil
@@ -557,7 +557,6 @@ type token =
   | LIBERTY_GROUPENUM_base_curves
   | LIBERTY_GROUPENUM_bundle
   | LIBERTY_GROUPENUM_bus
-  | LIBERTY_GROUPENUM_capacitance
   | LIBERTY_GROUPENUM_ccs_lu_table_template
   | LIBERTY_GROUPENUM_ccsn_first_stage
   | LIBERTY_GROUPENUM_ccsn_last_stage
@@ -579,8 +578,6 @@ type token =
   | LIBERTY_GROUPENUM_electromigration
   | LIBERTY_GROUPENUM_em_lut_template
   | LIBERTY_GROUPENUM_em_max_toggle_rate
-  | LIBERTY_GROUPENUM_fall_capacitance
-  | LIBERTY_GROUPENUM_fall_capacitance_range
   | LIBERTY_GROUPENUM_fall_constraint
   | LIBERTY_GROUPENUM_fall_net_delay
   | LIBERTY_GROUPENUM_fall_power
@@ -597,7 +594,6 @@ type token =
   | LIBERTY_GROUPENUM_hyperbolic_noise_low
   | LIBERTY_GROUPENUM_init_current
   | LIBERTY_GROUPENUM_input_signal_swing
-  | LIBERTY_GROUPENUM_input_voltage
   | LIBERTY_GROUPENUM_interconnect_delay
   | LIBERTY_GROUPENUM_internal_power
   | LIBERTY_GROUPENUM_intrinsic_capacitance
@@ -636,7 +632,6 @@ type token =
   | LIBERTY_GROUPENUM_output_current_rise
   | LIBERTY_GROUPENUM_output_current_template
   | LIBERTY_GROUPENUM_output_signal_swing
-  | LIBERTY_GROUPENUM_output_voltage
   | LIBERTY_GROUPENUM_output_voltage_fall
   | LIBERTY_GROUPENUM_output_voltage_rise
   | LIBERTY_GROUPENUM_peak_current
@@ -678,8 +673,6 @@ type token =
   | LIBERTY_GROUPENUM_retaining_rise
   | LIBERTY_GROUPENUM_retain_rise_slew
   | LIBERTY_GROUPENUM_right_id
-  | LIBERTY_GROUPENUM_rise_capacitance
-  | LIBERTY_GROUPENUM_rise_capacitance_range
   | LIBERTY_GROUPENUM_rise_constraint
   | LIBERTY_GROUPENUM_rise_net_delay
   | LIBERTY_GROUPENUM_rise_power
@@ -688,7 +681,6 @@ type token =
   | LIBERTY_GROUPENUM_rise_transition_degradation
   | LIBERTY_GROUPENUM_routing_track
   | LIBERTY_GROUPENUM_scaled_cell
-  | LIBERTY_GROUPENUM_scaling_factors
   | LIBERTY_GROUPENUM_sensitization
   | LIBERTY_GROUPENUM_seq
   | LIBERTY_GROUPENUM_seq_bank
@@ -703,7 +695,6 @@ type token =
   | LIBERTY_GROUPENUM_timing_based_variation
   | LIBERTY_GROUPENUM_timing_range
   | LIBERTY_GROUPENUM_tlatch
-  | LIBERTY_GROUPENUM_type
   | LIBERTY_GROUPENUM_upper
   | LIBERTY_GROUPENUM_user_parameters
   | LIBERTY_GROUPENUM_va_compact_ccs_fall
@@ -714,7 +705,6 @@ type token =
   | LIBERTY_GROUPENUM_va_receiver_capacitance2_fall
   | LIBERTY_GROUPENUM_va_receiver_capacitance2_rise
   | LIBERTY_GROUPENUM_va_rise_constraint
-  | LIBERTY_GROUPENUM_vector
   | LIBERTY_GROUPENUM_wire_load
   | LIBERTY_GROUPENUM_wire_load_selection
   | LIBERTY_GROUPENUM_wire_load_table
@@ -749,11 +739,13 @@ type token =
   | LBRACK
   | RBRACK
   | INCLUDE
+  | GROUP
   | ENDOFFILE
   | UNARY
   | NUM of (float)
   | STRING of (string)
-  | ID of (string)
+  | ID of (token)
+  | TLIST of (token list)
   | DOUBLE of (token*token)
   | TRIPLE of (token*token*token)
   | QUADRUPLE of (token*token*token*token)
