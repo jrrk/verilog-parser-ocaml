@@ -32,4 +32,3 @@ val verbose : int
 val yesno : bool -> string
 val quicksort : 'a list -> 'a list
 val qsort : 'a list -> 'a list
-val grdbg : string -> Liberty_parser.token -> Liberty_parser.token
