@@ -73,6 +73,7 @@ let one_elm = TokSet.add EMPTY TokSet.empty;;
 let rec str_token (e:token) = match e with
 | STRING id -> "STRING "^id
 | ID id -> "ID "^(str_token id)
+| NUM num -> string_of_float num
 | DOUBLE(arg1, arg2) -> (str_token arg1)^" "^(str_token arg2)
 | TRIPLE(arg1,arg2,arg3) -> (str_token arg1)^" "^(str_token arg2)^" "^(str_token arg3)
 | QUADRUPLE(arg1,arg2,arg3,arg4) -> (str_token arg1)^" "^(str_token arg2)^" "^(str_token arg3)^" "^(str_token arg4)

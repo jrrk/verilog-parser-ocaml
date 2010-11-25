@@ -750,6 +750,7 @@
 %%
 
 file	: group { $1 }
+	| ENDOFFILE { ENDOFFILE }
 	;
 
 group	: head LCURLY statements RCURLY { TRIPLE(GROUP, $1, TLIST $3); }
@@ -770,9 +771,9 @@ statement :
 	;
 
 simple_attr :
-	| ID COLON attr_val_expr SEMI { TRIPLE(SIMPLE, ID $1, $3) }
-	| ID COLON attr_val_expr { TRIPLE(SIMPLE, ID $1, $3) }
-	| ID EQ    attr_val_expr { TRIPLE(EQ, ID $1, $3) }
+	| ID COLON attr_val_expr SEMI { TRIPLE(SIMPLE, $1, $3) }
+	| ID COLON attr_val_expr { TRIPLE(SIMPLE, $1, $3) }
+	| ID EQ    attr_val_expr { TRIPLE(EQ, $1, $3) }
         | head  { $1 }
 	;
 
@@ -781,8 +782,8 @@ complex_attr :
         ;
 
 head :
-	| ID LPAR param_list RPAR { TRIPLE(HEAD, ID $1, TLIST $3) }
-        | ID LPAR RPAR            { ID $1 }
+	| ID LPAR param_list RPAR { TRIPLE(HEAD, $1, TLIST $3) }
+        | ID LPAR RPAR            { $1 }
 	;
 
 param_list:
@@ -801,7 +802,7 @@ define_group:
 
 s_or_i:
 	STRING { STRING $1 }
-	| ID { ID $1 }
+	| ID { $1 }
 	;
 
 attr_val:
@@ -840,11 +841,15 @@ expr: expr PLUS expr
            }
         | MINUS expr %prec UNARY
            {
-	   DOUBLE(MINUS, $2);
+	   match $2 with
+	   | NUM num -> NUM (-. num)
+	   | _ -> DOUBLE(MINUS, $2);
            }
         | PLUS expr %prec UNARY
            {
-	   DOUBLE(PLUS, $2);
+	   match $2 with
+	   | NUM num -> $2
+	   | _ -> DOUBLE(PLUS, $2);
            }
         | NUM
            {
@@ -852,7 +857,7 @@ expr: expr PLUS expr
            }
         | ID
            {
-	   ID $1
+	   $1
            }
         ;
 

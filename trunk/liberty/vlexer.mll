@@ -756,17 +756,15 @@ let _ = List.iter (fun (str,key) -> enter_keyword str key)
 let digit = ['0'-'9']
 let state4 = ['0'-'1' 'x' 'z' '?' 'X' 'Z' 'b' 'B']
 let ident = ['a'-'z' 'A'-'Z' '_']
-let ident_num = ['a'-'z' 'A'-'Z' '_' '0'-'9' '$']
-let anything_but_blank = [ '^'  '~'  '<'  '='  '>'  '|'  '_'  '-'  ','  ';'  ':'  '!'  '?'  '/'  '.'  '`'  '\''  '\"'  '('  ')'  '['  ']'  '{'  '}'  '@'  '$'  '*'  '\\'  '&'  '#'  '%'  '+'  '0'-'9'  'a'-'z'  'A'-'Z' ]
+let ident_num_other = ['a'-'z' 'A'-'Z' '_' '0'-'9' '[' ':' ']' '.']
 let anything_but_newline = [ '\r' '\t' ' '  '^'  '~'  '<'  '='  '>'  '|'  '_'  '-'  ','  ';'  ':'  '!'  '?'  '/'  '.'  '`'  '\''  '\"'  '('  ')'  '['  ']'  '{'  '}'  '@'  '$'  '*'  '\\'  '&'  '#'  '%'  '+'  '0'-'9'  'a'-'z'  'A'-'Z' ]
-let anything_but_quote = [ ' '  '^'  '~'  '<'  '='  '>'  '|'  '_'  '-'  ','  ';'  ':'  '!'  '?'  '/'  '.'  '`'  '\''  '('  ')'  '['  ']'  '{'  '}'  '@'  '$'  '*'  '\\'  '&'  '#'  '%'  '+'  '0'-'9'  'a'-'z'  'A'-'Z' ]
+let anything_but_quote = [ '\r' '\n' ' '  '^'  '~'  '<'  '='  '>'  '|'  '_'  '-'  ','  ';'  ':'  '!'  '?'  '/'  '.'  '`'  '\''  '('  ')'  '['  ']'  '{'  '}'  '@'  '$'  '*'  '\\'  '&'  '#'  '%'  '+'  '0'-'9'  'a'-'z'  'A'-'Z' ]
 
 rule token = parse
 |  '\\''\n' {token lexbuf }
+| '\"'[^ '\"']*'\"' as asciinum { hlog lexbuf (STRING asciinum ) }
 | "/*"
     { comment (Lexing.lexeme_start lexbuf) lexbuf; token lexbuf }
-| "(*"
-    { comment2 (Lexing.lexeme_start lexbuf) lexbuf; token lexbuf }
 |  "//"anything_but_newline* {token lexbuf}
 | ":" { hlog lexbuf (COLON) }
 | "," { hlog lexbuf (COMMA) }
@@ -779,12 +777,15 @@ rule token = parse
 | "}" { hlog lexbuf (RCURLY) }
 | ")" { hlog lexbuf (RPAR) }
 | ";" { hlog lexbuf (SEMI) }
-| "$" ident ident_num* as word {
+| "$" ident ident_num_other* as word {
 if Hashtbl.mem ksymbols word then hlog lexbuf (ID (Hashtbl.find ksymbols word)) else hlog lexbuf (ID (STRING word))
 }
+| digit+'.'digit*['e' 'E']['+' '-' '0'-'9']digit* as floatnum { hlog lexbuf ( NUM ( float_of_string floatnum ) ) }
+| digit+['e' 'E']['+' '-' '0'-'9']digit* as floatnum { hlog lexbuf ( NUM ( float_of_string floatnum ) ) }
 | digit+'.'digit* as floatnum { hlog lexbuf ( NUM ( float_of_string floatnum ) ) }
-| '\"'anything_but_quote*'\"' as asciinum { hlog lexbuf (STRING asciinum ) }
-| ident ident_num* as word {
+| digit ident ident_num_other* as word { hlog lexbuf (ID (STRING word)) }
+| digit+ as intnum { hlog lexbuf ( NUM ( float_of_string intnum ) ) }
+| ident ident_num_other* as word {
 if Hashtbl.mem ksymbols word then hlog lexbuf (ID (Hashtbl.find ksymbols word)) else hlog lexbuf (ID (STRING word))
 }
   | [' ' '\t' ]		{token lexbuf }

@@ -27,6 +27,7 @@ symbols: Setup.shash;
 mutable unresolved: string list;
  };;
 
+let simple = Hashtbl.create 256;;
 let libraries = Hashtbl.create 256;;
 let env_cache = Hashtbl.create 256;;
 

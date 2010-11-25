@@ -19,17 +19,19 @@
 
 (* let _ = Printexc.print Vparse.parse Sys.argv.( Array.length Sys.argv - 1 );; -- Pass the last command line module *)
 
-(* let m k x = Printf.printf "%s\n" k in Hashtbl.iter m Globals.modprims;;  -- Print all modules *)
+(* let m k x = Printf.printf "%s\n" k in Hashtbl.iter m Globals.libraries;;  -- Print all modules *)
 
-(* Hashtbl.find Globals.modprims "test";; -- Find module "test" (displays result) *)
+(* Hashtbl.find Globals.libraries "test";; -- Find module "test" (displays result) *)
 
-(* let dump_text out_chan m = Dump.dump out_chan (Hashtbl.find Globals.modprims m).Globals.tree 0;; *) (* dump module as text*) 
+(* let dump_text out_chan m = Dump.dump out_chan (Hashtbl.find Globals.libraries m).Globals.tree 0;; *) (* dump module as text*) 
 
-(* Hashtbl.iter (fun k x -> Printf.printf "%s\n" k) Globals.modprims;; *)
+(* Hashtbl.iter (fun k x -> Printf.printf "%s\n" k) Globals.libraries;; *)
 
 (* List.iter (fun x -> Dump.dump (x, 0)) arg;; *)
 
-(* Hashtbl.iter (fun k x -> Printf.printf "%s\n" k) (Hashtbl.find Globals.modprims "test").symbols;; -- dump symbol names *)
+(* Hashtbl.iter (fun k x -> Printf.printf "%s\n" k) (Hashtbl.find Globals.libraries "test").symbols;; -- dump symbol names *)
+
+(* let fd = open_out"logfile" in Hashtbl.iter (fun k i -> Printf.fprintf fd "%s => %s\n" (Setup.str_token k) (Setup.str_token i)) Globals.simple;; *)
 
 let vparser args = begin
   Setup.psuccess := true;
