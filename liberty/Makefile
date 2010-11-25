@@ -7,17 +7,18 @@
 	ocamlfind ocamlc -c -g -package "str" $<
 
 lparser: liberty_parser.cmi liberty.cmo setup.cmi setup.cmo globals.cmi globals.cmo liberty_parser.cmo vlexer.cmo vparse.cmi mytoploop.cmo vparse.cmo main.cmo
-	ocamlfind ocamlc -g -package "str,unix" -linkpkg -o $@ toplevellib.cma liberty.cmo setup.cmo globals.cmo liberty_parser.cmo vlexer.cmo mytoploop.cmo vparse.cmo main.cmo
+	ocamlfind ocamlmktop -g -package "str,unix" -linkpkg -o $@ toplevellib.cma liberty.cmo setup.cmo globals.cmo liberty_parser.cmo vlexer.cmo mytoploop.cmo vparse.cmo main.cmo
 
 liberty.ml: liberty_parser.cmi
 	echo open Liberty_parser > $@
 	echo open String >> $@
 	echo let getstr tok = match tok with >> $@
 	grep \| liberty_parser.mli | cut -d\( -f1 | tr '\011' ' ' |\
-	sed -e 's=|[\ ]*\([A-Za-z0-9_\ of]*\)=|\ \1 -> uppercase(\"\1\")=' -e 's= of= arg=' -e 's= of ==' >> $@
+	sed -e 's=|[\ ]*\([A-Za-z0-9_\ of]*\)=|\ \1 -> (\"\1\")=' -e 's= of= arg=' -e 's= of ==' >> $@
 
 liberty_parser.ml liberty_parser.mli: liberty_parser.mly
 	ocamlyacc -v liberty_parser.mly
+#	menhir -v --trace liberty_parser.mly
 
 liberty_parser.cmo: liberty_parser.ml
 	ocamlc -c $<

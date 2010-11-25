@@ -17,6 +17,7 @@ val last_mod : string ref
 val tmpnam : string
 
 val libraries: (string, Liberty_parser.token list) Hashtbl.t
+val simple: (Liberty_parser.token, Liberty_parser.token) Hashtbl.t
 val tsymbols : (string, Liberty_parser.token) Hashtbl.t
 
 val get_table : string -> Liberty_parser.token list

@@ -105,7 +105,7 @@ let unhandled_dbg out_chan ln argt = let arg = (ln,argt) in if (List.mem arg !Gl
     then Globals.unhand_list := arg :: !Globals.unhand_list;
     Printf.fprintf (fst out_chan) "\n\n**** Unhandled %d ****\n" (List.length !Globals.unhand_list);
 (* Printexc.print_backtrace out_chan; *)
-  ignore(use_string (snd out_chan) "hd(!Globals.unhand_list);;");
+  ignore(use_string (snd out_chan) "List.hd(!Globals.unhand_list);;");
   flush (fst out_chan);
   loop Format.std_formatter
 
