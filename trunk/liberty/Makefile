@@ -27,7 +27,7 @@ vlexer.ml vlexer.mli : vlexer.mll
 	ocamllex $<
 
 clean:
-	rm -f tokens.log liberty_parser.automaton test.mli test.cmi test.cmo test ord.ml liberty_parser.ml *.cmi *.cmo
+	rm -f lparser liberty.ml vlexer.ml tokens.log liberty_parser.automaton liberty_parser.output test.mli test.cmi test.cmo test ord.ml liberty_parser.ml *.cmi *.cmo report.*report
 
 ord.cmo: ord.cmi
 

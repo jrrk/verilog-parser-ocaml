@@ -80,10 +80,3 @@ let rec qsort = function
        let is_less x = x < pivot in
        let left, right = List.partition is_less rest in
        qsort left @ [pivot] @ qsort right
-
-let grdbg_chan = open_out "grdbg_logfile"
-
-let grdbg key ktok:token = begin
-Printf.fprintf grdbg_chan "Grammar %s => %s\n" key (Setup.str_token ktok);
-ktok
-end
