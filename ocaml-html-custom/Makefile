@@ -1,6 +1,6 @@
 .SUFFIXES: .ml .mli .cmi .cmo
 
-MENHIR = /home/jrrk/cmd/lib/ocaml/site-lib/menhirLib
+MENHIR = /home/utils/lib/ocaml/site-lib/menhirLib
 
 test:	grammar_sysver.cmi grammar_sysver.cmo test.cmi test.cmo
 	ocamlfind ocamlc -g -package "str,netstring" -linkpkg -o $@ grammar_sysver.cmo test.cmo
@@ -9,10 +9,10 @@ test.mli: test.ml grammar_sysver.cmi
 	ocamlfind ocamlc -i -package "str,netstring" $< > $@
 
 .mli.cmi:
-	ocamlfind ocamlc -c -package "str" $<
+	ocamlfind ocamlc -c -package "str,netstring" $<
 
 .ml.cmo:
-	ocamlfind ocamlc -c -g -package "str" $<
+	ocamlfind ocamlc -c -g -package "str,netstring" $<
 
 grammar_sysver.ml: grammar_sysver.cmi
 	grep -v val $*.mli > $@

@@ -23,8 +23,8 @@ MENHIROPTS = -v  --table # --infer
 YACCOPTS = -v
 #LEXOPTS = -ml
 
-INC = /home/jrrk/cmd/src/ocaml-3.12.0
-MENHIR = /home/jrrk/cmd/lib/ocaml/site-lib/menhirLib
+INC = /home/utils/ocaml-3.12.0
+MENHIR = /home/utils/lib/ocaml/site-lib/menhirLib
 CMO1 = ord.cmo setup.cmo globals.cmo vlexer.cmo vparser.cmo dump.cmo const.cmo check.cmo semantics.cmo
 CMO2 = vparse.cmo main.cmo
 CMX = ord.cmx setup.cmx globals.cmx vlexer.cmx vparser.cmx dump.cmx const.cmx check.cmx semantics.cmx vparse.cmx main.cmx

@@ -31,7 +31,7 @@ clean:
 
 ord.cmo: ord.cmi
 
-INC = /home/jrrk/cmd/src/ocaml-3.12.0
+INC = /home/utils/ocaml-3.12.0
 I = -I $(INC)/driver -I $(INC)/toplevel -I $(INC)/bytecomp -I $(INC)/parsing -I $(INC)/utils -I $(INC)/typing
 
 mytoploop.cmo: mytoploop.ml
