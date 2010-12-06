@@ -25,6 +25,13 @@ open Ord
 let rec exprBoolean out_chan (syms:shash) op expr1 expr2 =
 op (exprConst out_chan syms expr1) (exprConst out_chan syms expr2)
 
+and exprInteger out_chan (syms:shash) (op:int->int->int) (expr1:token) (expr2:token) =
+let const1 = exprConst out_chan syms expr1
+and const2 = exprConst out_chan syms expr2
+in match (const1,const2) with
+| (INT num1, INT num2) -> INT (op num1 num2)
+| _ -> INT 1
+
 and widthnum out_chan expbase (str:string) =
 let base = ref 10
 and width = ref 0
@@ -32,7 +39,7 @@ and value = ref 0
 and basing = ref 0
 and converting = ref true in
 for idx = 0 to String.length(str)-1 do let ch = Char.lowercase(str.[idx]) in begin
-if (Globals.verbose >= 2) then Printf.fprintf (fst out_chan) "%c %d %d\n" ch !base !value;
+if (Globals.verbose > 2) then Printf.fprintf (fst out_chan) "%c %d %d\n" ch !base !value;
     match ch with
 | '\'' -> converting := false; basing := idx+1;
 | '0'..'9' -> if (!converting) then
@@ -71,43 +78,57 @@ and shash_chain_replace (syms:shash) (nam:string) (sym:symtab) = match syms with
 | EndShash -> failwith "Not found"
 
 and exprConst out_chan (syms:shash) expr = Stack.push (67, expr) stk; let rslt = ( match expr with
-| INT n -> n
-| HEXNUM str -> snd(widthnum out_chan 16 str)
-| TRIPLE(TIMES, expr1, expr2) -> (exprConst out_chan syms expr1) * (exprConst out_chan syms expr2)
-| TRIPLE(PLUS, expr1, expr2) -> (exprConst out_chan syms expr1) + (exprConst out_chan syms expr2)
-| TRIPLE(MINUS, expr1, expr2) -> (exprConst out_chan syms expr1) - (exprConst out_chan syms expr2)
-| TRIPLE(P_EQUAL, expr1, expr2) -> if (exprBoolean out_chan syms (=)) expr1 expr2 then 1 else 0
-| TRIPLE(P_NOTEQUAL, expr1, expr2) -> if (exprBoolean out_chan syms (<>)) expr1 expr2 then 1 else 0
-| TRIPLE(LESS, expr1, expr2) -> if (exprBoolean out_chan syms (<)) expr1 expr2 then 1 else 0
-| TRIPLE(GREATER, expr1, expr2) -> if (exprBoolean out_chan syms (>)) expr1 expr2 then 1 else 0
-| TRIPLE(P_LTE, expr1, expr2) -> if (exprBoolean out_chan syms (<=)) expr1 expr2 then 1 else 0
-| TRIPLE(P_GTE, expr1, expr2) -> if (exprBoolean out_chan syms (>=)) expr1 expr2 then 1 else 0
-| DOUBLE(CONCAT, TLIST [left; right]) -> Printf.fprintf (fst out_chan) "Concat expr not yet implemented, value 1 assumed\n"; 1
+| INT n -> expr
+| HEXNUM str -> INT (snd(widthnum out_chan 16 str))
+| BINNUM str -> INT (snd(widthnum out_chan 2 str))
+| TRIPLE(TIMES, expr1, expr2) -> exprInteger out_chan syms ( * ) expr1 expr2
+| TRIPLE(PLUS, expr1, expr2) -> exprInteger out_chan syms ( + ) expr1 expr2
+| TRIPLE(MINUS, expr1, expr2) -> exprInteger out_chan syms ( - ) expr1 expr2
+| TRIPLE(P_EQUAL, expr1, expr2) -> if (exprBoolean out_chan syms (=)) expr1 expr2 then INT 1 else INT 0
+| TRIPLE(P_NOTEQUAL, expr1, expr2) -> if (exprBoolean out_chan syms (<>)) expr1 expr2 then INT 1 else INT 0
+| TRIPLE(LESS, expr1, expr2) -> if (exprBoolean out_chan syms (<)) expr1 expr2 then INT 1 else INT 0
+| TRIPLE(GREATER, expr1, expr2) -> if (exprBoolean out_chan syms (>)) expr1 expr2 then INT 1 else INT 0
+| TRIPLE(P_LTE, expr1, expr2) -> if (exprBoolean out_chan syms (<=)) expr1 expr2 then INT 1 else INT 0
+| TRIPLE(P_GTE, expr1, expr2) -> if (exprBoolean out_chan syms (>=)) expr1 expr2 then INT 1 else INT 0
+| DOUBLE(CONCAT, TLIST [left; right]) -> Printf.fprintf (fst out_chan) "Concat expr not yet implemented, value 1 assumed\n"; INT 1
+| ID id -> exprConstID out_chan syms id
+| TRIPLE(FUNCREF, ID id, TLIST args) -> Printf.fprintf (fst out_chan) "%s is a function, value 1 assumed\n" id; INT 1
+| TRIPLE(BITSEL, arg, sel) -> exprInteger out_chan syms ( mod ) (exprInteger out_chan syms ( lsr ) arg sel) (INT 2)
+| QUADRUPLE(PARTSEL, arg, INT hi, INT lo) -> exprInteger out_chan syms (lsr) arg (INT lo)
+| QUADRUPLE(QUERY, expr, arg1, arg2) -> if (exprBoolean out_chan syms (<>)) expr (INT 0) then
+    (exprConst out_chan syms arg1) else (exprConst out_chan syms arg2)
+| TRIPLE(P_SLEFT, INT 1, ID id) -> Printf.fprintf (fst out_chan) "Const expression 1<<%s is too complicated, value 1 assumed\n" id; INT 1
+| _ -> unhandled out_chan 97 expr; INT 1 ) in
+ignore(Stack.pop stk);
+rslt
 
-| ID id -> begin
+and exprConstID out_chan syms id = begin
 if shash_chain_mem syms id == false then begin
-    Printf.fprintf (fst out_chan) "constant %s not declared, value 1 assumed\n" id;
-    1
+    Printf.fprintf (fst out_chan) "constant %s not declared in this scope\n" id;
+    UNKNOWN
     end
 else
     let found = shash_chain_find syms id in match found.sigattr with
     | Sigparam pexpr -> shash_chain_replace syms id
     {Setup.symattr = (TokSet.add PARAMUSED found.symattr); width = found.width; sigattr = found.sigattr; localsyms = EndShash; path=id};
     exprConst out_chan syms pexpr
-    | Sigarray x -> Printf.fprintf (fst out_chan) "%s not a constant or for variable, value 1 assumed\n" id; 1
-    | _ -> unhandled out_chan 89 expr; 1
+    | Sigarray x -> Printf.fprintf (fst out_chan) "%s not a constant or for variable\n" id; NOTCONST
+    | Signamed _ -> Printf.fprintf (fst out_chan) "Named block %s cannot be used here\n" id; NOTCONST
+    | Sigfunc _ -> Printf.fprintf (fst out_chan) "Function %s cannot be used here\n" id; NOTCONST
+    | Sigtask _ -> Printf.fprintf (fst out_chan) "Task %s cannot be used here\n" id; NOTCONST
+    | Sigundef -> Printf.fprintf (fst out_chan) "Unknown %s cannot be used here\n" id; NOTCONST
   end
-| TRIPLE(FUNCREF, ID id, TLIST args) -> Printf.fprintf (fst out_chan) "%s is a function, value 1 assumed\n" id; 1
-| QUADRUPLE(PARTSEL, arg, INT hi, INT lo) -> (exprConst out_chan syms arg) lsr lo
-| TRIPLE(P_SLEFT, INT 1, ID id) -> Printf.fprintf (fst out_chan) "Const expression 1<<%s is too complicated, value 1 assumed\n" id; 1
-| _ -> unhandled out_chan 97 expr; 1 ) in
-ignore(Stack.pop stk);
-rslt
+
+let exprConstStr out_chan syms expr = match expr with
+    | INT n -> string_of_int n
+    | _ -> str_token(expr)
 
 let idirection fst snd = let inc = snd - fst in (if inc<0 then -1 else 1)
 
 let iwidth out_chan syms wid =  let r = match wid with 
-| RANGE(expr1, expr2) -> (exprConst out_chan syms expr1,exprConst out_chan syms expr2)
+| RANGE(expr1, expr2) -> begin match (exprConst out_chan syms expr1,exprConst out_chan syms expr2) with
+    | INT left, INT right -> (left, right)
+    | _ -> (-1,-1) end
 | UNKNOWN -> (0,0)
 | SCALAR -> (0,0)
 | EMPTY -> (0,0)

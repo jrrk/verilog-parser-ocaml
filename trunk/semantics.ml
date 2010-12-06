@@ -48,7 +48,7 @@ let shash_add (syms:shash) (key:string) (sym:symtab) = match syms with
 | Shash symr -> Hashtbl.add symr.syms key sym
 | EndShash -> failwith "No symbol table passed to shash_add"
 
-let shash_create prev (siz:int) = Shash {nxt=EndShash; syms=Hashtbl.create siz}
+let shash_create prev (siz:int) = Shash {nxt=prev; syms=Hashtbl.create siz}
 
 let shash_iter (f:string -> Setup.symtab -> unit) syms = match syms with
 | Shash symr -> Hashtbl.iter f symr.syms
@@ -76,7 +76,7 @@ let create_attr out_chan syms neww =
 
 let enter_a_sym out_chan (symbols:shash) id attr w mode = match attr with
 (IOPORT|INPUT|OUTPUT|INOUT|REG|WIRE|TRI0|TRI1|SUPPLY0|SUPPLY1|INTEGER|REAL|MEMORY|EVENT
- |MODULE|PRIMITIVE|SUBMODULE|SUBCCT|SPECIFY|SPECIAL|PARAMUSED
+ |MODULE|PRIMITIVE|SUBMODULE|SUBCCT|SPECIFY|SPECIAL|PARAMUSED|FUNCASSIGNED|TASKUSED
  |PARAMETER|TASK|FUNCTION) ->
 if Const.shash_chain_mem symbols id then let found = Const.shash_chain_find symbols id in begin
 if (Globals.verbose > 0) then ( Printf.fprintf (fst out_chan) "Update %s %s: %s %s\n" id (str_token w) (Ord.getstr attr) (showmode mode));
@@ -91,13 +91,13 @@ if (Globals.verbose > 0) then ( Printf.fprintf (fst out_chan) "Update %s %s: %s 
     {Setup.symattr = (TokSet.add attr newset);
     width = w;
     sigattr = create_attr out_chan symbols w;
-    localsyms = EndShash;
+    localsyms = symbols;
     path=id}
   else shash_chain_replace symbols id
     {Setup.symattr = (TokSet.add attr newset);
     width = oldw;
     sigattr = oldsattr;
-    localsyms = EndShash;
+    localsyms = symbols;
     path=id};
     end
 else begin
@@ -105,7 +105,7 @@ if (Globals.verbose > 0) then (Printf.fprintf (fst out_chan) "Enter %s %s: %s %s
   shash_add symbols id {Setup.symattr = (TokSet.singleton attr);
      width = w;
      sigattr = create_attr out_chan symbols w;
-     localsyms = EndShash;
+     localsyms = symbols;
      path=id}
   end
 | _ -> unhandled out_chan 86 attr
@@ -146,6 +146,7 @@ let enter_sym_attrs out_chan syms (tok:token) list width mode = match tok with
 ;;
 
 let enter_parameter out_chan syms id arg6 w =
+  if (Globals.verbose > 0) then (Printf.fprintf (fst out_chan) "Enter Parameter %s %s: %s\n" id (str_token w) (exprConstStr out_chan syms arg6));
   shash_add syms id {Setup.symattr = (TokSet.singleton PARAMETER);
      width = w;
      sigattr = Sigparam arg6;
@@ -184,8 +185,11 @@ retval
 let enter_range out_chan syms id sym attr wid inner high inci inner_attr attrs = let (left,right,inc) = iwidth out_chan syms wid in
   if not ((TokSet.mem IMPLICIT sym.symattr)||(TokSet.mem MEMORY sym.symattr)||(left < 0)||(right < 0)) then
     let i = ref left and j = ref high in while (if inc > 0 then !i <= right else !i >= right) do
-    if chk_inner_attr out_chan inner inner_attr attr !j then attrs.(!i) <- TokSet.add attr attrs.(!i);
-    (*with Invalid_argument("index out of bounds") -> Printf.fprintf (fst out_chan) "Trying to access %s with index [%d]\n" id i*)
+    if chk_inner_attr out_chan inner inner_attr attr !j then
+        begin
+	if (!i < Array.length attrs) then attrs.(!i) <- TokSet.add attr attrs.(!i)
+        else Printf.fprintf (fst out_chan) "Trying to access %s with index [%d]\n" id !i
+	end;
     i := !i + inc;
     j := !j + inci
     done
@@ -197,7 +201,7 @@ let enter_a_sig_attr out_chan syms (tok:token) attr w isyms isym = ( match tok w
 | Sigparam x -> enter_sym_attrs out_chan syms tok [PARAMUSED] UNKNOWN AttrOnly
 | Sigundef -> Printf.fprintf (fst out_chan) "Internal error - Signal %s has no width\n" id
 | Sigtask x -> Printf.fprintf (fst out_chan) "Entity %s is already declared as a task\n" id
-| Sigfunc x -> Printf.fprintf (fst out_chan) "Entity %s is already declared as a function\n" id
+| Sigfunc x -> enter_sym_attrs out_chan syms tok [FUNCASSIGNED] UNKNOWN AttrOnly
 | Signamed x -> Printf.fprintf (fst out_chan) "Entity %s is already declared as a named block\n" id)
 | _ -> unhandled out_chan 175 tok);
  if (Globals.verbose >= 2) then Printf.fprintf (fst out_chan) "enter_a_sig_attr out_chan syms tok:%s attr:%s width:%s\n"
@@ -405,7 +409,8 @@ and exprGeneric out_chan syms expr = Stack.push (288, expr) stk; let retval = re
 | DECNUM left -> ()
 | HEXNUM left -> ()
 | ID arg1 -> retval := (find_ident out_chan syms expr).width; enter_a_sig_attr out_chan syms expr DRIVER !retval syms anon
-| TRIPLE(BITSEL, arg1, arg3) -> retval := RANGE(arg3,arg3); enter_a_sig_attr out_chan syms arg1 DRIVER !retval syms anon
+| TRIPLE(BITSEL, arg1, arg3) -> retval := RANGE(INT 0, INT 0);
+    enter_a_sig_attr out_chan syms arg1 DRIVER UNKNOWN syms anon
 | QUADRUPLE(PARTSEL, arg1 , arg3 , arg5 ) -> retval := RANGE(arg3,arg5); enter_a_sig_attr out_chan syms arg1 DRIVER !retval syms anon
 | QUADRUPLE(P_PLUSCOLON, arg1 , arg3 , arg5 ) -> ()
 | QUADRUPLE(P_MINUSCOLON, arg1, arg3, arg5 ) -> ()
@@ -432,15 +437,15 @@ ignore(subexp out_chan RECEIVER syms dest)
 | _ -> unhandled out_chan 417 expr );
 ignore(Stack.pop stk)
 
-and for_stmt out_chan syms id start test inc clause = let wid = (find_ident out_chan syms (ID id)).width and crnt = ref (INT (exprConst out_chan syms start)) in begin
+and for_stmt out_chan syms id start test inc clause = let wid = (find_ident out_chan syms (ID id)).width and crnt = ref (exprConst out_chan syms start) in begin
   shash_add syms id {Setup.symattr = (TokSet.singleton PARAMETER);
      width = wid;
      sigattr = Sigparam !crnt;
 		       localsyms = syms;
      path=id};
-let loops = ref 0 and unrolling = ref true in while (!unrolling) && (0 <> exprConst out_chan syms test) do
+let loops = ref 0 and unrolling = ref true in while (!unrolling) && (exprBoolean out_chan syms (<>) test (INT 0)) do
     stmtBlock out_chan syms clause;
-    crnt := INT (exprConst out_chan syms inc);
+    crnt := exprConst out_chan syms inc;
     shash_chain_replace syms id
       {Setup.symattr = (TokSet.singleton PARAMETER);
       width = wid;
@@ -521,7 +526,8 @@ iter (fun caseitem -> caseitems out_chan syms caseitem) caseList
   | ID taskname ->
   begin
     if (Const.shash_chain_mem syms taskname) then let h = Const.shash_chain_find syms taskname in match h.sigattr with
-      | Sigtask tsk -> dispatch out_chan {Globals.unresolved=[]; tree=tsk; symbols=h.localsyms} true (* scan the task *)
+      | Sigtask tsk -> dispatch out_chan {Globals.unresolved=[]; tree=tsk; symbols=h.localsyms} true; (* scan the task *)
+        enter_a_sym out_chan syms taskname TASKUSED UNKNOWN AttrOnly
       | _ -> Printf.fprintf (fst out_chan) "Trying to call non task %s\n" taskname
     else Printf.fprintf (fst out_chan) "Task %s not found\n" taskname;
 end
@@ -613,6 +619,7 @@ and senitem out_chan syms item = match item with
 | DOUBLE(POSEDGE, clk) -> ignore(subexp out_chan DRIVER syms clk)
 | DOUBLE(NEGEDGE, clk) -> ignore(subexp out_chan DRIVER syms clk)
 | ID signal -> ignore(subexp out_chan SENSUSED syms item)
+| TRIPLE (BITSEL, ID memory, sel) -> ignore(subexp out_chan DRIVER syms sel)
 | _ -> unhandled out_chan 490 item
 
 and misc_syntax out_chan syms expr = Stack.push (539, expr) stk; ( match expr with
@@ -930,8 +937,10 @@ shash_add syms taskname {Setup.symattr = TokSet.singleton TASK;
 		       sigattr = Sigtask expr;
 		       localsyms = syms2;
 		       path=taskname};
+if (Globals.verbose > 0) then (Printf.fprintf (fst out_chan) "Enter Task %s\n" taskname);
 iter (fun arg -> decls out_chan {Globals.unresolved=[]; tree=arg; symbols=syms2} Create) args;
-if (pass2==true) then stmtBlock out_chan syms2 stmts)
+if (pass2==true) then stmtBlock out_chan syms2 stmts;
+if (Globals.verbose > 0) then (Printf.fprintf (fst out_chan) "End Task %s\n" taskname))
 | _ -> unhandled out_chan 702 expr );
 ignore(Stack.pop stk)
 
