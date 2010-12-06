@@ -91,6 +91,8 @@
 %token NAMED
 // for unknown modules/primitives
 %token UNKNOWN
+// for invalid use
+%token NOTCONST
 // for scalar nets
 %token SCALAR
 // for empty types
@@ -103,6 +105,7 @@
 %token TASKUSED
 %token FUNCUSED
 %token SENSUSED
+%token FUNCASSIGNED
 // for memories
 %token MEMORY
 // for transistor level
@@ -2357,6 +2360,7 @@ unused_tokens:			{	}
 	|	EOF		{	}
 	|	FUNCREF		{	}
 	|	FUNCUSED	{	}
+	|	FUNCASSIGNED	{	}
 	|	GENCASECOND	{	}
 	|	GENCASE		{	}
 	|	IMPLICIT	{	}
@@ -2424,4 +2428,5 @@ unused_tokens:			{	}
 	|	UNKNOWN		{	}
 	|	VIGENUPLE	{	}
 	|	VOID		{	}
+	|	NOTCONST	{	}
 	;
