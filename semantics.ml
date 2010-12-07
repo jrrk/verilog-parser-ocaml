@@ -77,7 +77,7 @@ let create_attr out_chan syms neww =
 let enter_a_sym out_chan (symbols:shash) id attr w mode = match attr with
 (IOPORT|INPUT|OUTPUT|INOUT|REG|WIRE|TRI0|TRI1|SUPPLY0|SUPPLY1|INTEGER|REAL|MEMORY|EVENT
  |MODULE|PRIMITIVE|SUBMODULE|SUBCCT|SPECIFY|SPECIAL|PARAMUSED|FUNCASSIGNED|TASKUSED
- |PARAMETER|TASK|FUNCTION) ->
+ |PARAMETER|TASK|FUNCTION|GENVAR) ->
 if Const.shash_chain_mem symbols id then let found = Const.shash_chain_find symbols id in begin
 if (Globals.verbose > 0) then ( Printf.fprintf (fst out_chan) "Update %s %s: %s %s\n" id (str_token w) (Ord.getstr attr) (showmode mode));
   let newset = found.symattr
@@ -171,8 +171,8 @@ match inner.width with
 | Sigfunc x -> rslt := rslt0
 | Signamed x -> rslt := rslt0); !rslt
 
-let chk_inner_attr out_chan inner inner_attr attr idx =
-let retval = (inner.sigattr == Sigundef) || (idx < 0) || (TokSet.mem SPECIAL inner.symattr) || (match attr with
+let chk_inner_attr out_chan inner inner_attr attr idx = let len = Array.length(inner_attr) in
+let retval = (inner.sigattr == Sigundef) || (idx >= len) || (idx < 0) || (TokSet.mem SPECIAL inner.symattr) || (match attr with
       | DRIVER -> TokSet.mem DRIVER (inner_attr.(idx))
       | RECEIVER -> TokSet.mem RECEIVER (inner_attr.(idx))
       | BIDIR -> TokSet.mem BIDIR (inner_attr.(idx))
@@ -266,6 +266,7 @@ let rec inner_chk_expr out_chan syms isyms isym subcct (tok:token) = begin
 | TRIPLE(AMPERSAND, arg1, arg2) -> exprGeneric out_chan syms tok
 | DOUBLE(VBAR, ID left) -> exprGeneric out_chan syms tok
 | DOUBLE(TILDE, left) -> exprGeneric out_chan syms tok
+| DOUBLE(PLING, left) -> exprGeneric out_chan syms tok
 | _ -> unhandled out_chan 226 tok; UNKNOWN ) in
   let compat=ref false in 
   begin
@@ -409,9 +410,11 @@ and exprGeneric out_chan syms expr = Stack.push (288, expr) stk; let retval = re
 | DECNUM left -> ()
 | HEXNUM left -> ()
 | ID arg1 -> retval := (find_ident out_chan syms expr).width; enter_a_sig_attr out_chan syms expr DRIVER !retval syms anon
-| TRIPLE(BITSEL, arg1, arg3) -> retval := RANGE(INT 0, INT 0);
-    enter_a_sig_attr out_chan syms arg1 DRIVER UNKNOWN syms anon
-| QUADRUPLE(PARTSEL, arg1 , arg3 , arg5 ) -> retval := RANGE(arg3,arg5); enter_a_sig_attr out_chan syms arg1 DRIVER !retval syms anon
+| TRIPLE(BITSEL, ID arg1, arg3) -> retval := RANGE(INT 0, INT 0);
+    enter_a_sig_attr out_chan syms (ID arg1) DRIVER UNKNOWN syms anon
+| TRIPLE (BITSEL, TRIPLE (BITSEL, ID arg1, sel1), sel2) -> enter_a_sig_attr out_chan syms (ID arg1) DRIVER UNKNOWN syms anon (* This looks like an array bit select *)
+| QUADRUPLE(PARTSEL, ID arg1 , arg3 , arg5 ) -> retval := RANGE(arg3,arg5); enter_a_sig_attr out_chan syms (ID arg1) DRIVER !retval syms anon
+| QUADRUPLE(PARTSEL, TRIPLE (BITSEL, ID arg1, sel1), left, right) -> enter_a_sig_attr out_chan syms (ID arg1) DRIVER UNKNOWN syms anon (* This looks like an array part select *)
 | QUADRUPLE(P_PLUSCOLON, arg1 , arg3 , arg5 ) -> ()
 | QUADRUPLE(P_MINUSCOLON, arg1, arg3, arg5 ) -> ()
 | ASCNUM arg1 -> ()
@@ -438,6 +441,7 @@ ignore(subexp out_chan RECEIVER syms dest)
 ignore(Stack.pop stk)
 
 and for_stmt out_chan syms id start test inc clause = let wid = (find_ident out_chan syms (ID id)).width and crnt = ref (exprConst out_chan syms start) in begin
+Printf.fprintf (fst out_chan) "Begin for %s statement\n" id;
   shash_add syms id {Setup.symattr = (TokSet.singleton PARAMETER);
      width = wid;
      sigattr = Sigparam !crnt;
@@ -456,6 +460,7 @@ let loops = ref 0 and unrolling = ref true in while (!unrolling) && (exprBoolean
     if (!loops > 1000) then (unrolling := false; Printf.fprintf (fst out_chan) "Loop %s unrolling stopped after 1000 iterations\n" id)
 done;
 shash_remove syms id;
+Printf.fprintf (fst out_chan) "End for %s statement\n" id
 end 
 
 and hash_dly out_chan syms dly = match dly with
@@ -463,6 +468,7 @@ and hash_dly out_chan syms dly = match dly with
   | DOUBLE(HASH, ID dlytok) -> enter_sym_attrs out_chan syms (ID dlytok) [PARAMUSED] UNKNOWN AttrOnly
   | DOUBLE(HASH, TLIST dlylist) -> iter (fun item -> match item with 
         | ID _ -> enter_sym_attrs out_chan syms item [PARAMUSED] UNKNOWN AttrOnly
+        | INT dly -> ()
         | _ -> unhandled out_chan 408 item) dlylist
   | DOUBLE(HASH, FLOATNUM num) -> ()
   | TLIST [WEAK weak0; WEAK weak1] -> ()
@@ -473,19 +479,29 @@ and stmtBlock out_chan syms block = Stack.push (465, block) stk; ( match block w
 | DOUBLE(DISABLE, nam) -> ()
 | DOUBLE(P_MINUSGT, ev) -> ()
 | DOUBLE(DOUBLE(HASH, _) as dly, stmt) -> hash_dly out_chan syms dly; stmtBlock out_chan syms stmt
-| QUINTUPLE(NAMED, ID blk_named, TLIST loc_decls, TLIST stmts, EMPTY) -> let syms2 = shash_create syms 256 in
- shash_add syms blk_named {Setup.symattr = TokSet.singleton FUNCTION;
+| QUINTUPLE(NAMED, ID blk_named, TLIST loc_decls, TLIST stmts, EMPTY) ->
+  let syms2 = shash_create syms 256 in
+  shash_add syms blk_named {Setup.symattr = TokSet.singleton NAMED;
                        width = VOID;
 		       sigattr = Signamed block;
 		       localsyms = syms2;
 		       path=blk_named};
- iter (fun item -> decls out_chan {Globals.unresolved=[]; tree=item; symbols=syms2} Create) loc_decls;
- iter (fun item -> stmtBlock out_chan syms2 item) stmts
+  iter (fun item -> decls out_chan {Globals.unresolved=[]; tree=item; symbols=syms2} Create) loc_decls;
+  iter (fun item -> stmtBlock out_chan syms2 item) stmts
+| QUADRUPLE(GENITEM, ID blk_named, TLIST stmts, EMPTY) ->
+  let syms2 = shash_create syms 256 in
+  shash_add syms blk_named {Setup.symattr = TokSet.singleton GENITEM;
+                       width = VOID;
+		       sigattr = Signamed block;
+		       localsyms = syms2;
+		       path=blk_named};
+  iter (fun item -> toplevelitems out_chan {Globals.unresolved=[]; tree=item; symbols=syms2}) stmts
 | TLIST stmtList -> iter (fun item ->
     stmtBlock out_chan syms item) stmtList
 | TRIPLE(BEGIN, TLIST stmtList, endLabelE) -> iter (fun item -> stmtBlock out_chan syms item) stmtList
-|  DOUBLE
-    (DOUBLE(AT, TLIST sens_list), stmt)
+| DOUBLE(AT, TLIST stmtList) -> iter (fun item -> stmtBlock out_chan syms item) stmtList
+| DOUBLE(AT, DOUBLE(DOUBLE(HASH, _) as dly, stmt)) -> hash_dly out_chan syms dly; stmtBlock out_chan syms stmt
+| DOUBLE(DOUBLE(AT, TLIST sens_list), stmt)
 -> iter (fun item -> senitem out_chan syms item) sens_list; ( match stmt with
   | TRIPLE(BEGIN, TLIST stmts, EMPTY)
     -> stmtBlock out_chan syms stmt
@@ -517,7 +533,7 @@ stmtBlock out_chan syms then_clause;
 stmtBlock out_chan syms else_clause
 | QUINTUPLE(FOR, TRIPLE(ASSIGNMENT,ID idstart, start), test, TRIPLE(ASSIGNMENT,ID idinc,inc), clause) ->
 if idstart <> idinc then Printf.fprintf (fst out_chan) "For variable not consistent %s vs. %s\n" idstart idinc
-else for_stmt out_chan syms idstart start test inc clause
+else for_stmt out_chan syms idstart start test inc clause;
 | QUADRUPLE((CASE|CASEX|CASEZ), expr, caseAttr, TLIST caseList) ->
 ignore(exprGeneric out_chan syms expr);
 iter (fun caseitem -> caseitems out_chan syms caseitem) caseList
@@ -624,13 +640,19 @@ and senitem out_chan syms item = match item with
 
 and misc_syntax out_chan syms expr = Stack.push (539, expr) stk; ( match expr with
 | EMPTY -> ()
-| _ -> unhandled out_chan 597 expr);
+| SIGNED -> ()
+| DOUBLE
+  (HASH,
+   TLIST lst) -> iter (fun item -> match item with
+    | QUADRUPLE (PARAMETER, EMPTY, EMPTY, TRIPLE (ID id, EMPTY, INT n)) -> ()
+    | _ -> unhandled out_chan 633 expr) lst
+| _ -> unhandled out_chan 634 expr);
 ignore(Stack.pop stk)
 
 and decls out_chan tree mode =
    let expr = tree.Globals.tree and syms = tree.Globals.symbols in Stack.push (539, expr) stk; ( match expr with
 (* Parse parameter declarations *)
-| QUADRUPLE(PARAMETER, EMPTY, EMPTY, decls) ->
+| QUADRUPLE(PARAMETER, EMPTY, range, decls) ->
     let width = ref EMPTY in begin
     ( match decls with
       | TLIST arg9 ->  List.iter (fun x -> match x with TRIPLE(ID id, arg5, arg6) -> enter_parameter out_chan syms id arg6 !width | _ -> unhandled out_chan 498 x) arg9
@@ -686,6 +708,12 @@ and decls out_chan tree mode =
       | EMPTY -> ()
       | TRIPLE(EMPTY,EMPTY,EMPTY) -> ()
       | _ ->  unhandled out_chan 541 arg2);
+    ( List.iter (fun x -> match x with
+      | TRIPLE(id, arg5, arg6) -> enter_sym_attrs out_chan syms id [kind] SCALAR Create
+      | _ -> unhandled out_chan 544 x) arg3)
+(* Parse genvar decls *)
+| TRIPLE((GENVAR) as kind, arg1, TLIST arg3) ->
+    misc_syntax out_chan syms arg1;
     ( List.iter (fun x -> match x with
       | TRIPLE(id, arg5, arg6) -> enter_sym_attrs out_chan syms id [kind] SCALAR Create
       | _ -> unhandled out_chan 544 x) arg3)
@@ -778,7 +806,7 @@ ignore(Stack.pop stk)
 
 and toplevelitems out_chan tree =
    let expr = tree.Globals.tree and syms = tree.Globals.symbols in Stack.push (595, expr) stk; ( match expr with
-| DOUBLE((INITIAL|FINAL|ALWAYS), stmt) -> stmtBlock out_chan syms stmt
+| DOUBLE((INITIAL|FINAL|ALWAYS|GENERATE), stmt) -> stmtBlock out_chan syms stmt
 | TRIPLE(ASSIGN, dly, TLIST assignlist) -> hash_dly out_chan syms dly;
     iter (fun a -> match a with TRIPLE(ASSIGNMENT, var1, expr) ->
     ignore(subexp out_chan RECEIVER syms var1);
@@ -869,7 +897,11 @@ iter2 fc primargs inlist | _ -> ())
     iter (fun inst -> match inst with
       | TRIPLE(ID subcct, SCALAR, TLIST termlist) -> (* semantics out_chan (stem^subcct^".") kindhash; *)
         enter_a_sym out_chan syms subcct SUBCCT EMPTY Create;
-        ( match kindhash.Globals.tree with QUINTUPLE((MODULE|PRIMITIVE),ID arg1, EMPTY, TLIST primargs, TLIST arg4) ->
+        ( match kindhash.Globals.tree with QUINTUPLE((MODULE|PRIMITIVE),ID arg1, params, TLIST primargs, TLIST arg4) ->
+        ( match params with
+            | EMPTY -> ()
+	    | DOUBLE(HASH, TLIST [QUADRUPLE(PARAMETER, EMPTY, EMPTY, TRIPLE (ID id1, EMPTY, INT n))]) -> ()
+            | _ -> unhandled out_chan 904 params);
         (try iter2 (fun (inner:token) (term:token) -> fiter out_chan syms kind subcct inner term) primargs termlist; with Invalid_argument "List.iter2" -> let ids = ref [] and partlist = ref ([],[])and byposn = ref false in begin
 iter (fun (inner:token) -> (match inner with
 | ID id -> ids := (!ids @ [id])
@@ -900,7 +932,10 @@ end)
     match params with
     | EMPTY -> ()
     | TLIST parmlist -> iter (fun param -> match param with ID id -> () | _ -> unhandled out_chan 717 param) parmlist
-    | DOUBLE (HASH, TLIST dlylist) -> iter (fun param -> match param with ID id -> () | _ -> unhandled out_chan 718 param) dlylist
+    | DOUBLE (HASH, TLIST dlylist) -> iter (fun param -> match param with
+      | ID id -> ()
+      | TRIPLE (CELLPIN, ID id1, ID id2) -> ()
+      | _ -> unhandled out_chan 718 param) dlylist
     | _ -> unhandled out_chan 719 params
     end
 | _ -> unhandled out_chan 721 expr );
@@ -910,12 +945,14 @@ mod_empty := false
 and dispatch out_chan tree pass2 =
    let expr = tree.Globals.tree and syms = tree.Globals.symbols in Stack.push (726, expr) stk; ( match expr with
 (* handled by decls *)
-| QUADRUPLE(PARAMETER, EMPTY, EMPTY, params) -> if (pass2==false) then decls out_chan tree Create
+| QUADRUPLE(PARAMETER, EMPTY, range, params) -> if (pass2==false) then decls out_chan tree Create
 | QUINTUPLE((INPUT|OUTPUT|INOUT), arg1, arg2, arg3, arg4) -> if (pass2==true) then decls out_chan tree SizeOnly
-| QUADRUPLE((WIRE|REG|TRI0|TRI1|SUPPLY0|SUPPLY1|REAL|INTEGER|EVENT), arg1, arg2, TLIST arg3) -> if (pass2==true) then
-    decls out_chan tree Create
+| QUADRUPLE((WIRE|REG|TRI0|TRI1|SUPPLY0|SUPPLY1|REAL|INTEGER|EVENT), arg1, arg2, TLIST arg3) ->
+    if (pass2==true) then decls out_chan tree Create
+| TRIPLE(GENVAR, arg1, TLIST arg3) ->
+    if (pass2==true) then decls out_chan tree Create
 (* handled by toplevelitems *)
-| DOUBLE((INITIAL|FINAL|ALWAYS|TABLE|SPECIFY), items) -> if (pass2) then toplevelitems out_chan tree
+| DOUBLE((INITIAL|FINAL|ALWAYS|TABLE|SPECIFY|GENERATE), items) -> if (pass2) then toplevelitems out_chan tree
 | TRIPLE(ASSIGN, dly, TLIST assignlist) ->  if (pass2) then toplevelitems out_chan tree
 | TRIPLE((BUF|NOT|AND|OR|XOR|NAND|NOR|XNOR|PULLUP|NMOS|PMOS|TRAN), dly, TLIST instances) ->  if (pass2) then toplevelitems out_chan tree
 | TRIPLE((BUFIF lev|NOTIF lev|TRANIF lev), weaklist, TLIST instances) ->

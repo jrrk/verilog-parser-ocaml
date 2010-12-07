@@ -90,14 +90,14 @@ and exprConst out_chan (syms:shash) expr = Stack.push (67, expr) stk; let rslt =
 | TRIPLE(GREATER, expr1, expr2) -> if (exprBoolean out_chan syms (>)) expr1 expr2 then INT 1 else INT 0
 | TRIPLE(P_LTE, expr1, expr2) -> if (exprBoolean out_chan syms (<=)) expr1 expr2 then INT 1 else INT 0
 | TRIPLE(P_GTE, expr1, expr2) -> if (exprBoolean out_chan syms (>=)) expr1 expr2 then INT 1 else INT 0
-| DOUBLE(CONCAT, TLIST [left; right]) -> Printf.fprintf (fst out_chan) "Concat expr not yet implemented, value 1 assumed\n"; INT 1
+| DOUBLE(CONCAT, TLIST [left; right]) -> Printf.fprintf (fst out_chan) "Concat expr not yet implemented\n"; CONCAT
 | ID id -> exprConstID out_chan syms id
-| TRIPLE(FUNCREF, ID id, TLIST args) -> Printf.fprintf (fst out_chan) "%s is a function, value 1 assumed\n" id; INT 1
+| TRIPLE(FUNCREF, ID id, TLIST args) -> Printf.fprintf (fst out_chan) "%s is a function\n" id; FUNCREF
 | TRIPLE(BITSEL, arg, sel) -> exprInteger out_chan syms ( mod ) (exprInteger out_chan syms ( lsr ) arg sel) (INT 2)
 | QUADRUPLE(PARTSEL, arg, INT hi, INT lo) -> exprInteger out_chan syms (lsr) arg (INT lo)
 | QUADRUPLE(QUERY, expr, arg1, arg2) -> if (exprBoolean out_chan syms (<>)) expr (INT 0) then
     (exprConst out_chan syms arg1) else (exprConst out_chan syms arg2)
-| TRIPLE(P_SLEFT, INT 1, ID id) -> Printf.fprintf (fst out_chan) "Const expression 1<<%s is too complicated, value 1 assumed\n" id; INT 1
+| TRIPLE(P_SLEFT, INT 1, ID id) -> Printf.fprintf (fst out_chan) "Const expression 1<<%s is too complicated\n" id; P_SLEFT
 | _ -> unhandled out_chan 97 expr; INT 1 ) in
 ignore(Stack.pop stk);
 rslt

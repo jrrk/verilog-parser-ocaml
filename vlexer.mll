@@ -189,7 +189,7 @@ rule token = parse
 | "(*"
     { comment2 (Lexing.lexeme_start lexbuf) lexbuf; token lexbuf }
 |  "//Verilog "anything_but_newline* as comment {hlog lexbuf (PRAGMATIC comment) }
-|  "//"anything_but_newline* {token lexbuf}
+|  "//"[^'\n']*'\n' {token lexbuf}
 |  "bufif"digit+ as def		{ hlog lexbuf (BUFIF def) }
 |  "notif"digit+ as def		{ hlog lexbuf (NOTIF def) }
 |  "tranif"digit+ as def	{ hlog lexbuf (TRANIF def) }
