@@ -208,24 +208,25 @@ let enter_a_sig_attr out_chan syms (tok:token) attr w isyms isym = ( match tok w
   (str_token tok) (str_token attr) (str_token w)
 ;;
 
+let notcompat width1 width2 = let compat=ref (width1 = width2) in
+    begin
+    match width2 with
+    | RANGE(x, y) -> if ((x=y) && ((width1 == EMPTY) || (width1 == SCALAR))) then compat := true;
+    | _ -> ();
+    match width1 with
+    | RANGE(x, y) -> if ((x=y) && ((width2 == EMPTY) || (width2 == SCALAR))) then compat := true;
+    | _ -> ();
+    end;
+    not !compat
+
 let inner_chk out_chan syms isyms isym subcct outer wid = begin
  if (Globals.verbose >= 2) then Printf.fprintf (fst out_chan) "inner_chk out_chan syms isym {path:%s width:%s} subcct:%s outer:%s width:%s\n"
   isym.path (str_token isym.width) subcct outer (str_token wid);
-  let hier = ID (outer) and compat=ref false in 
+  let hier = ID (outer) in 
   begin
-  if (isym.width <> wid) then
-    begin
-    match wid with
-    | RANGE(INT x, INT y) -> if ((x==y) && (isym.width == EMPTY)) then compat := true;
-    | _ -> ();
-    match isym.width with
-    | RANGE(INT x, INT y) -> if ((x==y) && (wid == EMPTY)) then compat := true;
-    | _ -> ();
-    if (!compat == false) then begin
+  if notcompat isym.width wid then
       Printf.fprintf (fst out_chan) "Width mismatch subcct=%s inner=%s %s outer=%s %s\n"
           subcct isym.path (Setup.str_token isym.width) outer (str_token(wid)); 
-      end
-    end;
   if (TokSet.mem IOPORT isym.symattr == false) then Printf.fprintf (fst out_chan) "Instance port %s not an ioport\n" isym.path
   else if (TokSet.mem INPUT isym.symattr) then ( enter_a_sig_attr out_chan syms hier DRIVER wid isyms isym)
   else if (TokSet.mem OUTPUT isym.symattr) then ( enter_a_sig_attr out_chan syms hier RECEIVER wid isyms isym)
@@ -234,21 +235,10 @@ let inner_chk out_chan syms isyms isym subcct outer wid = begin
 end
 
 let inner_chk_const out_chan syms isyms isym subcct (tok:token) wid = begin
-  let compat=ref false in 
   begin
-  if (isym.width <> wid) then
-    begin
-    match wid with
-    | RANGE(INT x, INT y) -> if ((x==y) && (isym.width == EMPTY)) then compat := true;
-    | _ -> ();
-    match isym.width with
-    | RANGE(INT x, INT y) -> if ((x==y) && (wid == EMPTY)) then compat := true;
-    | _ -> ();
-    if (!compat == false) then begin
+  if notcompat isym.width wid then
       Printf.fprintf (fst out_chan) "Width mismatch subcct=%s inner=%s %s const=%s %s\n"
           subcct isym.path (Setup.str_token isym.width) (str_token tok) (str_token(wid)); 
-      end
-    end;
   if (TokSet.mem IOPORT isym.symattr == false) then Printf.fprintf (fst out_chan) "Instance port %s not an ioport\n" isym.path
   else if (TokSet.mem INPUT isym.symattr) then ()
   else if (TokSet.mem OUTPUT isym.symattr) then Printf.fprintf (fst out_chan) "Output port %s cannot connect to constant\n" isym.path
@@ -268,21 +258,10 @@ let rec inner_chk_expr out_chan syms isyms isym subcct (tok:token) = begin
 | DOUBLE(TILDE, left) -> exprGeneric out_chan syms tok
 | DOUBLE(PLING, left) -> exprGeneric out_chan syms tok
 | _ -> unhandled out_chan 226 tok; UNKNOWN ) in
-  let compat=ref false in 
   begin
-  if (isym.width <> wid) then
-    begin
-    match wid with
-    | RANGE(INT x, INT y) -> if ((x==y) && (isym.width == EMPTY)) then compat := true;
-    | _ -> ();
-    match isym.width with
-    | RANGE(INT x, INT y) -> if ((x==y) && (wid == EMPTY)) then compat := true;
-    | _ -> ();
-    if (!compat == false) then begin
-      Printf.fprintf (fst out_chan) "Width mismatch subcct=%s inner=%s %s const=%s %s\n"
+  if notcompat isym.width wid then
+      Printf.fprintf (fst out_chan) "Width mismatch subcct=%s inner=%s %s expr=%s %s\n"
           subcct isym.path (Setup.str_token isym.width) (str_token tok) (str_token(wid)); 
-      end
-    end;
   if (TokSet.mem IOPORT isym.symattr == false) then Printf.fprintf (fst out_chan) "Instance port %s not an ioport\n" isym.path
   else if (TokSet.mem INPUT isym.symattr) then ()
   else if (TokSet.mem OUTPUT isym.symattr) then Printf.fprintf (fst out_chan) "Output port %s cannot connect to expression\n" isym.path
@@ -644,7 +623,7 @@ and misc_syntax out_chan syms expr = Stack.push (539, expr) stk; ( match expr wi
 | DOUBLE
   (HASH,
    TLIST lst) -> iter (fun item -> match item with
-    | QUADRUPLE (PARAMETER, EMPTY, EMPTY, TRIPLE (ID id, EMPTY, INT n)) -> ()
+    | QUADRUPLE (PARAMETER, EMPTY, EMPTY, TRIPLE (ID id, EMPTY, arg6)) -> enter_parameter out_chan syms id arg6 EMPTY
     | _ -> unhandled out_chan 633 expr) lst
 | _ -> unhandled out_chan 634 expr);
 ignore(Stack.pop stk)
@@ -654,9 +633,15 @@ and decls out_chan tree mode =
 (* Parse parameter declarations *)
 | QUADRUPLE(PARAMETER, EMPTY, range, decls) ->
     let width = ref EMPTY in begin
+    (match range with
+      | RANGE(left,right) as rangehilo -> width := rangehilo
+      | TLIST arg9 ->  List.iter (fun arg -> unhandled out_chan 659 arg) arg9
+      | EMPTY -> ()
+      | _ -> unhandled out_chan 661 range);
     ( match decls with
       | TLIST arg9 ->  List.iter (fun x -> match x with TRIPLE(ID id, arg5, arg6) -> enter_parameter out_chan syms id arg6 !width | _ -> unhandled out_chan 498 x) arg9
       | EMPTY -> ()
+      | TRIPLE (ID id, EMPTY, arg6) -> enter_parameter out_chan syms id arg6 !width
       | _ -> unhandled out_chan 500 decls); end
 (* Parse IO declarations *)
 | QUINTUPLE((INPUT|OUTPUT|INOUT) as dir, arg1, arg2, arg3, arg4) ->
@@ -900,7 +885,8 @@ iter2 fc primargs inlist | _ -> ())
         ( match kindhash.Globals.tree with QUINTUPLE((MODULE|PRIMITIVE),ID arg1, params, TLIST primargs, TLIST arg4) ->
         ( match params with
             | EMPTY -> ()
-	    | DOUBLE(HASH, TLIST [QUADRUPLE(PARAMETER, EMPTY, EMPTY, TRIPLE (ID id1, EMPTY, INT n))]) -> ()
+	    | DOUBLE(HASH, TLIST plst) -> List.iter
+                (fun item -> decls out_chan {Globals.unresolved=[]; tree=item; symbols=syms} Create) plst
             | _ -> unhandled out_chan 904 params);
         (try iter2 (fun (inner:token) (term:token) -> fiter out_chan syms kind subcct inner term) primargs termlist; with Invalid_argument "List.iter2" -> let ids = ref [] and partlist = ref ([],[])and byposn = ref false in begin
 iter (fun (inner:token) -> (match inner with
