@@ -43,6 +43,7 @@ let _ = List.iter (fun (str,key) -> Hashtbl.add tsymbols str key)
 ("`else", P_ELSE );
 ("`endif", P_ENDIF );
 ("`ifdef", P_IFDEF );
+("`ifndef", P_IFNDEF );
 ("`include", P_INCLUDE "");
 ("`nosuppress_faults", P_NOSUPPRESS_FAULTS );
 ("`protect", P_PROTECT );
@@ -84,6 +85,12 @@ let substr = String.sub macro_raw 0 blank1 in if (Hashtbl.mem tsymbols substr) t
         Printf.fprintf (fst chan) "Ifdef %s %s %s\n" macro_raw right (yesno cond) |
         Closed -> () );
      Stack.push cond ifdef_stk; ""
+  | P_IFNDEF -> let defn = "`"^(String.sub right 0 (String.length(right)-1)) in let cond = Hashtbl.mem tsymbols defn in 
+     ( match !Globals.trace_file with Open chan ->
+        Hashtbl.iter (fun key contents -> Printf.fprintf (fst chan) "Defined %s %s\n" key (str_token contents)) tsymbols;
+        Printf.fprintf (fst chan) "Ifdef %s %s %s\n" macro_raw right (yesno cond) |
+        Closed -> () );
+     Stack.push (not cond) ifdef_stk; ""
   | P_ELSE -> Stack.push (not (Stack.pop ifdef_stk)) ifdef_stk; ""
   | P_ENDIF -> ignore(Stack.pop ifdef_stk); ""
   | _ -> macro_raw

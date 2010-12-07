@@ -77,6 +77,7 @@
 %token P_ENDCELLDEFINE
 %token P_ENDIF
 %token P_IFDEF
+%token P_IFNDEF
 %token<string> P_INCLUDE
 %token P_NOSUPPRESS_FAULTS
 %token P_PROTECT
@@ -89,6 +90,8 @@
 %token<string> PRAGMATIC
 // for named blocks
 %token NAMED
+// for generate item
+%token GENITEM
 // for unknown modules/primitives
 %token UNKNOWN
 // for invalid use
@@ -814,8 +817,8 @@ genTopBlock:
 genItemBegin:
 		BEGIN genItemList END			{ TLIST $2 }
 	|	BEGIN END				{ EMPTY }
-	|	BEGIN COLON identifier genItemList END endLabelE	{ TRIPLE ($3, TLIST $4, $6) }
-	|	BEGIN COLON identifier 	           END endLabelE	{ TRIPLE ($3, EMPTY, $5) }
+	|	BEGIN COLON identifier genItemList END endLabelE	{ QUADRUPLE(GENITEM, $3, TLIST $4, $6) }
+	|	BEGIN COLON identifier 	           END endLabelE	{ QUADRUPLE(GENITEM, $3, EMPTY, $5) }
 	;
 
 genItemList:
@@ -2386,6 +2389,7 @@ unused_tokens:			{	}
 	|	P_ELSE		{	}
 	|	P_ENDIF		{	}
 	|	P_IFDEF		{	}
+	|	P_IFNDEF	{	}
 	|	P_INCLUDE	{	}
 	|	P_MINUSEQ	{	}
 	|	P_MODEQ		{	}
