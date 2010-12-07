@@ -2366,6 +2366,7 @@ unused_tokens:			{	}
 	|	FUNCASSIGNED	{	}
 	|	GENCASECOND	{	}
 	|	GENCASE		{	}
+	|	GENITEM		{	}
 	|	IMPLICIT	{	}
 	|	INT		{	}
 	|	IOPORT		{	}
