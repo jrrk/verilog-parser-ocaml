@@ -1,0 +1,1 @@
+This project enables Verilog 2k syntax to be parsed and subsequently dumped in only 4000 lines of ocaml, making it very maintainable and powerful to add linting, semantic checks, term re-writing and other goodies later. My first project in ocaml, so any encouragement welcome.
